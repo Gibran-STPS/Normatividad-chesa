@@ -1,0 +1,46 @@
+{
+  "_fuente": "DECRETO DOF 01/05/2026 - Reforma LFT en materia de reducción de la jornada laboral. https://www.dof.gob.mx/nota_detalle.php?codigo=5786537&fecha=01/05/2026",
+  "_nota": "Editable. Si el texto oficial cambia, actualiza estos valores y vuelve a correr el pipeline; el dashboard y los reportes se recalculan solos.",
+  "jornada_ordinaria_maxima_semanal_por_anio": {
+    "_articulo": "Art. 59 LFT + Transitorio Segundo",
+    "2026": 48,
+    "2027": 46,
+    "2028": 44,
+    "2029": 42,
+    "2030": 40
+  },
+  "horas_extra_maximas_semanales_por_anio": {
+    "_articulo": "Art. 66 LFT + Transitorio Cuarto",
+    "2026": 9,
+    "2027": 9,
+    "2028": 10,
+    "2029": 11,
+    "2030": 12
+  },
+  "jornada_maxima_absoluta_diaria": {
+    "_articulo": "Art. 68 LFT, último párrafo: 'La suma de las jornadas ordinaria y extraordinaria, en ningún caso podrá ser mayor a doce horas diarias.'",
+    "horas": 12
+  },
+  "dias_descanso_obligatorio": {
+    "_articulo": "Art. 69 LFT",
+    "minimo_1_descanso_por_dias_trabajados": 6
+  },
+  "registro_electronico_jornada": {
+    "_articulo": "Art. 132 fracc. XXXIV LFT",
+    "vigencia": "2027-01-01",
+    "multa_uma_min": 250,
+    "multa_uma_max": 5000,
+    "_articulo_multa": "Art. 994 fracc. IV Bis LFT"
+  },
+  "jornada_sabado": {
+    "_nota": "El reloj checador de todas las unidades replica por error el HORARIO y HORARIO COMIDA de entre semana en los registros de sábado (a veces distinto por empleado/área), cuando el horario real de sábado es único a nivel grupo y sin comida. Mientras 'activo' sea true, el ETL ignora el HORARIO/HORARIO COMIDA que trae el archivo para los renglones de sábado y usa estos valores en su lugar para calcular horas, retardos y el hallazgo 'sabado_fuera_horario'. Edita aquí si el horario de sábado cambia.",
+    "activo": true,
+    "hora_entrada": "09:00",
+    "hora_salida": "14:00",
+    "con_comida": false,
+    "tolerancia_salida_minutos": 15
+  },
+  "vigencia_decreto": "2026-05-01",
+  "periodo_ajuste_transitorio": "2026-05-01 a 2026-12-31 (Transitorio Tercero)",
+  "no_afecta_salario": "Transitorio Séptimo: la reducción de jornada no implica disminución de sueldos, salarios ni prestaciones."
+}

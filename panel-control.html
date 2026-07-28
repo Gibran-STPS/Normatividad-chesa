@@ -769,6 +769,7 @@
 <button class="tab-40h tab-active-40h px-md py-sm font-bold text-primary border-b-2 border-primary" onclick="switch40hTab('panel-general', this)">General</button>
 <button class="tab-40h px-md py-sm font-semibold text-on-surface-variant" onclick="switch40hTab('panel-transicion', this)">Transición 40h</button>
 <button class="tab-40h px-md py-sm font-semibold text-on-surface-variant" onclick="switch40hTab('panel-analitica', this)">Analítica</button>
+<button class="tab-40h px-md py-sm font-semibold text-on-surface-variant" onclick="switch40hTab('panel-tablero-real', this)">Tablero Detallado (Excel)</button>
 </div>
 <div class="panel-40h" id="panel-general">
 <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-lg">
@@ -841,6 +842,13 @@
 <span class="material-symbols-outlined text-4xl" data-icon="analytics">analytics</span>
 <p class="mt-2 text-sm">La analítica comparativa entre centros estará disponible cuando conectemos los datos reales de asistencia.</p>
 </div>
+</div>
+<div class="panel-40h hidden" id="panel-tablero-real">
+<div class="bg-white border border-outline-variant rounded p-md mb-md flex items-center justify-between">
+<p class="text-sm text-on-surface-variant">Este es tu tablero de <strong>Cumplimiento de Jornada Laboral</strong> completo: arrastra aquí los .xlsx de reloj checador del mes para verlo funcionar. Corre dentro de este panel, no sube nada a ningún servidor.</p>
+<a class="text-primary hover:underline font-bold text-xs whitespace-nowrap ml-md" href="tablero-jornada-laboral.html" target="_blank">Abrir en pestaña aparte ↗</a>
+</div>
+<iframe class="w-full border border-outline-variant rounded" src="tablero-jornada-laboral.html" style="height: 85vh;" title="Tablero de Cumplimiento de Jornada Laboral"></iframe>
 </div>
 </div>
 
