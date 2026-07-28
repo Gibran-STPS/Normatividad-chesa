@@ -14,6 +14,10 @@ alter table centros_trabajo add column if not exists codigo_agencia text;
 --      correo mensual (también se captura una sola vez, desde el mismo modal).
 alter table centros_trabajo add column if not exists responsable_email text;
 
+-- 1.2) Marca del centro (Nissan, Renault, Changan, Ecos Digitales...) para
+--      mostrar su logo correspondiente junto al de Grupo Chesa.
+alter table centros_trabajo add column if not exists marca text;
+
 -- 2) Calendario normativo: una fila por centro + norma + actividad + mes.
 --    Se llena con el importador del Excel (no manualmente), y cada mes
 --    se marca "Realizada" desde el panel en lugar de escribir una R a mano.

@@ -65,6 +65,11 @@ responsable y correo de cada uno.
   con el botón **"Importar calendario (.xlsx)"**. Debe tener una hoja por
   centro con la misma estructura que ya usas (Norma en una fila, Actividad
   en la columna C, y P/R en las 12 columnas de meses).
+- Si el nombre de la hoja incluye "NISSAN", "RENAULT", "CHANGAN" o "ECOS",
+  el panel asigna automáticamente el logo de esa marca al centro (junto al
+  logo de Grupo Chesa, que siempre aparece). Si es un centro corporativo
+  sin marca de auto, puedes asignarla manualmente (o dejarla en blanco)
+  desde el modal de "Editar Centro".
 - Elige centro + mes + año para ver el checklist. Marca cada actividad como
   "Realizada" con un clic — reemplaza escribir la R a mano.
 - Si ves un aviso de "hojas sin mapear", significa que el nombre de esa hoja
