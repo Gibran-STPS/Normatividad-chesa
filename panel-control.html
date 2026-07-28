@@ -1301,10 +1301,15 @@ function renderCentros(){
         const normasTxt = c.normas.length
             ? `<span class="text-xs font-bold text-on-tertiary-container">${c.normas.length} norma${c.normas.length === 1 ? '' : 's'}</span>`
             : `<span class="text-xs text-on-surface-variant">Sin asignar</span>`;
-        const logoMarca = LOGOS_MARCA[c.marca] ? `<img src="${LOGOS_MARCA[c.marca]}" alt="${c.marca}" class="h-4 inline-block mr-1 align-middle"/>` : '';
+        const logoMarca = LOGOS_MARCA[c.marca] ? `<img src="${LOGOS_MARCA[c.marca]}" alt="${c.marca}" style="height:16px;width:auto;max-width:56px;object-fit:contain;"/>` : '';
         return `
 <tr class="${rowClass} transition-colors">
-<td class="px-md py-sm"><div class="flex items-center gap-1 mb-0.5"><img src="${LOGO_CHESA}" alt="Grupo Chesa" class="h-3 inline-block align-middle"/>${logoMarca}</div><div class="font-bold">${c.nombre}</div><div class="text-xs text-on-surface-variant">ID: ${c.id}</div></td>
+<td class="px-md py-sm">
+<div class="flex items-center gap-sm mb-xs" style="height:20px;">
+<img src="${LOGO_CHESA}" alt="Grupo Chesa" style="height:14px;width:auto;max-width:56px;object-fit:contain;"/>
+${logoMarca ? '<span class="text-on-surface-variant" style="font-size:10px;">·</span>' + logoMarca : ''}
+</div>
+<div class="font-bold">${c.nombre}</div><div class="text-xs text-on-surface-variant">ID: ${c.id}</div></td>
 <td class="px-md py-sm text-sm">${c.ubicacion}</td>
 <td class="px-md py-sm text-sm">${c.responsable}</td>
 <td class="px-md py-sm">${normasTxt}</td>
