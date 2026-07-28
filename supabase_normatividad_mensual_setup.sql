@@ -42,12 +42,16 @@ create table if not exists calendario_normativo (
 );
 
 alter table calendario_normativo enable row level security;
+drop policy if exists "leer calendario_normativo" on calendario_normativo;
 create policy "leer calendario_normativo" on calendario_normativo
   for select using (auth.role() = 'authenticated');
+drop policy if exists "escribir calendario_normativo" on calendario_normativo;
 create policy "escribir calendario_normativo" on calendario_normativo
   for insert with check (auth.role() = 'authenticated');
+drop policy if exists "actualizar calendario_normativo" on calendario_normativo;
 create policy "actualizar calendario_normativo" on calendario_normativo
   for update using (auth.role() = 'authenticated');
+drop policy if exists "borrar calendario_normativo" on calendario_normativo;
 create policy "borrar calendario_normativo" on calendario_normativo
   for delete using (auth.role() = 'authenticated');
 
@@ -68,10 +72,13 @@ create table if not exists plantillas_documentos (
 );
 
 alter table plantillas_documentos enable row level security;
+drop policy if exists "leer plantillas_documentos" on plantillas_documentos;
 create policy "leer plantillas_documentos" on plantillas_documentos
   for select using (auth.role() = 'authenticated');
+drop policy if exists "escribir plantillas_documentos" on plantillas_documentos;
 create policy "escribir plantillas_documentos" on plantillas_documentos
   for insert with check (auth.role() = 'authenticated');
+drop policy if exists "borrar plantillas_documentos" on plantillas_documentos;
 create policy "borrar plantillas_documentos" on plantillas_documentos
   for delete using (auth.role() = 'authenticated');
 
@@ -83,10 +90,13 @@ create table if not exists tabla_vacaciones_dias (
 );
 
 alter table tabla_vacaciones_dias enable row level security;
+drop policy if exists "leer tabla_vacaciones_dias" on tabla_vacaciones_dias;
 create policy "leer tabla_vacaciones_dias" on tabla_vacaciones_dias
   for select using (auth.role() = 'authenticated');
+drop policy if exists "escribir tabla_vacaciones_dias" on tabla_vacaciones_dias;
 create policy "escribir tabla_vacaciones_dias" on tabla_vacaciones_dias
   for insert with check (auth.role() = 'authenticated');
+drop policy if exists "actualizar tabla_vacaciones_dias" on tabla_vacaciones_dias;
 create policy "actualizar tabla_vacaciones_dias" on tabla_vacaciones_dias
   for update using (auth.role() = 'authenticated');
 
@@ -115,10 +125,13 @@ create table if not exists colaboradores (
 );
 
 alter table colaboradores enable row level security;
+drop policy if exists "leer colaboradores" on colaboradores;
 create policy "leer colaboradores" on colaboradores
   for select using (auth.role() = 'authenticated');
+drop policy if exists "escribir colaboradores" on colaboradores;
 create policy "escribir colaboradores" on colaboradores
   for insert with check (auth.role() = 'authenticated');
+drop policy if exists "actualizar colaboradores" on colaboradores;
 create policy "actualizar colaboradores" on colaboradores
   for update using (auth.role() = 'authenticated');
 
@@ -140,8 +153,10 @@ create table if not exists constancias_generadas (
 );
 
 alter table constancias_generadas enable row level security;
+drop policy if exists "leer constancias_generadas" on constancias_generadas;
 create policy "leer constancias_generadas" on constancias_generadas
   for select using (auth.role() = 'authenticated');
+drop policy if exists "escribir constancias_generadas" on constancias_generadas;
 create policy "escribir constancias_generadas" on constancias_generadas
   for insert with check (auth.role() = 'authenticated');
 
