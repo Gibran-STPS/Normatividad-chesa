@@ -95,8 +95,18 @@ responsable y correo de cada uno.
 
 - Sube aquí, una sola vez, cada formato Word/Excel que normalmente anexas
   por norma. Puedes subir más de uno por norma si aplica.
-- De aquí en adelante, el correo mensual los toma automáticamente sin que
-  tengas que volver a buscarlos en tu computadora.
+- **Nombre y firma del responsable, automáticos:** en tus plantillas,
+  donde antes escribías el nombre a mano, ahora escribe literalmente
+  `{{RESPONSABLE}}` (y `{{PUESTO}}` donde vaya su puesto). El panel
+  reemplaza esos marcadores por los datos reales de cada centro al
+  generar el documento — nunca más se edita el Word archivo por archivo.
+  Marcadores disponibles: `{{RESPONSABLE}}`, `{{PUESTO}}`, `{{CENTRO}}`,
+  `{{FECHA}}` (fecha del día, en español).
+- Para probarlo sin esperar al correo mensual: arriba de la tabla, elige
+  un centro y da clic en **"Descargar personalizadas (ZIP)"** — te
+  descarga TODAS tus plantillas ya con los datos de ese centro rellenos.
+- De aquí en adelante, el correo mensual también las toma automáticamente
+  ya personalizadas, sin que tengas que volver a buscarlas ni editarlas.
 
 ### 4) Correo Mensual
 

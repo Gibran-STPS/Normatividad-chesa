@@ -14,6 +14,10 @@ alter table centros_trabajo add column if not exists codigo_agencia text;
 --      correo mensual (también se captura una sola vez, desde el mismo modal).
 alter table centros_trabajo add column if not exists responsable_email text;
 
+-- 1.1.1) Puesto del responsable (ej. "Administrador de Procesos de Calidad"),
+--        para rellenar automáticamente los documentos que lo requieren.
+alter table centros_trabajo add column if not exists responsable_puesto text;
+
 -- 1.2) Marca del centro (Nissan, Renault, Changan, Ecos Digitales...) para
 --      mostrar su logo correspondiente junto al de Grupo Chesa.
 alter table centros_trabajo add column if not exists marca text;

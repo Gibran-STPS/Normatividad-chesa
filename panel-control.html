@@ -9,6 +9,8 @@
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="vendor/jszip.min.js"></script>
+<script src="vendor/pizzip.min.js"></script>
+<script src="vendor/docxtemplater.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
@@ -600,6 +602,10 @@
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-responsable" required="" type="text"/>
 </div>
 <div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto del responsable (para documentos)</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-responsable-puesto" placeholder="Ej. Administrador de Procesos de Calidad" type="text"/>
+</div>
+<div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Estado</label>
 <select class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-estado">
 <option value="Activo">Activo</option>
@@ -747,6 +753,16 @@
 
 <!-- ---- TAB 3: Plantillas de Documentos ---- -->
 <div class="panel-mensual hidden" id="panel-plantillas">
+<div class="bg-white border border-outline-variant rounded p-md mb-lg">
+<div class="flex flex-wrap gap-md items-end">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Descargar todas las plantillas ya rellenas para</label>
+<select class="border border-outline-variant rounded p-sm text-sm min-w-[220px]" id="plantillas-centro"></select>
+</div>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="descargarPlantillasPersonalizadas()" type="button">Descargar personalizadas (ZIP)</button>
+</div>
+<p class="text-xs text-on-surface-variant mt-sm">Reemplaza automáticamente <span class="font-data-mono">{{RESPONSABLE}}</span>, <span class="font-data-mono">{{PUESTO}}</span>, <span class="font-data-mono">{{CENTRO}}</span> y <span class="font-data-mono">{{FECHA}}</span> en tus plantillas Word/Excel con los datos de ese centro. Usa esos mismos marcadores al preparar tus formatos.</p>
+</div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
@@ -1261,7 +1277,7 @@ async function cargarCentros(){
 
     const { data, error } = await supabaseClient
         .from('centros_trabajo')
-        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, marca, centro_normas(norma_code)')
+        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, marca, centro_normas(norma_code)')
         .order('id');
 
     if(error){
@@ -1278,6 +1294,7 @@ async function cargarCentros(){
         estado: c.estado,
         codigoAgencia: c.codigo_agencia,
         responsableEmail: c.responsable_email,
+        responsablePuesto: c.responsable_puesto,
         marca: c.marca,
         normas: (c.centro_normas || []).map(n => n.norma_code)
     }));
@@ -1393,6 +1410,7 @@ async function abrirModalCentro(id){
         document.getElementById('centro-estado').value = c.estado;
         document.getElementById('centro-codigo-agencia').value = c.codigoAgencia || '';
         document.getElementById('centro-responsable-email').value = c.responsableEmail || '';
+        document.getElementById('centro-responsable-puesto').value = c.responsablePuesto || '';
         document.getElementById('centro-marca').value = c.marca || '';
         poblarListaNormas(c.normas);
         btnEliminar.classList.remove('hidden');
@@ -1426,6 +1444,7 @@ async function guardarCentro(event){
     const estado = document.getElementById('centro-estado').value;
     const codigoAgencia = document.getElementById('centro-codigo-agencia').value.trim() || null;
     const responsableEmail = document.getElementById('centro-responsable-email').value.trim() || null;
+    const responsablePuesto = document.getElementById('centro-responsable-puesto').value.trim() || null;
     const marca = document.getElementById('centro-marca').value || null;
     const normas = Array.from(document.querySelectorAll('.norma-checkbox:checked')).map(cb => cb.dataset.code);
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -1437,7 +1456,7 @@ async function guardarCentro(event){
 
     const { error: errorCentro } = await supabaseClient
         .from('centros_trabajo')
-        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, marca });
+        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, marca });
 
     if(errorCentro){
         mostrarToast('Error al guardar: ' + errorCentro.message);
@@ -1502,7 +1521,7 @@ function poblarSelectoresMensual(){
     const mesActual = new Date().getMonth() + 1;
     const opcionesCentro = '<option value="">Selecciona…</option>' + centrosData.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
     const opcionesMes = NOMBRES_MES.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
-    ['cal-centro','vac-centro','correo-centro'].forEach(id => {
+    ['cal-centro','vac-centro','correo-centro','plantillas-centro'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.innerHTML = opcionesCentro;
     });
@@ -1579,6 +1598,7 @@ async function crearCentroAutomatico(nombreHoja){
         estado: nuevoCentro.estado,
         codigoAgencia: nuevoCentro.codigo_agencia,
         responsableEmail: null,
+        responsablePuesto: null,
         marca: nuevoCentro.marca,
         normas: []
     });
@@ -1964,6 +1984,92 @@ async function generarTodasConstancias(){
 
 // ---- TAB 3: Plantillas de Documentos ----
 
+// ---- Motor de personalización de documentos (marcadores {{RESPONSABLE}}, etc.) ----
+// Reemplaza los marcadores de una plantilla (.docx o .xlsx) con los datos
+// reales del centro, y regresa un Blob listo para descargar/anexar.
+// Marcadores soportados: {{RESPONSABLE}}, {{PUESTO}}, {{CENTRO}}, {{FECHA}}
+
+function datosPlaceholders(centro){
+    const hoy = new Date();
+    const fechaTexto = hoy.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+    return {
+        RESPONSABLE: (centro && centro.responsable) || '',
+        PUESTO: (centro && centro.responsablePuesto) || '',
+        CENTRO: (centro && centro.nombre) || '',
+        FECHA: fechaTexto
+    };
+}
+
+async function personalizarArchivo(blob, nombreArchivo, centro){
+    const ext = (nombreArchivo.split('.').pop() || '').toLowerCase();
+    const datos = datosPlaceholders(centro);
+
+    if(ext === 'docx'){
+        try {
+            const arrayBuffer = await blob.arrayBuffer();
+            const zip = new PizZip(arrayBuffer);
+            const doc = new docxtemplater(zip, { paragraphLoop: true, linebreaks: true, delimiters: { start: '{{', end: '}}' } });
+            doc.render(datos);
+            return doc.getZip().generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        } catch(err){
+            mostrarToast('No se pudo personalizar "' + nombreArchivo + '" (se anexa sin rellenar): ' + (err.message || err));
+            return blob;
+        }
+    }
+
+    if(ext === 'xlsx' || ext === 'xls'){
+        try {
+            const arrayBuffer = await blob.arrayBuffer();
+            const wb = XLSX.read(arrayBuffer, { type: 'array' });
+            wb.SheetNames.forEach(nombreHoja => {
+                const ws = wb.Sheets[nombreHoja];
+                Object.keys(ws).forEach(celda => {
+                    if(celda[0] === '!') return;
+                    const cell = ws[celda];
+                    if(cell && cell.t === 's' && typeof cell.v === 'string' && cell.v.includes('{{')){
+                        let texto = cell.v;
+                        Object.keys(datos).forEach(clave => {
+                            texto = texto.split('{{' + clave + '}}').join(datos[clave]);
+                        });
+                        cell.v = texto;
+                        if(cell.w) cell.w = texto;
+                    }
+                });
+            });
+            const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+            return new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        } catch(err){
+            mostrarToast('No se pudo personalizar "' + nombreArchivo + '" (se anexa sin rellenar): ' + (err.message || err));
+            return blob;
+        }
+    }
+
+    return blob; // otros formatos: se anexan tal cual
+}
+
+async function descargarPlantillasPersonalizadas(){
+    const centroId = document.getElementById('plantillas-centro').value;
+    if(!centroId){ mostrarToast('Elige un centro.'); return; }
+    const centro = centrosData.find(c => c.id === centroId);
+
+    const { data: plantillas, error } = await supabaseClient.from('plantillas_documentos').select('norma_code, nombre_archivo, storage_path');
+    if(error){ mostrarToast('Error: ' + error.message); return; }
+    if(!plantillas || !plantillas.length){ mostrarToast('Todavía no subes ninguna plantilla.'); return; }
+
+    mostrarToast('Personalizando ' + plantillas.length + ' plantilla(s) para ' + centro.nombre + '...');
+    const zip = new JSZip();
+    for(const p of plantillas){
+        const { data, error: errDesc } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
+        if(errDesc){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + errDesc.message); continue; }
+        const personalizado = await personalizarArchivo(data, p.nombre_archivo, centro);
+        const carpeta = p.norma_code || 'sin_norma';
+        zip.file(`${carpeta}/${p.nombre_archivo}`, personalizado);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    descargarBlob(blob, `Plantillas_${centro.id}.zip`);
+    mostrarToast('Listo: plantillas personalizadas para ' + centro.nombre + '.');
+}
+
 async function cargarPlantillas(){
     await asegurarCatalogoNormas();
     const tbody = document.getElementById('plantillas-tbody');
@@ -2096,7 +2202,8 @@ async function descargarAdjuntosCorreo(){
     for(const p of CORREO_CONTEXTO.plantillas){
         const { data, error } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
         if(error){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + error.message); continue; }
-        zip.file(p.nombre_archivo, data);
+        const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro);
+        zip.file(p.nombre_archivo, personalizado);
     }
     CORREO_CONTEXTO.colaboradores.forEach(c => {
         const doc = construirConstanciaPDF(c, CORREO_CONTEXTO.centro);
