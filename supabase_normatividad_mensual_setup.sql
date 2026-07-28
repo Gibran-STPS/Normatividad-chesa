@@ -18,6 +18,12 @@ alter table centros_trabajo add column if not exists responsable_email text;
 --        para rellenar automáticamente los documentos que lo requieren.
 alter table centros_trabajo add column if not exists responsable_puesto text;
 
+-- 1.1.2) Razón social, dirección y teléfono del centro, para el encabezado
+--        de los documentos (el mismo dato en todos, sin editarlos a mano).
+alter table centros_trabajo add column if not exists razon_social text;
+alter table centros_trabajo add column if not exists direccion text;
+alter table centros_trabajo add column if not exists telefono text;
+
 -- 1.2) Marca del centro (Nissan, Renault, Changan, Ecos Digitales...) para
 --      mostrar su logo correspondiente junto al de Grupo Chesa.
 alter table centros_trabajo add column if not exists marca text;

@@ -605,6 +605,18 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto del responsable (para documentos)</label>
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-responsable-puesto" placeholder="Ej. Administrador de Procesos de Calidad" type="text"/>
 </div>
+<div class="md:col-span-2">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Razón social (para el encabezado de documentos)</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-razon-social" placeholder="Ej. Chiapas Euromotriz S.A.P.I. de C.V." type="text"/>
+</div>
+<div class="md:col-span-2">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Dirección (para el encabezado de documentos)</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-direccion" placeholder="Ej. Carretera Panamericana Km 1169, Barrio de Fátima, C.P. 29264" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Teléfono de la agencia</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-telefono" placeholder="Ej. 01 (967) 678 13 60" type="text"/>
+</div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Estado</label>
 <select class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-estado">
@@ -1277,7 +1289,7 @@ async function cargarCentros(){
 
     const { data, error } = await supabaseClient
         .from('centros_trabajo')
-        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, marca, centro_normas(norma_code)')
+        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, razon_social, direccion, telefono, marca, centro_normas(norma_code)')
         .order('id');
 
     if(error){
@@ -1295,6 +1307,9 @@ async function cargarCentros(){
         codigoAgencia: c.codigo_agencia,
         responsableEmail: c.responsable_email,
         responsablePuesto: c.responsable_puesto,
+        razonSocial: c.razon_social,
+        direccion: c.direccion,
+        telefono: c.telefono,
         marca: c.marca,
         normas: (c.centro_normas || []).map(n => n.norma_code)
     }));
@@ -1411,6 +1426,9 @@ async function abrirModalCentro(id){
         document.getElementById('centro-codigo-agencia').value = c.codigoAgencia || '';
         document.getElementById('centro-responsable-email').value = c.responsableEmail || '';
         document.getElementById('centro-responsable-puesto').value = c.responsablePuesto || '';
+        document.getElementById('centro-razon-social').value = c.razonSocial || '';
+        document.getElementById('centro-direccion').value = c.direccion || '';
+        document.getElementById('centro-telefono').value = c.telefono || '';
         document.getElementById('centro-marca').value = c.marca || '';
         poblarListaNormas(c.normas);
         btnEliminar.classList.remove('hidden');
@@ -1445,6 +1463,9 @@ async function guardarCentro(event){
     const codigoAgencia = document.getElementById('centro-codigo-agencia').value.trim() || null;
     const responsableEmail = document.getElementById('centro-responsable-email').value.trim() || null;
     const responsablePuesto = document.getElementById('centro-responsable-puesto').value.trim() || null;
+    const razonSocial = document.getElementById('centro-razon-social').value.trim() || null;
+    const direccion = document.getElementById('centro-direccion').value.trim() || null;
+    const telefono = document.getElementById('centro-telefono').value.trim() || null;
     const marca = document.getElementById('centro-marca').value || null;
     const normas = Array.from(document.querySelectorAll('.norma-checkbox:checked')).map(cb => cb.dataset.code);
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -1456,7 +1477,7 @@ async function guardarCentro(event){
 
     const { error: errorCentro } = await supabaseClient
         .from('centros_trabajo')
-        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, marca });
+        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, razon_social: razonSocial, direccion, telefono, marca });
 
     if(errorCentro){
         mostrarToast('Error al guardar: ' + errorCentro.message);
@@ -1599,6 +1620,9 @@ async function crearCentroAutomatico(nombreHoja){
         codigoAgencia: nuevoCentro.codigo_agencia,
         responsableEmail: null,
         responsablePuesto: null,
+        razonSocial: null,
+        direccion: null,
+        telefono: null,
         marca: nuevoCentro.marca,
         normas: []
     });
@@ -1989,20 +2013,27 @@ async function generarTodasConstancias(){
 // reales del centro, y regresa un Blob listo para descargar/anexar.
 // Marcadores soportados: {{RESPONSABLE}}, {{PUESTO}}, {{CENTRO}}, {{FECHA}}
 
-function datosPlaceholders(centro){
+function datosPlaceholders(centro, extra){
+    extra = extra || {};
     const hoy = new Date();
     const fechaTexto = hoy.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
     return {
         RESPONSABLE: (centro && centro.responsable) || '',
         PUESTO: (centro && centro.responsablePuesto) || '',
         CENTRO: (centro && centro.nombre) || '',
-        FECHA: fechaTexto
+        RAZON_SOCIAL: (centro && centro.razonSocial) || '',
+        DIRECCION: (centro && centro.direccion) || '',
+        TELEFONO: (centro && centro.telefono) || '',
+        CIUDAD: (centro && centro.ubicacion) || '',
+        FECHA: fechaTexto,
+        ANIO: String(extra.anio || hoy.getFullYear()),
+        NORMA: extra.normaCode || ''
     };
 }
 
-async function personalizarArchivo(blob, nombreArchivo, centro){
+async function personalizarArchivo(blob, nombreArchivo, centro, extra){
     const ext = (nombreArchivo.split('.').pop() || '').toLowerCase();
-    const datos = datosPlaceholders(centro);
+    const datos = datosPlaceholders(centro, extra);
 
     if(ext === 'docx'){
         try {
@@ -2061,7 +2092,7 @@ async function descargarPlantillasPersonalizadas(){
     for(const p of plantillas){
         const { data, error: errDesc } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
         if(errDesc){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + errDesc.message); continue; }
-        const personalizado = await personalizarArchivo(data, p.nombre_archivo, centro);
+        const personalizado = await personalizarArchivo(data, p.nombre_archivo, centro, { normaCode: p.norma_code });
         const carpeta = p.norma_code || 'sin_norma';
         zip.file(`${carpeta}/${p.nombre_archivo}`, personalizado);
     }
@@ -2202,7 +2233,7 @@ async function descargarAdjuntosCorreo(){
     for(const p of CORREO_CONTEXTO.plantillas){
         const { data, error } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
         if(error){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + error.message); continue; }
-        const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro);
+        const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro, { normaCode: p.norma_code, anio: CORREO_CONTEXTO.anio });
         zip.file(p.nombre_archivo, personalizado);
     }
     CORREO_CONTEXTO.colaboradores.forEach(c => {

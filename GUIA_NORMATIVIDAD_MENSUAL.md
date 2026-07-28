@@ -100,8 +100,19 @@ responsable y correo de cada uno.
   `{{RESPONSABLE}}` (y `{{PUESTO}}` donde vaya su puesto). El panel
   reemplaza esos marcadores por los datos reales de cada centro al
   generar el documento — nunca más se edita el Word archivo por archivo.
-  Marcadores disponibles: `{{RESPONSABLE}}`, `{{PUESTO}}`, `{{CENTRO}}`,
-  `{{FECHA}}` (fecha del día, en español).
+- **Encabezado y pie de página, también automáticos:** en el encabezado
+  (razón social, dirección, teléfono) y en el pie de página (norma,
+  ciudad, año) usa estos marcadores adicionales:
+  - `{{RAZON_SOCIAL}}` — razón social del centro (ej. "Chiapas Euromotriz S.A.P.I. de C.V.")
+  - `{{DIRECCION}}` — dirección/domicilio del centro
+  - `{{TELEFONO}}` — teléfono de la agencia
+  - `{{CIUDAD}}` — ciudad (toma el campo "Ubicación" del centro)
+  - `{{ANIO}}` — año (el que elijas al generar el correo mensual, o el actual si lo generas desde Plantillas)
+  - `{{NORMA}}` — el código de la norma a la que pertenece ese documento
+  - `{{CENTRO}}` — nombre del centro de trabajo
+  - `{{FECHA}}` — fecha del día, en español
+  Captura razón social, dirección y teléfono una sola vez por centro, en
+  "Centros de Trabajo" (edítalo con el lápiz).
 - Para probarlo sin esperar al correo mensual: arriba de la tabla, elige
   un centro y da clic en **"Descargar personalizadas (ZIP)"** — te
   descarga TODAS tus plantillas ya con los datos de ese centro rellenos.
