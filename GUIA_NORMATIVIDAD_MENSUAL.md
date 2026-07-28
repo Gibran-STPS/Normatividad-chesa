@@ -113,6 +113,14 @@ responsable y correo de cada uno.
   - `{{FECHA}}` — fecha del día, en español
   Captura razón social, dirección y teléfono una sola vez por centro, en
   "Centros de Trabajo" (edítalo con el lápiz).
+- **Logo de marca automático:** si tu documento trae, en el encabezado,
+  el logo de una marca (Nissan, Renault, Changan o Ecos Digitales), el
+  panel lo cambia solo por el logo correcto según la marca capturada en
+  ese centro — no se toca el logo de Chesa, que siempre se queda igual.
+  Para que esto funcione en tus propios documentos, en Word: clic derecho
+  sobre la imagen del logo de marca → **Editar texto alternativo** → borra
+  lo que diga y escribe exactamente `LOGO_MARCA` (así, en mayúsculas). El
+  panel usa ese texto para identificar cuál imagen debe reemplazar.
 - Para probarlo sin esperar al correo mensual: arriba de la tabla, elige
   un centro y da clic en **"Descargar personalizadas (ZIP)"** — te
   descarga TODAS tus plantillas ya con los datos de ese centro rellenos.

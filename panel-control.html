@@ -2031,6 +2031,61 @@ function datosPlaceholders(centro, extra){
     };
 }
 
+const LOGOS_LETTERHEAD = {
+    'NISSAN': 'assets/logos/letterhead_nissan.png',
+    'RENAULT': 'assets/logos/letterhead_renault.png',
+    'CHANGAN': 'assets/logos/letterhead_changan.png',
+    'ECOS': 'assets/logos/letterhead_ecos.png'
+};
+const CACHE_LOGOS_LETTERHEAD = {};
+
+async function obtenerBytesLogoMarca(marca){
+    const ruta = LOGOS_LETTERHEAD[marca];
+    if(!ruta) return null;
+    if(CACHE_LOGOS_LETTERHEAD[marca]) return CACHE_LOGOS_LETTERHEAD[marca];
+    const resp = await fetch(ruta);
+    if(!resp.ok) return null;
+    const buffer = await resp.arrayBuffer();
+    CACHE_LOGOS_LETTERHEAD[marca] = buffer;
+    return buffer;
+}
+
+// Busca, en cualquier encabezado/pie/cuerpo del documento, la imagen marcada
+// con descr="LOGO_MARCA" y sustituye el archivo de imagen real por el logo
+// de la marca del centro (Nissan/Renault/Changan/Ecos Digitales).
+async function reemplazarLogoMarca(zip, marca){
+    const bytesLogo = await obtenerBytesLogoMarca(marca);
+    if(!bytesLogo) return;
+
+    const nombresArchivo = Object.keys(zip.files).filter(n => /^word\/(header\d*|footer\d*|document)\.xml$/.test(n));
+    for(const nombre of nombresArchivo){
+        const archivoZip = zip.file(nombre);
+        if(!archivoZip) continue;
+        const xml = archivoZip.asText();
+        const idx = xml.indexOf('descr="LOGO_MARCA"');
+        if(idx === -1) continue;
+
+        const ventana = xml.slice(idx, idx + 2500);
+        const m = ventana.match(/r:embed="([^"]+)"/);
+        if(!m) continue;
+        const rId = m[1];
+
+        const partes = nombre.split('/');
+        const archivoXml = partes.pop();
+        const dir = partes.join('/');
+        const relsPath = dir + '/_rels/' + archivoXml + '.rels';
+        const relsZip = zip.file(relsPath);
+        if(!relsZip) continue;
+
+        const relsXml = relsZip.asText();
+        const relMatch = relsXml.match(new RegExp('Id="' + rId + '"[^>]*Target="([^"]+)"'));
+        if(!relMatch) continue;
+
+        const mediaPath = dir + '/' + relMatch[1];
+        zip.file(mediaPath, bytesLogo);
+    }
+}
+
 async function personalizarArchivo(blob, nombreArchivo, centro, extra){
     const ext = (nombreArchivo.split('.').pop() || '').toLowerCase();
     const datos = datosPlaceholders(centro, extra);
@@ -2041,7 +2096,9 @@ async function personalizarArchivo(blob, nombreArchivo, centro, extra){
             const zip = new PizZip(arrayBuffer);
             const doc = new docxtemplater(zip, { paragraphLoop: true, linebreaks: true, delimiters: { start: '{{', end: '}}' } });
             doc.render(datos);
-            return doc.getZip().generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            const zipFinal = doc.getZip();
+            await reemplazarLogoMarca(zipFinal, centro && centro.marca);
+            return zipFinal.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
         } catch(err){
             mostrarToast('No se pudo personalizar "' + nombreArchivo + '" (se anexa sin rellenar): ' + (err.message || err));
             return blob;
