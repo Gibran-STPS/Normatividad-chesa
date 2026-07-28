@@ -763,93 +763,14 @@
 
 <!-- ============ SEC: SEMANA LABORAL 40H ============ -->
 <div class="page-section" id="sec-40h">
-<h2 class="font-display-lg text-display-lg text-primary mb-xs">Reducción a Jornada de 40 Horas</h2>
-<p class="font-body-md text-body-md text-on-surface-variant mb-lg">Hoja de ruta estratégica y seguimiento de transición para los 22 centros de Grupo Chesa.</p>
-<div class="flex gap-md border-b border-outline-variant mb-lg">
-<button class="tab-40h tab-active-40h px-md py-sm font-bold text-primary border-b-2 border-primary" onclick="switch40hTab('panel-general', this)">General</button>
-<button class="tab-40h px-md py-sm font-semibold text-on-surface-variant" onclick="switch40hTab('panel-transicion', this)">Transición 40h</button>
-<button class="tab-40h px-md py-sm font-semibold text-on-surface-variant" onclick="switch40hTab('panel-analitica', this)">Analítica</button>
-<button class="tab-40h px-md py-sm font-semibold text-on-surface-variant" onclick="switch40hTab('panel-tablero-real', this)">Tablero Detallado (Excel)</button>
+<div class="flex items-center justify-between mb-md">
+<div>
+<h2 class="font-display-lg text-display-lg text-primary">Reducción a Jornada de 40 Horas</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Tablero de Cumplimiento de Jornada Laboral — arrastra aquí los .xlsx de reloj checador del mes. Todo se procesa en tu navegador, no sube nada a ningún servidor.</p>
 </div>
-<div class="panel-40h" id="panel-general">
-<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-lg">
-<div class="bg-white border border-outline-variant p-md">
-<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">PROMEDIO ACTUAL</p>
-<h3 class="font-display-lg text-display-lg text-primary">44.5 Hrs</h3>
+<a class="text-primary hover:underline font-bold text-sm whitespace-nowrap ml-md" href="tablero-jornada-laboral.html" target="_blank">Abrir en pestaña aparte ↗</a>
 </div>
-<div class="bg-white border border-outline-variant p-md">
-<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">HORAS REDUCIDAS</p>
-<h3 class="font-display-lg text-display-lg text-on-tertiary-container">-3.5 Hrs</h3>
-</div>
-<div class="bg-white border border-outline-variant p-md">
-<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">EN TIEMPO</p>
-<h3 class="font-display-lg text-display-lg text-primary">82%</h3>
-</div>
-</div>
-<div class="bg-white border border-outline-variant rounded overflow-hidden">
-<table class="w-full text-left border-collapse">
-<thead class="bg-surface-container border-b border-outline-variant">
-<tr>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Centro de Trabajo</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Estructura</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Horas Act.</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Cumplimiento</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acciones</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-bold">Ensamble Motor A-1</td>
-<td class="px-md py-sm"><span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded text-[10px] font-bold uppercase">Rotación 3 Turnos</span></td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">42.0</td>
-<td class="px-md py-sm w-40"><div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden"><div class="bg-on-tertiary-container h-full" style="width:85%;"></div></div><span class="text-xs font-bold text-on-tertiary-container">85%</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Detalle Ensamble Motor A-1 (demo).')">Detalles</button></td>
-</tr>
-<tr class="hover:bg-error-container/5 transition-colors">
-<td class="px-md py-sm font-bold">Taller Carrocería Sur</td>
-<td class="px-md py-sm"><span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded text-[10px] font-bold uppercase">Jornada Extendida</span></td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">48.0</td>
-<td class="px-md py-sm w-40"><div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden"><div class="bg-error h-full" style="width:20%;"></div></div><span class="text-xs font-bold text-error">20%</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Detalle Taller Carrocería Sur (demo).')">Detalles</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-bold">Centro Logístico 04</td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Optimizado 40h</span></td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">40.0</td>
-<td class="px-md py-sm w-40"><div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden"><div class="bg-on-tertiary-container h-full" style="width:100%;"></div></div><span class="text-xs font-bold text-on-tertiary-container">100%</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Detalle Centro Logístico 04 (demo).')">Detalles</button></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="panel-40h hidden" id="panel-transicion">
-<div class="bg-primary text-on-primary rounded-lg p-lg">
-<h3 class="font-title-sm text-title-sm mb-md">Simulador de Impacto de Transición</h3>
-<label class="text-xs opacity-80">Horas semanales objetivo</label>
-<input class="w-full mt-2" max="48" min="40" type="range" value="40"/>
-<div class="flex justify-between mt-2">
-<span class="font-display-lg text-display-lg">40</span>
-<div class="text-right">
-<p class="text-xs opacity-80">Ajuste estimado de plantilla</p>
-<p class="font-bold text-tertiary-fixed-dim text-xl">+12.5% FTE</p>
-</div>
-</div>
-</div>
-</div>
-<div class="panel-40h hidden" id="panel-analitica">
-<div class="bg-white border border-outline-variant rounded p-lg text-center text-on-surface-variant">
-<span class="material-symbols-outlined text-4xl" data-icon="analytics">analytics</span>
-<p class="mt-2 text-sm">La analítica comparativa entre centros estará disponible cuando conectemos los datos reales de asistencia.</p>
-</div>
-</div>
-<div class="panel-40h hidden" id="panel-tablero-real">
-<div class="bg-white border border-outline-variant rounded p-md mb-md flex items-center justify-between">
-<p class="text-sm text-on-surface-variant">Este es tu tablero de <strong>Cumplimiento de Jornada Laboral</strong> completo: arrastra aquí los .xlsx de reloj checador del mes para verlo funcionar. Corre dentro de este panel, no sube nada a ningún servidor.</p>
-<a class="text-primary hover:underline font-bold text-xs whitespace-nowrap ml-md" href="tablero-jornada-laboral.html" target="_blank">Abrir en pestaña aparte ↗</a>
-</div>
-<iframe class="w-full border border-outline-variant rounded" src="tablero-jornada-laboral.html" style="height: 85vh;" title="Tablero de Cumplimiento de Jornada Laboral"></iframe>
-</div>
+<iframe class="w-full border border-outline-variant rounded" id="iframe-tablero-40h" src="tablero-jornada-laboral.html" style="height: calc(100vh - 180px);" title="Tablero de Cumplimiento de Jornada Laboral"></iframe>
 </div>
 
 <!-- ============ SEC: CERTIFICADOS TÉCNICOS ============ -->
