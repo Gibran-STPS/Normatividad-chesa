@@ -37,17 +37,25 @@ Supabase), así que este paso sí es manual:
 
 ### Paso 3 — Capturar el "Código de agencia" y el correo de cada centro
 
+**Ya no es un requisito previo** — desde esta versión, si subes el Excel de
+calendario y alguna hoja no coincide con ningún centro existente, el panel
+**crea el centro automáticamente** usando el nombre de la hoja como nombre
+provisional y como "Código de agencia". Te avisa cuáles creó para que
+entres después a completar su ubicación, responsable y correo.
+
+Aun así, conviene revisar esto por cada centro una vez creado:
+
 1. Ve a **Centros de Trabajo** y edita cada centro.
-2. Llena **"Código de agencia"** con el nombre exacto de la hoja que le
-   corresponde en tu Excel de calendario (por ejemplo `N. SCC`, `N.CMT`).
-   Esto es lo que le permite al importador saber qué hoja va con qué centro.
+2. Confirma o corrige **"Código de agencia"** — debe coincidir con el
+   nombre exacto de su hoja en el Excel de calendario (por ejemplo
+   `N. SCC`, `N.CMT`).
 3. Llena **"Correo del responsable"** con el correo real al que se le
    envía el correo mensual de ese centro.
 
-Como vas a preparar un solo Excel con las 22 agencias, asegúrate de que el
-nombre de cada hoja de ese archivo coincida exactamente con el "Código de
-agencia" que captures aquí (mayúsculas/minúsculas y espacios no importan,
-el importador los ignora, pero el texto sí debe coincidir).
+Como vas a preparar un solo Excel con las 22 agencias, en cuanto lo subas
+por primera vez el panel te va a crear los 22 centros automáticamente
+(si aún no existen) — de ahí solo entras a completar ubicación,
+responsable y correo de cada uno.
 
 ## Uso mensual
 

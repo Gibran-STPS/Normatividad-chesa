@@ -447,7 +447,7 @@
 <div class="p-md border-b border-outline-variant flex justify-between items-center">
 <div>
 <h3 class="font-title-sm text-title-sm">Estatus Detallado por Centro de Trabajo</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Mostrando 6 de 22 centros registrados. Usa el buscador superior para filtrar.</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant" id="dashboard-centros-count">Mostrando tus centros registrados. Usa el buscador superior para filtrar.</p>
 </div>
 <div class="flex gap-sm">
 <button class="flex items-center gap-1 border border-outline-variant px-md py-sm text-sm font-semibold hover:bg-surface-container-high" onclick="showSection('sec-centros')"><span class="material-symbols-outlined text-lg" data-icon="open_in_new">open_in_new</span> Ver todos</button>
@@ -534,7 +534,7 @@
 <div class="flex justify-between items-end mb-lg">
 <div>
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">Centros de Trabajo</h2>
-<p class="font-body-md text-body-md text-on-surface-variant">Directorio de las 22 plantas y unidades operativas de Grupo Chesa. Da clic en el lápiz para editar nombre, datos y normas NOM-STPS aplicables.</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Directorio de las plantas y unidades operativas de Grupo Chesa. Da clic en el lápiz para editar nombre, datos y normas NOM-STPS aplicables.</p>
 </div>
 <button class="bg-primary text-on-primary px-lg py-sm font-bold flex items-center gap-sm hover:opacity-90 transition-all" onclick="abrirModalCentro(null)">
 <span class="material-symbols-outlined" data-icon="add">add</span> Agregar Centro
@@ -557,13 +557,7 @@
 </table>
 </div>
 <div class="bg-white border-x border-b border-outline-variant p-md flex justify-between items-center">
-<span class="text-sm text-on-surface-variant" id="centros-count">Mostrando 6 de 22 centros registrados</span>
-<div class="flex gap-xs">
-<button class="px-3 py-1 bg-primary text-on-primary rounded text-sm font-bold">1</button>
-<button class="px-3 py-1 hover:bg-surface-container-high rounded text-sm font-semibold" onclick="mostrarToast('Cargando página 2...')">2</button>
-<button class="px-3 py-1 hover:bg-surface-container-high rounded text-sm font-semibold" onclick="mostrarToast('Cargando página 3...')">3</button>
-<button class="px-3 py-1 hover:bg-surface-container-high rounded text-sm font-semibold" onclick="mostrarToast('Cargando página 4...')">4</button>
-</div>
+<span class="text-sm text-on-surface-variant" id="centros-count">Cargando centros...</span>
 </div>
 </div>
 
@@ -1310,7 +1304,9 @@ function renderCentros(){
 </tr>`;
     }).join('');
     const countEl = document.getElementById('centros-count');
-    if(countEl) countEl.textContent = `Mostrando ${centrosData.length} de 22 centros registrados`;
+    if(countEl) countEl.textContent = `Mostrando ${centrosData.length} de ${centrosData.length} centro${centrosData.length === 1 ? '' : 's'} registrado${centrosData.length === 1 ? '' : 's'}`;
+    const dashCountEl = document.getElementById('dashboard-centros-count');
+    if(dashCountEl) dashCountEl.textContent = centrosData.length ? `Mostrando tus ${centrosData.length} centro${centrosData.length === 1 ? '' : 's'} registrado${centrosData.length === 1 ? '' : 's'}.` : 'Aún no has registrado ningún centro de trabajo.';
 }
 
 function poblarListaNormas(normasSeleccionadas){
@@ -1522,6 +1518,35 @@ function buscarNormaCode(textoHeader){
 
 // ---- TAB 1: Calendario del Mes ----
 
+async function crearCentroAutomatico(nombreHoja){
+    const nombreLimpio = nombreHoja.trim();
+    const nuevoId = siguienteIdCentro();
+    const nuevoCentro = {
+        id: nuevoId,
+        nombre: nombreLimpio,
+        ubicacion: 'Pendiente de captura',
+        responsable: 'Pendiente de captura',
+        estado: 'Pendiente',
+        codigo_agencia: nombreLimpio
+    };
+    const { error } = await supabaseClient.from('centros_trabajo').upsert(nuevoCentro);
+    if(error){
+        mostrarToast('No se pudo crear el centro para la hoja "' + nombreLimpio + '": ' + error.message);
+        return null;
+    }
+    centrosData.push({
+        id: nuevoId,
+        nombre: nuevoCentro.nombre,
+        ubicacion: nuevoCentro.ubicacion,
+        responsable: nuevoCentro.responsable,
+        estado: nuevoCentro.estado,
+        codigoAgencia: nuevoCentro.codigo_agencia,
+        responsableEmail: null,
+        normas: []
+    });
+    return nuevoId;
+}
+
 async function importarCalendarioExcel(event){
     const file = event.target.files[0];
     if(!file) return;
@@ -1537,15 +1562,20 @@ async function importarCalendarioExcel(event){
     centrosData.forEach(c => { if(c.codigoAgencia) centrosPorCodigo[normalizarClave(c.codigoAgencia)] = c.id; });
 
     const filas = [];
-    const hojasSinMapear = [];
+    const centrosCreados = [];
     let centrosProcesados = 0;
 
-    wb.SheetNames.forEach(nombreHoja => {
-        const centroId = centrosPorCodigo[normalizarClave(nombreHoja)];
+    for(const nombreHoja of wb.SheetNames){
+        if(nombreHoja.toUpperCase().includes('MACHOTE')) continue; // hoja plantilla, no es un centro real
+
+        let centroId = centrosPorCodigo[normalizarClave(nombreHoja)];
         if(!centroId){
-            if(!nombreHoja.toUpperCase().includes('MACHOTE')) hojasSinMapear.push(nombreHoja);
-            return;
+            centroId = await crearCentroAutomatico(nombreHoja);
+            if(!centroId) continue; // no se pudo crear (ver el aviso de error)
+            centrosPorCodigo[normalizarClave(nombreHoja)] = centroId;
+            centrosCreados.push(nombreHoja.trim());
         }
+
         centrosProcesados++;
         const ws = wb.Sheets[nombreHoja];
         const filasHoja = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
@@ -1578,10 +1608,12 @@ async function importarCalendarioExcel(event){
                 }
             }
         });
-    });
+    }
 
-    if(hojasSinMapear.length){
-        mostrarToast('Aviso: no encontré centro para estas hojas (revisa el "Código de agencia" en Centros de Trabajo): ' + hojasSinMapear.join(', '));
+    if(centrosCreados.length){
+        mostrarToast('Se crearon ' + centrosCreados.length + ' centro(s) nuevo(s) a partir de hojas no reconocidas. Entra a "Centros de Trabajo" para completar su nombre, ubicación y responsable: ' + centrosCreados.join(', '));
+        await cargarCentros();
+        poblarSelectoresMensual();
     }
     if(!filas.length){
         mostrarToast('No se detectaron actividades para importar. Verifica los códigos de agencia.');
