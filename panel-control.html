@@ -5,6 +5,10 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Panel de Control | Normatividad Grupo Automotriz Chesa</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="vendor/xlsx.mini.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
@@ -614,6 +618,14 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">ID interno</label>
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md bg-surface-container-low text-on-surface-variant" id="centro-id-display" readonly="" type="text"/>
 </div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Código de agencia (hoja del Excel de calendario)</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-codigo-agencia" placeholder="Ej. N. SCC" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Correo del responsable</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-responsable-email" placeholder="responsable@grupochesa.com" type="email"/>
+</div>
 </div>
 <div class="mb-md">
 <div class="flex justify-between items-center mb-xs">
@@ -639,64 +651,152 @@
 
 <!-- ============ SEC: ACTIVIDADES NORMATIVAS ============ -->
 <div class="page-section" id="sec-actividades">
-<div class="flex justify-between items-end mb-lg">
-<div>
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">Actividades Normativas</h2>
-<p class="font-body-md text-body-md text-on-surface-variant">Todas las circulares y requerimientos enviados por correo a los centros de trabajo, con su nivel de confirmación.</p>
+<p class="font-body-md text-body-md text-on-surface-variant mb-lg">Calendario STPS por centro, constancias de vacaciones y el borrador del correo mensual — todo en un solo lugar.</p>
+<div class="flex gap-md border-b border-outline-variant mb-lg overflow-x-auto">
+<button class="tab-mensual tab-mensual-active px-md py-sm font-bold text-primary border-b-2 border-primary whitespace-nowrap" onclick="switchMensualTab('panel-cal-mes', this)">Calendario del Mes</button>
+<button class="tab-mensual px-md py-sm font-semibold text-on-surface-variant whitespace-nowrap" onclick="switchMensualTab('panel-vacaciones', this)">Constancias de Vacaciones</button>
+<button class="tab-mensual px-md py-sm font-semibold text-on-surface-variant whitespace-nowrap" onclick="switchMensualTab('panel-plantillas', this)">Plantillas de Documentos</button>
+<button class="tab-mensual px-md py-sm font-semibold text-on-surface-variant whitespace-nowrap" onclick="switchMensualTab('panel-correo', this)">Correo Mensual</button>
 </div>
-<button class="bg-primary text-on-primary px-lg py-sm font-bold flex items-center gap-sm hover:opacity-90 transition-all" onclick="toggleModal('modal-circular')">
-<span class="material-symbols-outlined" data-icon="add">add</span> Nueva Circular
-        </button>
+
+<!-- ---- TAB 1: Calendario del Mes ---- -->
+<div class="panel-mensual" id="panel-cal-mes">
+<div class="bg-white border border-outline-variant rounded p-md mb-lg">
+<div class="flex flex-wrap gap-md items-end">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Centro</label>
+<select class="border border-outline-variant rounded p-sm text-sm min-w-[220px]" id="cal-centro" onchange="cargarCalendarioMes()"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Mes</label>
+<select class="border border-outline-variant rounded p-sm text-sm" id="cal-mes" onchange="cargarCalendarioMes()"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Año</label>
+<input class="border border-outline-variant rounded p-sm text-sm w-24" id="cal-anio" onchange="cargarCalendarioMes()" type="number"/>
+</div>
+<label class="border border-outline-variant px-md py-sm rounded font-bold text-sm cursor-pointer hover:bg-surface-container-high transition-colors ml-auto">
+<span class="material-symbols-outlined text-base align-middle mr-1" data-icon="upload_file">upload_file</span>Importar calendario (.xlsx)
+<input accept=".xlsx" class="hidden" id="input-importar-calendario" onchange="importarCalendarioExcel(event)" type="file"/>
+</label>
+</div>
+<p class="text-xs text-on-surface-variant mt-sm">El Excel debe tener una hoja por centro (el nombre de la hoja debe coincidir con el "Código de agencia" que capturaste en cada centro, en Centros de Trabajo).</p>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
 <tr>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Actividad / Circular</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Enviado</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-center">Confirmados</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Norma</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Actividad</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Estado</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
 </tr>
 </thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><div class="font-bold">Cuestionario NOM-035 · Factores de Riesgo Psicosocial</div><div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-041</div></td>
-<td class="px-md py-sm text-sm text-on-surface-variant">10 Jul, 2026</td>
-<td class="px-md py-sm text-center"><span class="text-xs font-bold text-on-tertiary-container">20/22</span></td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Casi Completo</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Recordatorio reenviado.')">Reenviar</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><div class="font-bold">Programa Anual de Seguridad e Higiene 2026</div><div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-038</div></td>
-<td class="px-md py-sm text-sm text-on-surface-variant">05 Jul, 2026</td>
-<td class="px-md py-sm text-center"><span class="text-xs font-bold text-on-tertiary-container">22/22</span></td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Completo</span></td>
-<td class="px-md py-sm text-right"><button class="text-on-surface-variant text-xs" onclick="mostrarToast('Circular archivada.')">Archivar</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><div class="font-bold">Actualización Protocolo NOM-002 · Incendios</div><div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-044</div></td>
-<td class="px-md py-sm text-sm text-on-surface-variant">15 Jul, 2026</td>
-<td class="px-md py-sm text-center"><span class="text-xs font-bold text-orange-600">13/22</span></td>
-<td class="px-md py-sm"><span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">En Proceso</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Recordatorio reenviado.')">Reenviar</button></td>
-</tr>
-<tr class="hover:bg-error-container/5 transition-colors">
-<td class="px-md py-sm"><div class="font-bold">Evidencia Fotográfica EPP · NOM-017</div><div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-036</div></td>
-<td class="px-md py-sm text-sm text-on-surface-variant">01 Jul, 2026</td>
-<td class="px-md py-sm text-center"><span class="text-xs font-bold text-error">9/22</span></td>
-<td class="px-md py-sm"><span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase">Vencido</span></td>
-<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="mostrarToast('Caso escalado.')">Escalar</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><div class="font-bold">Renovación Reglamento Interior de Trabajo</div><div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-030</div></td>
-<td class="px-md py-sm text-sm text-on-surface-variant">18 Jun, 2026</td>
-<td class="px-md py-sm text-center"><span class="text-xs font-bold text-on-tertiary-container">22/22</span></td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Completo</span></td>
-<td class="px-md py-sm text-right"><button class="text-on-surface-variant text-xs" onclick="mostrarToast('Circular archivada.')">Archivar</button></td>
-</tr>
-</tbody>
+<tbody id="cal-mes-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Elige un centro para ver su calendario del mes.</td></tr></tbody>
 </table>
+</div>
+</div>
+
+<!-- ---- TAB 2: Constancias de Vacaciones ---- -->
+<div class="panel-mensual hidden" id="panel-vacaciones">
+<div class="bg-white border border-outline-variant rounded p-md mb-lg">
+<div class="flex flex-wrap gap-md items-end">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Centro</label>
+<select class="border border-outline-variant rounded p-sm text-sm min-w-[220px]" id="vac-centro" onchange="cargarVacacionesMes()"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Mes de aniversario</label>
+<select class="border border-outline-variant rounded p-sm text-sm" id="vac-mes" onchange="cargarVacacionesMes()"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Año</label>
+<input class="border border-outline-variant rounded p-sm text-sm w-24" id="vac-anio" onchange="cargarVacacionesMes()" type="number"/>
+</div>
+<label class="border border-outline-variant px-md py-sm rounded font-bold text-sm cursor-pointer hover:bg-surface-container-high transition-colors ml-auto">
+<span class="material-symbols-outlined text-base align-middle mr-1" data-icon="upload_file">upload_file</span>Importar Cuadro de Antigüedades (.xlsx)
+<input accept=".xlsx" class="hidden" id="input-importar-colaboradores" onchange="importarColaboradoresExcel(event)" type="file"/>
+</label>
+</div>
+<p class="text-xs text-on-surface-variant mt-sm">Se importa la hoja "CONCENTRADO" de tu Cuadro General de Antigüedades. Los días de vacaciones se calculan con la tabla legal vigente (editable en Supabase, tabla <span class="font-data-mono">tabla_vacaciones_dias</span>).</p>
+</div>
+<div class="bg-white border border-outline-variant rounded overflow-hidden">
+<div class="flex justify-between items-center p-md border-b border-outline-variant">
+<p class="text-sm text-on-surface-variant">Colaboradores con aniversario ese mes en el centro seleccionado.</p>
+<button class="bg-primary text-on-primary px-md py-sm font-bold text-sm hover:opacity-90 transition-all" onclick="generarTodasConstancias()">Generar todas (ZIP)</button>
+</div>
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Colaborador</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Antigüedad</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Días</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Periodo</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
+</tr>
+</thead>
+<tbody id="vac-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Elige un centro para ver sus aniversarios del mes.</td></tr></tbody>
+</table>
+</div>
+</div>
+
+<!-- ---- TAB 3: Plantillas de Documentos ---- -->
+<div class="panel-mensual hidden" id="panel-plantillas">
+<div class="bg-white border border-outline-variant rounded overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Norma</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Plantillas subidas</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Subir nueva</th>
+</tr>
+</thead>
+<tbody id="plantillas-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="3">Cargando catálogo de normas...</td></tr></tbody>
+</table>
+</div>
+</div>
+
+<!-- ---- TAB 4: Correo Mensual ---- -->
+<div class="panel-mensual hidden" id="panel-correo">
+<div class="bg-white border border-outline-variant rounded p-md mb-lg">
+<div class="flex flex-wrap gap-md items-end">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Centro</label>
+<select class="border border-outline-variant rounded p-sm text-sm min-w-[220px]" id="correo-centro"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Mes</label>
+<select class="border border-outline-variant rounded p-sm text-sm" id="correo-mes"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Año</label>
+<input class="border border-outline-variant rounded p-sm text-sm w-24" id="correo-anio" type="number"/>
+</div>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="generarBorradorCorreo()">Generar borrador</button>
+</div>
+</div>
+<div class="hidden bg-white border border-outline-variant rounded p-lg" id="correo-resultado">
+<div class="mb-md">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Para</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm bg-surface-container-low" id="correo-para" readonly="" type="text"/>
+</div>
+<div class="mb-md">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Asunto</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm" id="correo-asunto" type="text"/>
+</div>
+<div class="mb-md">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Cuerpo del correo</label>
+<textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar" id="correo-cuerpo" rows="16"></textarea>
+</div>
+<div class="mb-md" id="correo-adjuntos-lista"></div>
+<div class="flex flex-wrap gap-sm justify-end pt-md border-t border-outline-variant">
+<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-colors" onclick="copiarCuerpoCorreo()" type="button">Copiar cuerpo</button>
+<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-colors" onclick="descargarAdjuntosCorreo()" type="button">Descargar adjuntos (ZIP)</button>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="abrirBorradorOutlook()" type="button">Abrir en Outlook</button>
+</div>
+<p class="text-xs text-on-surface-variant mt-sm">Outlook no permite adjuntar archivos automáticamente desde un enlace por seguridad del navegador: descarga el ZIP y adjúntalo tú mismo antes de enviar.</p>
+</div>
 </div>
 </div>
 
@@ -1157,7 +1257,7 @@ async function cargarCentros(){
 
     const { data, error } = await supabaseClient
         .from('centros_trabajo')
-        .select('id, nombre, ubicacion, responsable, estado, centro_normas(norma_code)')
+        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, centro_normas(norma_code)')
         .order('id');
 
     if(error){
@@ -1172,9 +1272,12 @@ async function cargarCentros(){
         ubicacion: c.ubicacion,
         responsable: c.responsable,
         estado: c.estado,
+        codigoAgencia: c.codigo_agencia,
+        responsableEmail: c.responsable_email,
         normas: (c.centro_normas || []).map(n => n.norma_code)
     }));
     renderCentros();
+    poblarSelectoresMensual();
 }
 
 const ESTADO_ESTILOS = {
@@ -1275,6 +1378,8 @@ async function abrirModalCentro(id){
         document.getElementById('centro-ubicacion').value = c.ubicacion;
         document.getElementById('centro-responsable').value = c.responsable;
         document.getElementById('centro-estado').value = c.estado;
+        document.getElementById('centro-codigo-agencia').value = c.codigoAgencia || '';
+        document.getElementById('centro-responsable-email').value = c.responsableEmail || '';
         poblarListaNormas(c.normas);
         btnEliminar.classList.remove('hidden');
     } else {
@@ -1305,6 +1410,8 @@ async function guardarCentro(event){
     const ubicacion = document.getElementById('centro-ubicacion').value.trim();
     const responsable = document.getElementById('centro-responsable').value.trim();
     const estado = document.getElementById('centro-estado').value;
+    const codigoAgencia = document.getElementById('centro-codigo-agencia').value.trim() || null;
+    const responsableEmail = document.getElementById('centro-responsable-email').value.trim() || null;
     const normas = Array.from(document.querySelectorAll('.norma-checkbox:checked')).map(cb => cb.dataset.code);
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const textoOriginal = submitBtn.textContent;
@@ -1315,7 +1422,7 @@ async function guardarCentro(event){
 
     const { error: errorCentro } = await supabaseClient
         .from('centros_trabajo')
-        .upsert({ id: centroId, nombre, ubicacion, responsable, estado });
+        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail });
 
     if(errorCentro){
         mostrarToast('Error al guardar: ' + errorCentro.message);
@@ -1356,6 +1463,594 @@ async function eliminarCentro(){
 }
 
 
+// ===================================================================
+// MÓDULO: Actividades Normativas Mensuales
+// (Calendario STPS por centro + Constancias de Vacaciones + Correo Mensual)
+// ===================================================================
+
+const NOMBRES_MES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function normalizarClave(s){
+    return (s || '').toString().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
+}
+
+function descargarBlob(blob, nombre){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function poblarSelectoresMensual(){
+    const anioActual = new Date().getFullYear();
+    const mesActual = new Date().getMonth() + 1;
+    const opcionesCentro = '<option value="">Selecciona…</option>' + centrosData.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    const opcionesMes = NOMBRES_MES.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+    ['cal-centro','vac-centro','correo-centro'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.innerHTML = opcionesCentro;
+    });
+    ['cal-mes','vac-mes','correo-mes'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el){ el.innerHTML = opcionesMes; el.value = mesActual; }
+    });
+    ['cal-anio','vac-anio','correo-anio'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el && !el.value) el.value = anioActual;
+    });
+}
+
+function switchMensualTab(panelId, el){
+    document.querySelectorAll('.tab-mensual').forEach(t => {
+        t.className = 'tab-mensual px-md py-sm font-semibold text-on-surface-variant whitespace-nowrap';
+    });
+    el.className = 'tab-mensual px-md py-sm font-bold text-primary border-b-2 border-primary whitespace-nowrap';
+    document.querySelectorAll('.panel-mensual').forEach(p => p.classList.add('hidden'));
+    document.getElementById(panelId).classList.remove('hidden');
+    if(panelId === 'panel-plantillas') cargarPlantillas();
+}
+
+function buscarNormaCode(textoHeader){
+    if(!textoHeader || !CATALOGO_NOM.length) return null;
+    const norm = normalizarClave(textoHeader);
+    for(const n of CATALOGO_NOM){
+        if(norm.includes(normalizarClave(n.code))) return n.code;
+    }
+    return null;
+}
+
+// ---- TAB 1: Calendario del Mes ----
+
+async function importarCalendarioExcel(event){
+    const file = event.target.files[0];
+    if(!file) return;
+    event.target.value = '';
+    await asegurarCatalogoNormas();
+    mostrarToast('Leyendo el calendario...');
+
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const anioInput = parseInt(document.getElementById('cal-anio').value, 10) || new Date().getFullYear();
+
+    const centrosPorCodigo = {};
+    centrosData.forEach(c => { if(c.codigoAgencia) centrosPorCodigo[normalizarClave(c.codigoAgencia)] = c.id; });
+
+    const filas = [];
+    const hojasSinMapear = [];
+    let centrosProcesados = 0;
+
+    wb.SheetNames.forEach(nombreHoja => {
+        const centroId = centrosPorCodigo[normalizarClave(nombreHoja)];
+        if(!centroId){
+            if(!nombreHoja.toUpperCase().includes('MACHOTE')) hojasSinMapear.push(nombreHoja);
+            return;
+        }
+        centrosProcesados++;
+        const ws = wb.Sheets[nombreHoja];
+        const filasHoja = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+        let normaActualCode = null;
+        let normaActualTitulo = null;
+
+        filasHoja.forEach(fila => {
+            const colB = fila[1];
+            const colC = fila[2];
+            if(colB && typeof colB === 'string' && colB.toUpperCase().includes('NOM')){
+                normaActualTitulo = colB.trim();
+                normaActualCode = buscarNormaCode(colB);
+                return;
+            }
+            if(colC && typeof colC === 'string' && colC.trim().length > 2 && !colB){
+                const actividadTxt = colC.trim();
+                for(let mIdx = 0; mIdx < 12; mIdx++){
+                    const valor = fila[3 + mIdx];
+                    if(valor === 'P' || valor === 'R'){
+                        filas.push({
+                            centro_id: centroId,
+                            norma_code: normaActualCode,
+                            norma_titulo_original: normaActualTitulo,
+                            actividad: actividadTxt,
+                            mes: mIdx + 1,
+                            anio: anioInput,
+                            estado: valor === 'R' ? 'Realizada' : 'Planeada'
+                        });
+                    }
+                }
+            }
+        });
+    });
+
+    if(hojasSinMapear.length){
+        mostrarToast('Aviso: no encontré centro para estas hojas (revisa el "Código de agencia" en Centros de Trabajo): ' + hojasSinMapear.join(', '));
+    }
+    if(!filas.length){
+        mostrarToast('No se detectaron actividades para importar. Verifica los códigos de agencia.');
+        return;
+    }
+
+    let insertados = 0;
+    for(let i = 0; i < filas.length; i += 500){
+        const bloque = filas.slice(i, i + 500);
+        const { error } = await supabaseClient.from('calendario_normativo').upsert(bloque, { onConflict: 'clave_unica' });
+        if(error){
+            mostrarToast('Error importando calendario: ' + error.message);
+            return;
+        }
+        insertados += bloque.length;
+    }
+    mostrarToast(`Calendario importado: ${insertados} actividades de ${centrosProcesados} centro(s).`);
+    cargarCalendarioMes();
+}
+
+async function cargarCalendarioMes(){
+    const centroId = document.getElementById('cal-centro').value;
+    const mes = parseInt(document.getElementById('cal-mes').value, 10);
+    const anio = parseInt(document.getElementById('cal-anio').value, 10);
+    const tbody = document.getElementById('cal-mes-tbody');
+    if(!centroId){
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Elige un centro para ver su calendario del mes.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Cargando...</td></tr>';
+
+    const { data, error } = await supabaseClient
+        .from('calendario_normativo')
+        .select('id, norma_code, norma_titulo_original, actividad, estado')
+        .eq('centro_id', centroId).eq('mes', mes).eq('anio', anio)
+        .order('norma_code', { ascending: true, nullsFirst: false });
+
+    if(error){ mostrarToast('Error: ' + error.message); return; }
+
+    if(!data || !data.length){
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay actividades importadas para este centro / mes / año todavía. Usa "Importar calendario" arriba.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.map(f => {
+        const normaTxt = f.norma_code || (f.norma_titulo_original ? (f.norma_titulo_original.length > 45 ? f.norma_titulo_original.slice(0,45) + '…' : f.norma_titulo_original) : 'Sin norma');
+        const esRealizada = f.estado === 'Realizada';
+        const badge = esRealizada ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed' : 'bg-orange-500 text-white';
+        const siguienteEstado = esRealizada ? 'Planeada' : 'Realizada';
+        const accionTxt = esRealizada ? 'Marcar pendiente' : 'Marcar realizada';
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm font-data-mono text-data-mono text-xs align-top">${normaTxt}</td>
+<td class="px-md py-sm text-sm align-top">${f.actividad}</td>
+<td class="px-md py-sm align-top"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f.estado}</span></td>
+<td class="px-md py-sm text-right align-top"><button class="text-primary hover:underline font-bold text-xs" onclick="cambiarEstadoActividad('${f.id}','${siguienteEstado}')" type="button">${accionTxt}</button></td>
+</tr>`;
+    }).join('');
+}
+
+async function cambiarEstadoActividad(id, nuevoEstado){
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { error } = await supabaseClient.from('calendario_normativo').update({
+        estado: nuevoEstado,
+        fecha_realizada: nuevoEstado === 'Realizada' ? new Date().toISOString().slice(0,10) : null,
+        realizado_por: nuevoEstado === 'Realizada' ? (user ? user.id : null) : null
+    }).eq('id', id);
+    if(error){ mostrarToast('Error: ' + error.message); return; }
+    cargarCalendarioMes();
+}
+
+// ---- TAB 2: Constancias de Vacaciones ----
+
+let TABLA_VACACIONES = null;
+let COLABORADORES_CENTRO_CACHE = { centroId: null, mes: null, anio: null, data: [] };
+
+async function asegurarTablaVacaciones(){
+    if(TABLA_VACACIONES) return TABLA_VACACIONES;
+    const { data, error } = await supabaseClient.from('tabla_vacaciones_dias').select('anios_laborados, dias_vacaciones').order('anios_laborados');
+    if(error){ mostrarToast('No se pudo cargar la tabla de vacaciones: ' + error.message); TABLA_VACACIONES = []; return TABLA_VACACIONES; }
+    TABLA_VACACIONES = data || [];
+    return TABLA_VACACIONES;
+}
+
+function diasPorAntiguedad(anios){
+    if(!TABLA_VACACIONES || !TABLA_VACACIONES.length) return null;
+    let mejor = null;
+    TABLA_VACACIONES.forEach(f => { if(f.anios_laborados <= anios) mejor = f; });
+    return mejor ? mejor.dias_vacaciones : null;
+}
+
+async function importarColaboradoresExcel(event){
+    const file = event.target.files[0];
+    if(!file) return;
+    event.target.value = '';
+    mostrarToast('Leyendo el cuadro de antigüedades...');
+
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+    const nombreHoja = wb.SheetNames.find(n => normalizarClave(n) === 'CONCENTRADO') || wb.SheetNames[0];
+    const ws = wb.Sheets[nombreHoja];
+    const filasHoja = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    const idxEncabezado = filasHoja.findIndex(f => f.some(c => normalizarClave(c) === 'CLAVE'));
+    if(idxEncabezado === -1){
+        mostrarToast('No encontré la columna CLAVE en la hoja "' + nombreHoja + '".');
+        return;
+    }
+    const encabezados = filasHoja[idxEncabezado].map(c => normalizarClave(c));
+    const iMarca = encabezados.indexOf('MARCA');
+    const iSucursal = encabezados.indexOf('SUCURSAL');
+    const iClave = encabezados.indexOf('CLAVE');
+    const iNombre = encabezados.indexOf('NOMBRE');
+    const iContrato = encabezados.indexOf(normalizarClave('TIPO DE CONTRATO'));
+    const iIngreso = encabezados.indexOf(normalizarClave('FECHA DE INGRESO'));
+
+    if(iClave === -1 || iNombre === -1 || iIngreso === -1){
+        mostrarToast('Faltan columnas obligatorias (CLAVE, NOMBRE, FECHA DE INGRESO) en la hoja.');
+        return;
+    }
+
+    const centrosPorClave = {};
+    centrosData.forEach(c => {
+        centrosPorClave[normalizarClave(c.nombre)] = c.id;
+        if(c.codigoAgencia) centrosPorClave[normalizarClave(c.codigoAgencia)] = c.id;
+    });
+    const clavesConocidas = Object.keys(centrosPorClave);
+
+    const filas = [];
+    const sinMapear = new Set();
+
+    for(let r = idxEncabezado + 1; r < filasHoja.length; r++){
+        const fila = filasHoja[r];
+        if(!fila || !fila[iClave]) continue;
+
+        const fechaIngresoRaw = fila[iIngreso];
+        let fechaISO = null;
+        if(fechaIngresoRaw instanceof Date && !isNaN(fechaIngresoRaw)){
+            fechaISO = fechaIngresoRaw.toISOString().slice(0,10);
+        } else if(typeof fechaIngresoRaw === 'number' && window.XLSX && XLSX.SSF){
+            const d = XLSX.SSF.parse_date_code(fechaIngresoRaw);
+            if(d) fechaISO = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+        }
+        if(!fechaISO) continue;
+
+        const sucursalTxt = (fila[iSucursal] || '').toString().trim();
+        const normSucursal = normalizarClave(sucursalTxt);
+        let centroId = centrosPorClave[normSucursal] || null;
+        if(!centroId && normSucursal){
+            const match = clavesConocidas.find(k => k && (normSucursal.includes(k) || k.includes(normSucursal)));
+            if(match) centroId = centrosPorClave[match];
+        }
+        if(!centroId && sucursalTxt) sinMapear.add(sucursalTxt);
+
+        filas.push({
+            clave: String(fila[iClave]).trim(),
+            nombre: (fila[iNombre] || '').toString().trim(),
+            marca: iMarca > -1 ? (fila[iMarca] || '').toString().trim() : null,
+            sucursal_nombre: sucursalTxt,
+            centro_id: centroId,
+            tipo_contrato: iContrato > -1 ? (fila[iContrato] || '').toString().trim() : null,
+            fecha_ingreso: fechaISO,
+            activo: true
+        });
+    }
+
+    if(!filas.length){
+        mostrarToast('No se detectaron colaboradores para importar.');
+        return;
+    }
+
+    let insertados = 0;
+    for(let i = 0; i < filas.length; i += 500){
+        const bloque = filas.slice(i, i + 500);
+        const { error } = await supabaseClient.from('colaboradores').upsert(bloque, { onConflict: 'clave' });
+        if(error){ mostrarToast('Error importando colaboradores: ' + error.message); return; }
+        insertados += bloque.length;
+    }
+
+    let msg = `Colaboradores importados: ${insertados}.`;
+    if(sinMapear.size){
+        const ejemplos = Array.from(sinMapear).slice(0,6).join(', ');
+        msg += ` Sucursales sin centro asignado: ${ejemplos}${sinMapear.size > 6 ? '…' : ''} (revisa el nombre o código de agencia de esos centros).`;
+    }
+    mostrarToast(msg);
+    cargarVacacionesMes();
+}
+
+async function cargarVacacionesMes(){
+    const centroId = document.getElementById('vac-centro').value;
+    const mes = parseInt(document.getElementById('vac-mes').value, 10);
+    const anio = parseInt(document.getElementById('vac-anio').value, 10);
+    const tbody = document.getElementById('vac-tbody');
+
+    if(!centroId){
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Elige un centro para ver sus aniversarios del mes.</td></tr>';
+        COLABORADORES_CENTRO_CACHE = { centroId: null, mes: null, anio: null, data: [] };
+        return;
+    }
+    tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Cargando...</td></tr>';
+    await asegurarTablaVacaciones();
+
+    const { data, error } = await supabaseClient.from('colaboradores')
+        .select('clave, nombre, fecha_ingreso')
+        .eq('centro_id', centroId).eq('activo', true);
+
+    if(error){ mostrarToast('Error: ' + error.message); return; }
+
+    const filas = (data || []).reduce((acc, c) => {
+        const ingreso = new Date(c.fecha_ingreso + 'T00:00:00');
+        if((ingreso.getMonth() + 1) !== mes) return acc;
+        const anios = anio - ingreso.getFullYear();
+        const dias = diasPorAntiguedad(anios);
+        if(anios < 1 || !dias) return acc;
+        const inicio = new Date(anio, mes - 1, ingreso.getDate());
+        const fin = new Date(inicio);
+        fin.setDate(fin.getDate() + dias);
+        acc.push({ clave: c.clave, nombre: c.nombre, ingreso, anios, dias, inicio, fin });
+        return acc;
+    }, []);
+
+    COLABORADORES_CENTRO_CACHE = { centroId, mes, anio, data: filas };
+
+    if(!filas.length){
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">No hay colaboradores con aniversario ese mes en este centro (o falta importar el Cuadro de Antigüedades).</td></tr>';
+        return;
+    }
+
+    const fmt = d => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+    tbody.innerHTML = filas.map(c => `
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm"><div class="font-bold">${c.nombre}</div><div class="text-xs text-on-surface-variant font-data-mono">${c.clave}</div></td>
+<td class="px-md py-sm text-right font-data-mono text-data-mono">${c.anios} año${c.anios === 1 ? '' : 's'}</td>
+<td class="px-md py-sm text-right font-data-mono text-data-mono">${c.dias}</td>
+<td class="px-md py-sm text-sm">${fmt(c.inicio)} – ${fmt(c.fin)}</td>
+<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="generarConstanciaIndividual('${c.clave}')" type="button">Generar PDF</button></td>
+</tr>`).join('');
+}
+
+function construirConstanciaPDF(c, centro){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+    const fmt = d => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.text('GRUPO AUTOMOTRIZ CHESA', 107.95, 25, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(12);
+    doc.text('Constancia de Vacaciones', 107.95, 34, { align: 'center' });
+
+    doc.setFontSize(10);
+    const parrafo = `Por medio de la presente se hace constar que el(la) colaborador(a) ${c.nombre}, con número de empleado ${c.clave}${centro ? (', adscrito(a) al centro de trabajo "' + centro.nombre + '"') : ''}, con fecha de ingreso el ${fmt(c.ingreso)} y una antigüedad de ${c.anios} año${c.anios === 1 ? '' : 's'} de servicio, cuenta con ${c.dias} días de vacaciones conforme a la tabla vigente de la Ley Federal del Trabajo.`;
+    const lineas = doc.splitTextToSize(parrafo, 170);
+    doc.text(lineas, 20, 55);
+
+    let y = 55 + lineas.length * 5 + 12;
+    doc.setFont('helvetica', 'bold'); doc.text('Periodo de vacaciones autorizado:', 20, y);
+    y += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Del ${fmt(c.inicio)} al ${fmt(c.fin)} (${c.dias} días).`, 20, y);
+
+    y += 35;
+    doc.text('_____________________________', 20, y);
+    doc.text('_____________________________', 120, y);
+    y += 5;
+    doc.setFontSize(9);
+    doc.text('Firma del colaborador', 20, y);
+    doc.text('Responsable de Auditoría STPS', 120, y);
+
+    return doc;
+}
+
+async function registrarConstanciaGenerada(c, centroId){
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    await supabaseClient.from('constancias_generadas').insert({
+        colaborador_clave: c.clave,
+        centro_id: centroId,
+        anios_laborados: c.anios,
+        dias: c.dias,
+        periodo_inicio: c.inicio.toISOString().slice(0,10),
+        periodo_fin: c.fin.toISOString().slice(0,10),
+        generado_por: user ? user.id : null
+    });
+}
+
+async function generarConstanciaIndividual(clave){
+    const c = COLABORADORES_CENTRO_CACHE.data.find(x => x.clave === clave);
+    if(!c) return;
+    const centro = centrosData.find(x => x.id === COLABORADORES_CENTRO_CACHE.centroId);
+    const doc = construirConstanciaPDF(c, centro);
+    doc.save(`Constancia_Vacaciones_${c.clave}.pdf`);
+    await registrarConstanciaGenerada(c, COLABORADORES_CENTRO_CACHE.centroId);
+}
+
+async function generarTodasConstancias(){
+    const lista = COLABORADORES_CENTRO_CACHE.data;
+    if(!lista || !lista.length){ mostrarToast('No hay constancias que generar para este centro/mes.'); return; }
+    mostrarToast('Generando ' + lista.length + ' constancia(s)...');
+    const zip = new JSZip();
+    const centro = centrosData.find(x => x.id === COLABORADORES_CENTRO_CACHE.centroId);
+    for(const c of lista){
+        const doc = construirConstanciaPDF(c, centro);
+        const nombreSeguro = c.nombre.replace(/[^a-zA-Z0-9]+/g, '_');
+        zip.file(`Constancia_Vacaciones_${c.clave}_${nombreSeguro}.pdf`, doc.output('blob'));
+        await registrarConstanciaGenerada(c, COLABORADORES_CENTRO_CACHE.centroId);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    descargarBlob(blob, `Constancias_Vacaciones_${centro ? centro.id : 'centro'}_${COLABORADORES_CENTRO_CACHE.mes}_${COLABORADORES_CENTRO_CACHE.anio}.zip`);
+    mostrarToast('Listo: ' + lista.length + ' constancia(s) generada(s).');
+}
+
+// ---- TAB 3: Plantillas de Documentos ----
+
+async function cargarPlantillas(){
+    await asegurarCatalogoNormas();
+    const tbody = document.getElementById('plantillas-tbody');
+    const { data, error } = await supabaseClient.from('plantillas_documentos').select('id, norma_code, nombre_archivo, storage_path').order('norma_code');
+    if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="3">Error: ${error.message}</td></tr>`; return; }
+
+    const porNorma = {};
+    (data || []).forEach(p => { (porNorma[p.norma_code] = porNorma[p.norma_code] || []).push(p); });
+
+    tbody.innerHTML = CATALOGO_NOM.map(n => {
+        const lista = porNorma[n.code] || [];
+        const listaHtml = lista.length
+            ? lista.map(p => `<div class="flex items-center gap-sm text-xs mb-1"><span class="material-symbols-outlined text-sm" data-icon="description">description</span>${p.nombre_archivo}<button class="text-error hover:underline" onclick="borrarPlantilla('${p.id}','${p.storage_path}')" type="button">Quitar</button></div>`).join('')
+            : '<span class="text-xs text-on-surface-variant">Sin plantillas</span>';
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm font-data-mono text-data-mono text-xs align-top">${n.code}</td>
+<td class="px-md py-sm align-top">${listaHtml}</td>
+<td class="px-md py-sm text-right align-top">
+<label class="border border-outline-variant px-sm py-1 rounded text-xs font-bold cursor-pointer hover:bg-surface-container-high transition-colors inline-block">
+Subir<input class="hidden" type="file" onchange="subirPlantilla(event,'${n.code}')"/>
+</label>
+</td>
+</tr>`;
+    }).join('');
+}
+
+async function subirPlantilla(event, normaCode){
+    const file = event.target.files[0];
+    if(!file) return;
+    event.target.value = '';
+    const path = `${normaCode}/${Date.now()}_${file.name}`;
+    mostrarToast('Subiendo ' + file.name + '...');
+
+    const { error: errUpload } = await supabaseClient.storage.from('plantillas').upload(path, file, { upsert: true });
+    if(errUpload){ mostrarToast('Error al subir: ' + errUpload.message); return; }
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { error: errDb } = await supabaseClient.from('plantillas_documentos').insert({
+        norma_code: normaCode, nombre_archivo: file.name, storage_path: path, subido_por: user ? user.id : null
+    });
+    if(errDb){ mostrarToast('Archivo subido, pero hubo un error al registrarlo: ' + errDb.message); return; }
+
+    mostrarToast('Plantilla subida: ' + file.name);
+    cargarPlantillas();
+}
+
+async function borrarPlantilla(id, storagePath){
+    if(!confirm('¿Quitar esta plantilla?')) return;
+    await supabaseClient.storage.from('plantillas').remove([storagePath]);
+    await supabaseClient.from('plantillas_documentos').delete().eq('id', id);
+    mostrarToast('Plantilla eliminada.');
+    cargarPlantillas();
+}
+
+// ---- TAB 4: Correo Mensual ----
+
+let CORREO_CONTEXTO = null;
+
+async function generarBorradorCorreo(){
+    const centroId = document.getElementById('correo-centro').value;
+    const mes = parseInt(document.getElementById('correo-mes').value, 10);
+    const anio = parseInt(document.getElementById('correo-anio').value, 10);
+    if(!centroId){ mostrarToast('Elige un centro.'); return; }
+    const centro = centrosData.find(c => c.id === centroId);
+
+    mostrarToast('Armando el borrador...');
+
+    const { data: actividades, error: errAct } = await supabaseClient.from('calendario_normativo')
+        .select('norma_code, norma_titulo_original, actividad, estado')
+        .eq('centro_id', centroId).eq('mes', mes).eq('anio', anio)
+        .order('norma_code', { ascending: true, nullsFirst: false });
+    if(errAct){ mostrarToast('Error: ' + errAct.message); return; }
+
+    const { data: plantillas } = await supabaseClient.from('plantillas_documentos').select('norma_code, nombre_archivo, storage_path');
+
+    document.getElementById('vac-centro').value = centroId;
+    document.getElementById('vac-mes').value = mes;
+    document.getElementById('vac-anio').value = anio;
+    await cargarVacacionesMes();
+    const colaboradoresMes = COLABORADORES_CENTRO_CACHE.centroId === centroId ? COLABORADORES_CENTRO_CACHE.data : [];
+
+    const normasEnCorreo = [...new Set((actividades || []).map(a => a.norma_code).filter(Boolean))];
+    const plantillasAplicables = (plantillas || []).filter(p => normasEnCorreo.includes(p.norma_code));
+
+    CORREO_CONTEXTO = { centro, mes, anio, actividades: actividades || [], plantillas: plantillasAplicables, colaboradores: colaboradoresMes };
+
+    const nombreMesTxt = NOMBRES_MES[mes - 1];
+    document.getElementById('correo-para').value = centro.responsableEmail || '(sin correo capturado — edítalo en Centros de Trabajo)';
+    document.getElementById('correo-asunto').value = `Actividades Normativas STPS — ${centro.nombre} — ${nombreMesTxt} ${anio}`;
+
+    let cuerpo = `Estimado(a) ${centro.responsable || ''}:\n\n`;
+    cuerpo += `Te comparto las actividades del Programa Anual STPS que aplican para ${centro.nombre} durante ${nombreMesTxt} de ${anio}:\n\n`;
+    if(actividades && actividades.length){
+        actividades.forEach((a, i) => {
+            cuerpo += `${i + 1}. [${a.norma_code || a.norma_titulo_original || 'Norma no identificada'}] ${a.actividad}\n`;
+        });
+    } else {
+        cuerpo += '(No hay actividades registradas en el calendario para este mes. Verifica que ya se importó el calendario del año.)\n';
+    }
+    cuerpo += '\n';
+    if(plantillasAplicables.length){
+        cuerpo += 'Formatos anexos a este correo:\n';
+        plantillasAplicables.forEach(p => { cuerpo += `- ${p.nombre_archivo}\n`; });
+    } else {
+        cuerpo += 'No hay formatos registrados todavía para las normas de este mes (sección "Plantillas de Documentos").\n';
+    }
+    cuerpo += '\n';
+    if(colaboradoresMes.length){
+        cuerpo += `También se anexan ${colaboradoresMes.length} constancia(s) de vacaciones de colaboradores que cumplen aniversario este mes.\n\n`;
+    }
+    cuerpo += 'Quedo al pendiente de la confirmación de recepción y cumplimiento de cada actividad.\n\nSaludos.';
+
+    document.getElementById('correo-cuerpo').value = cuerpo;
+
+    let htmlAdj = '<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Adjuntos que incluirá el ZIP</label><ul class="text-sm list-disc pl-lg">';
+    plantillasAplicables.forEach(p => htmlAdj += `<li>${p.nombre_archivo}</li>`);
+    colaboradoresMes.forEach(c => htmlAdj += `<li>Constancia_Vacaciones_${c.clave}.pdf</li>`);
+    if(!plantillasAplicables.length && !colaboradoresMes.length) htmlAdj += '<li class="text-on-surface-variant">Sin adjuntos por ahora</li>';
+    htmlAdj += '</ul>';
+    document.getElementById('correo-adjuntos-lista').innerHTML = htmlAdj;
+
+    document.getElementById('correo-resultado').classList.remove('hidden');
+}
+
+async function descargarAdjuntosCorreo(){
+    if(!CORREO_CONTEXTO){ mostrarToast('Primero genera el borrador.'); return; }
+    mostrarToast('Preparando el ZIP de adjuntos...');
+    const zip = new JSZip();
+
+    for(const p of CORREO_CONTEXTO.plantillas){
+        const { data, error } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
+        if(error){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + error.message); continue; }
+        zip.file(p.nombre_archivo, data);
+    }
+    CORREO_CONTEXTO.colaboradores.forEach(c => {
+        const doc = construirConstanciaPDF(c, CORREO_CONTEXTO.centro);
+        zip.file(`Constancia_Vacaciones_${c.clave}.pdf`, doc.output('blob'));
+    });
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    descargarBlob(blob, `Adjuntos_${CORREO_CONTEXTO.centro.id}_${CORREO_CONTEXTO.mes}_${CORREO_CONTEXTO.anio}.zip`);
+    mostrarToast('ZIP de adjuntos descargado.');
+}
+
+function copiarCuerpoCorreo(){
+    const texto = document.getElementById('correo-asunto').value + '\n\n' + document.getElementById('correo-cuerpo').value;
+    navigator.clipboard.writeText(texto).then(() => mostrarToast('Asunto y cuerpo copiados al portapapeles.'));
+}
+
+function abrirBorradorOutlook(){
+    const para = document.getElementById('correo-para').value;
+    const asunto = document.getElementById('correo-asunto').value;
+    const cuerpo = document.getElementById('correo-cuerpo').value;
+    const paraLimpio = para.includes('@') ? para : '';
+    const link = `mailto:${encodeURIComponent(paraLimpio)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+    window.location.href = link;
+}
+
 function showSection(id){
     document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -1365,6 +2060,7 @@ function showSection(id){
     document.querySelectorAll('.dropdown-open').forEach(el => el.classList.add('hidden'));
     window.scrollTo(0,0);
     if(id === 'sec-centros' && currentUser) cargarCentros();
+    if(id === 'sec-actividades' && currentUser) poblarSelectoresMensual();
 }
 function toggleDropdown(id){
     const el = document.getElementById(id);

@@ -10,9 +10,12 @@ Mexicanas (NOM-STPS) en los centros de trabajo de Grupo Automotriz Chesa.
 - `pipeline-jornada-laboral/` — el pipeline de Python (`run_all.sh` y scripts asociados) para generar mensualmente el Excel de auditoría consolidado y los PDFs de firma por unidad de negocio, a partir de los mismos archivos de reloj checador. Ver `pipeline-jornada-laboral/README.md` para el detalle completo.
 - `supabase_setup.sql` — script inicial de base de datos (tablas y RLS).
 - `supabase_ia_setup.sql` — tabla para el historial de resúmenes de riesgo generados por IA.
+- `supabase_normatividad_mensual_setup.sql` — tablas para el calendario normativo por centro, plantillas de documentos, colaboradores y constancias de vacaciones.
 - `supabase/functions/generar-resumen-riesgo/` — Edge Function que llama a Claude (Anthropic) para generar los resúmenes de riesgo.
+- `vendor/` — librerías JS vendorizadas (SheetJS, jsPDF, JSZip) que usan tanto `panel-control.html` como el tablero de jornada laboral, para no depender de un CDN externo.
 - `GUIA_SUPABASE.md` — cómo conectar la app a una base de datos real.
 - `GUIA_IA.md` — cómo activar el módulo de resúmenes de riesgo con IA.
+- `GUIA_NORMATIVIDAD_MENSUAL.md` — cómo activar y usar el calendario normativo, las constancias de vacaciones y el correo mensual.
 
 ## Demo pública
 
