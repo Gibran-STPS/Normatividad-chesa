@@ -108,6 +108,8 @@ responsable y correo de cada uno.
   - `{{TELEFONO}}` — teléfono de la agencia
   - `{{CIUDAD}}` — ciudad (toma el campo "Ubicación" del centro)
   - `{{ANIO}}` — año (el que elijas al generar el correo mensual, o el actual si lo generas desde Plantillas)
+  - `{{MES}}` — mes de la actividad, en letras (ej. "Agosto") — el que elijas al generar, no la fecha en que lo generas
+  - `{{MES_ANIO}}` — mes y año juntos (ej. "Agosto 2026"), por si lo necesitas en una sola celda
   - `{{NORMA}}` — el código de la norma a la que pertenece ese documento
   - `{{CENTRO}}` — nombre del centro de trabajo
   - `{{FECHA}}` — fecha del día, en español

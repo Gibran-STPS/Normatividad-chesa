@@ -771,9 +771,17 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Descargar todas las plantillas ya rellenas para</label>
 <select class="border border-outline-variant rounded p-sm text-sm min-w-[220px]" id="plantillas-centro"></select>
 </div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Mes de la actividad</label>
+<select class="border border-outline-variant rounded p-sm text-sm" id="plantillas-mes"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Año</label>
+<input class="border border-outline-variant rounded p-sm text-sm w-24" id="plantillas-anio" type="number"/>
+</div>
 <button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="descargarPlantillasPersonalizadas()" type="button">Descargar personalizadas (ZIP)</button>
 </div>
-<p class="text-xs text-on-surface-variant mt-sm">Reemplaza automáticamente <span class="font-data-mono">{{RESPONSABLE}}</span>, <span class="font-data-mono">{{PUESTO}}</span>, <span class="font-data-mono">{{CENTRO}}</span> y <span class="font-data-mono">{{FECHA}}</span> en tus plantillas Word/Excel con los datos de ese centro. Usa esos mismos marcadores al preparar tus formatos.</p>
+<p class="text-xs text-on-surface-variant mt-sm">Reemplaza automáticamente <span class="font-data-mono">{{RESPONSABLE}}</span>, <span class="font-data-mono">{{PUESTO}}</span>, <span class="font-data-mono">{{CENTRO}}</span>, <span class="font-data-mono">{{MES}}</span>, <span class="font-data-mono">{{ANIO}}</span> y <span class="font-data-mono">{{FECHA}}</span> en tus plantillas Word/Excel con los datos de ese centro y el mes/año de la actividad. Usa esos mismos marcadores al preparar tus formatos.</p>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <table class="w-full text-left border-collapse">
@@ -1546,11 +1554,11 @@ function poblarSelectoresMensual(){
         const el = document.getElementById(id);
         if(el) el.innerHTML = opcionesCentro;
     });
-    ['cal-mes','vac-mes','correo-mes'].forEach(id => {
+    ['cal-mes','vac-mes','correo-mes','plantillas-mes'].forEach(id => {
         const el = document.getElementById(id);
         if(el){ el.innerHTML = opcionesMes; el.value = mesActual; }
     });
-    ['cal-anio','vac-anio','correo-anio'].forEach(id => {
+    ['cal-anio','vac-anio','correo-anio','plantillas-anio'].forEach(id => {
         const el = document.getElementById(id);
         if(el && !el.value) el.value = anioActual;
     });
@@ -2017,6 +2025,9 @@ function datosPlaceholders(centro, extra){
     extra = extra || {};
     const hoy = new Date();
     const fechaTexto = hoy.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+    const mesNum = extra.mes || (hoy.getMonth() + 1);
+    const anioNum = extra.anio || hoy.getFullYear();
+    const nombreMes = NOMBRES_MES[mesNum - 1] || '';
     return {
         RESPONSABLE: (centro && centro.responsable) || '',
         PUESTO: (centro && centro.responsablePuesto) || '',
@@ -2026,7 +2037,9 @@ function datosPlaceholders(centro, extra){
         TELEFONO: (centro && centro.telefono) || '',
         CIUDAD: (centro && centro.ubicacion) || '',
         FECHA: fechaTexto,
-        ANIO: String(extra.anio || hoy.getFullYear()),
+        MES: nombreMes,
+        ANIO: String(anioNum),
+        MES_ANIO: nombreMes ? (nombreMes + ' ' + anioNum) : String(anioNum),
         NORMA: extra.normaCode || ''
     };
 }
@@ -2139,6 +2152,8 @@ async function descargarPlantillasPersonalizadas(){
     const centroId = document.getElementById('plantillas-centro').value;
     if(!centroId){ mostrarToast('Elige un centro.'); return; }
     const centro = centrosData.find(c => c.id === centroId);
+    const mes = parseInt(document.getElementById('plantillas-mes').value, 10);
+    const anio = parseInt(document.getElementById('plantillas-anio').value, 10);
 
     const { data: plantillas, error } = await supabaseClient.from('plantillas_documentos').select('norma_code, nombre_archivo, storage_path');
     if(error){ mostrarToast('Error: ' + error.message); return; }
@@ -2149,7 +2164,7 @@ async function descargarPlantillasPersonalizadas(){
     for(const p of plantillas){
         const { data, error: errDesc } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
         if(errDesc){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + errDesc.message); continue; }
-        const personalizado = await personalizarArchivo(data, p.nombre_archivo, centro, { normaCode: p.norma_code });
+        const personalizado = await personalizarArchivo(data, p.nombre_archivo, centro, { normaCode: p.norma_code, mes, anio });
         const carpeta = p.norma_code || 'sin_norma';
         zip.file(`${carpeta}/${p.nombre_archivo}`, personalizado);
     }
@@ -2290,7 +2305,7 @@ async function descargarAdjuntosCorreo(){
     for(const p of CORREO_CONTEXTO.plantillas){
         const { data, error } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
         if(error){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + error.message); continue; }
-        const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro, { normaCode: p.norma_code, anio: CORREO_CONTEXTO.anio });
+        const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro, { normaCode: p.norma_code, mes: CORREO_CONTEXTO.mes, anio: CORREO_CONTEXTO.anio });
         zip.file(p.nombre_archivo, personalizado);
     }
     CORREO_CONTEXTO.colaboradores.forEach(c => {
