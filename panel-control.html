@@ -625,12 +625,51 @@
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-secretario" type="text"/>
 </div>
 <div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto del Secretario</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-secretario-puesto" type="text"/>
+</div>
+<div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vocal 1</label>
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-vocal1" type="text"/>
 </div>
 <div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto del Vocal 1</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-vocal1-puesto" type="text"/>
+</div>
+<div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vocal 2</label>
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-vocal2" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto del Vocal 2</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-vocal2-puesto" type="text"/>
+</div>
+<div class="md:col-span-2">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs mt-sm">Datos legales y operativos (para el acta de constitución de la comisión)</p>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Inicio de operaciones</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-fecha-inicio-operaciones" type="date"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">RFC</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-rfc" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Registro patronal IMSS</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-registro-patronal" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Número de trabajadores</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-num-trabajadores" min="0" type="number"/>
+</div>
+<div class="md:col-span-2 flex gap-lg items-center">
+<label class="flex items-center gap-sm font-body-md text-body-md">
+<input id="centro-hojalateria" type="checkbox"/> Cuenta con área de Hojalatería y Pintura
+</label>
+<label class="flex items-center gap-sm font-body-md text-body-md">
+<input id="centro-taller-servicio" type="checkbox"/> Cuenta con Taller de Servicio
+</label>
 </div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Estado</label>
@@ -1312,7 +1351,7 @@ async function cargarCentros(){
 
     const { data, error } = await supabaseClient
         .from('centros_trabajo')
-        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, razon_social, direccion, telefono, secretario_comision, vocal1_comision, vocal2_comision, marca, centro_normas(norma_code)')
+        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, razon_social, direccion, telefono, secretario_comision, vocal1_comision, vocal2_comision, secretario_puesto, vocal1_puesto, vocal2_puesto, fecha_inicio_operaciones, rfc, registro_patronal_imss, numero_trabajadores, tiene_hojalateria_pintura, tiene_taller_servicio, marca, centro_normas(norma_code)')
         .order('id');
 
     if(error){
@@ -1336,6 +1375,15 @@ async function cargarCentros(){
         secretarioComision: c.secretario_comision,
         vocal1Comision: c.vocal1_comision,
         vocal2Comision: c.vocal2_comision,
+        secretarioPuesto: c.secretario_puesto,
+        vocal1Puesto: c.vocal1_puesto,
+        vocal2Puesto: c.vocal2_puesto,
+        fechaInicioOperaciones: c.fecha_inicio_operaciones,
+        rfc: c.rfc,
+        registroPatronalImss: c.registro_patronal_imss,
+        numeroTrabajadores: c.numero_trabajadores,
+        tieneHojalateriaPintura: c.tiene_hojalateria_pintura,
+        tieneTallerServicio: c.tiene_taller_servicio,
         marca: c.marca,
         normas: (c.centro_normas || []).map(n => n.norma_code)
     }));
@@ -1458,6 +1506,15 @@ async function abrirModalCentro(id){
         document.getElementById('centro-secretario').value = c.secretarioComision || '';
         document.getElementById('centro-vocal1').value = c.vocal1Comision || '';
         document.getElementById('centro-vocal2').value = c.vocal2Comision || '';
+        document.getElementById('centro-secretario-puesto').value = c.secretarioPuesto || '';
+        document.getElementById('centro-vocal1-puesto').value = c.vocal1Puesto || '';
+        document.getElementById('centro-vocal2-puesto').value = c.vocal2Puesto || '';
+        document.getElementById('centro-fecha-inicio-operaciones').value = c.fechaInicioOperaciones || '';
+        document.getElementById('centro-rfc').value = c.rfc || '';
+        document.getElementById('centro-registro-patronal').value = c.registroPatronalImss || '';
+        document.getElementById('centro-num-trabajadores').value = c.numeroTrabajadores ?? '';
+        document.getElementById('centro-hojalateria').checked = !!c.tieneHojalateriaPintura;
+        document.getElementById('centro-taller-servicio').checked = !!c.tieneTallerServicio;
         document.getElementById('centro-marca').value = c.marca || '';
         poblarListaNormas(c.normas);
         btnEliminar.classList.remove('hidden');
@@ -1498,6 +1555,16 @@ async function guardarCentro(event){
     const secretarioComision = document.getElementById('centro-secretario').value.trim() || null;
     const vocal1Comision = document.getElementById('centro-vocal1').value.trim() || null;
     const vocal2Comision = document.getElementById('centro-vocal2').value.trim() || null;
+    const secretarioPuesto = document.getElementById('centro-secretario-puesto').value.trim() || null;
+    const vocal1Puesto = document.getElementById('centro-vocal1-puesto').value.trim() || null;
+    const vocal2Puesto = document.getElementById('centro-vocal2-puesto').value.trim() || null;
+    const fechaInicioOperaciones = document.getElementById('centro-fecha-inicio-operaciones').value || null;
+    const rfc = document.getElementById('centro-rfc').value.trim() || null;
+    const registroPatronalImss = document.getElementById('centro-registro-patronal').value.trim() || null;
+    const numTrabajadoresVal = document.getElementById('centro-num-trabajadores').value;
+    const numeroTrabajadores = numTrabajadoresVal === '' ? null : parseInt(numTrabajadoresVal, 10);
+    const tieneHojalateriaPintura = document.getElementById('centro-hojalateria').checked;
+    const tieneTallerServicio = document.getElementById('centro-taller-servicio').checked;
     const marca = document.getElementById('centro-marca').value || null;
     const normas = Array.from(document.querySelectorAll('.norma-checkbox:checked')).map(cb => cb.dataset.code);
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -1509,7 +1576,7 @@ async function guardarCentro(event){
 
     const { error: errorCentro } = await supabaseClient
         .from('centros_trabajo')
-        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, razon_social: razonSocial, direccion, telefono, secretario_comision: secretarioComision, vocal1_comision: vocal1Comision, vocal2_comision: vocal2Comision, marca });
+        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, razon_social: razonSocial, direccion, telefono, secretario_comision: secretarioComision, vocal1_comision: vocal1Comision, vocal2_comision: vocal2Comision, secretario_puesto: secretarioPuesto, vocal1_puesto: vocal1Puesto, vocal2_puesto: vocal2Puesto, fecha_inicio_operaciones: fechaInicioOperaciones, rfc, registro_patronal_imss: registroPatronalImss, numero_trabajadores: numeroTrabajadores, tiene_hojalateria_pintura: tieneHojalateriaPintura, tiene_taller_servicio: tieneTallerServicio, marca });
 
     if(errorCentro){
         mostrarToast('Error al guardar: ' + errorCentro.message);
@@ -1658,6 +1725,15 @@ async function crearCentroAutomatico(nombreHoja){
         secretarioComision: null,
         vocal1Comision: null,
         vocal2Comision: null,
+        secretarioPuesto: null,
+        vocal1Puesto: null,
+        vocal2Puesto: null,
+        fechaInicioOperaciones: null,
+        rfc: null,
+        registroPatronalImss: null,
+        numeroTrabajadores: null,
+        tieneHojalateriaPintura: false,
+        tieneTallerServicio: false,
         marca: nuevoCentro.marca,
         normas: []
     });
@@ -2066,6 +2142,22 @@ function datosPlaceholders(centro, extra){
         SECRETARIO: (centro && centro.secretarioComision) || '',
         VOCAL1: (centro && centro.vocal1Comision) || '',
         VOCAL2: (centro && centro.vocal2Comision) || '',
+        SECRETARIO_PUESTO: (centro && centro.secretarioPuesto) || '',
+        VOCAL1_PUESTO: (centro && centro.vocal1Puesto) || '',
+        VOCAL2_PUESTO: (centro && centro.vocal2Puesto) || '',
+        FECHA_INICIO_OPERACIONES: (centro && centro.fechaInicioOperaciones)
+            ? new Date(centro.fechaInicioOperaciones + 'T00:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+            : '',
+        RFC: (centro && centro.rfc) || '',
+        REGISTRO_PATRONAL: (centro && centro.registroPatronalImss) || '',
+        NUM_TRABAJADORES: (centro && centro.numeroTrabajadores != null) ? String(centro.numeroTrabajadores) : '',
+        AREAS_ESPECIALES: (() => {
+            if(!centro) return '';
+            const areas = [];
+            if(centro.tieneHojalateriaPintura) areas.push('Hojalatería y Pintura');
+            if(centro.tieneTallerServicio) areas.push('Taller de Servicio');
+            return areas.join(', ');
+        })(),
         FECHA: fechaTexto,
         MES: nombreMes,
         ANIO: String(anioNum),

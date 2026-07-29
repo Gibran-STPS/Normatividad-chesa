@@ -29,6 +29,18 @@ alter table centros_trabajo add column if not exists telefono text;
 alter table centros_trabajo add column if not exists secretario_comision text;
 alter table centros_trabajo add column if not exists vocal1_comision text;
 alter table centros_trabajo add column if not exists vocal2_comision text;
+alter table centros_trabajo add column if not exists secretario_puesto text;
+alter table centros_trabajo add column if not exists vocal1_puesto text;
+alter table centros_trabajo add column if not exists vocal2_puesto text;
+
+-- 1.1.4) Datos legales/operativos del centro, para el acta de constitución
+--        de la comisión y otros documentos que los requieran.
+alter table centros_trabajo add column if not exists fecha_inicio_operaciones date;
+alter table centros_trabajo add column if not exists rfc text;
+alter table centros_trabajo add column if not exists registro_patronal_imss text;
+alter table centros_trabajo add column if not exists numero_trabajadores int;
+alter table centros_trabajo add column if not exists tiene_hojalateria_pintura boolean not null default false;
+alter table centros_trabajo add column if not exists tiene_taller_servicio boolean not null default false;
 
 -- 1.2) Marca del centro (Nissan, Renault, Changan, Ecos Digitales...) para
 --      mostrar su logo correspondiente junto al de Grupo Chesa.
