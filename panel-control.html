@@ -617,6 +617,21 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Teléfono de la agencia</label>
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-telefono" placeholder="Ej. 01 (967) 678 13 60" type="text"/>
 </div>
+<div class="md:col-span-2">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs mt-sm">Comisión de Seguridad e Higiene (NOM-019) — el Coordinador es el Responsable de arriba</p>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Secretario</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-secretario" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vocal 1</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-vocal1" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vocal 2</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-vocal2" type="text"/>
+</div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Estado</label>
 <select class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-estado">
@@ -1297,7 +1312,7 @@ async function cargarCentros(){
 
     const { data, error } = await supabaseClient
         .from('centros_trabajo')
-        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, razon_social, direccion, telefono, marca, centro_normas(norma_code)')
+        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, razon_social, direccion, telefono, secretario_comision, vocal1_comision, vocal2_comision, marca, centro_normas(norma_code)')
         .order('id');
 
     if(error){
@@ -1318,6 +1333,9 @@ async function cargarCentros(){
         razonSocial: c.razon_social,
         direccion: c.direccion,
         telefono: c.telefono,
+        secretarioComision: c.secretario_comision,
+        vocal1Comision: c.vocal1_comision,
+        vocal2Comision: c.vocal2_comision,
         marca: c.marca,
         normas: (c.centro_normas || []).map(n => n.norma_code)
     }));
@@ -1437,6 +1455,9 @@ async function abrirModalCentro(id){
         document.getElementById('centro-razon-social').value = c.razonSocial || '';
         document.getElementById('centro-direccion').value = c.direccion || '';
         document.getElementById('centro-telefono').value = c.telefono || '';
+        document.getElementById('centro-secretario').value = c.secretarioComision || '';
+        document.getElementById('centro-vocal1').value = c.vocal1Comision || '';
+        document.getElementById('centro-vocal2').value = c.vocal2Comision || '';
         document.getElementById('centro-marca').value = c.marca || '';
         poblarListaNormas(c.normas);
         btnEliminar.classList.remove('hidden');
@@ -1474,6 +1495,9 @@ async function guardarCentro(event){
     const razonSocial = document.getElementById('centro-razon-social').value.trim() || null;
     const direccion = document.getElementById('centro-direccion').value.trim() || null;
     const telefono = document.getElementById('centro-telefono').value.trim() || null;
+    const secretarioComision = document.getElementById('centro-secretario').value.trim() || null;
+    const vocal1Comision = document.getElementById('centro-vocal1').value.trim() || null;
+    const vocal2Comision = document.getElementById('centro-vocal2').value.trim() || null;
     const marca = document.getElementById('centro-marca').value || null;
     const normas = Array.from(document.querySelectorAll('.norma-checkbox:checked')).map(cb => cb.dataset.code);
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -1485,7 +1509,7 @@ async function guardarCentro(event){
 
     const { error: errorCentro } = await supabaseClient
         .from('centros_trabajo')
-        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, razon_social: razonSocial, direccion, telefono, marca });
+        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, razon_social: razonSocial, direccion, telefono, secretario_comision: secretarioComision, vocal1_comision: vocal1Comision, vocal2_comision: vocal2Comision, marca });
 
     if(errorCentro){
         mostrarToast('Error al guardar: ' + errorCentro.message);
@@ -1631,6 +1655,9 @@ async function crearCentroAutomatico(nombreHoja){
         razonSocial: null,
         direccion: null,
         telefono: null,
+        secretarioComision: null,
+        vocal1Comision: null,
+        vocal2Comision: null,
         marca: nuevoCentro.marca,
         normas: []
     });
@@ -2036,6 +2063,9 @@ function datosPlaceholders(centro, extra){
         DIRECCION: (centro && centro.direccion) || '',
         TELEFONO: (centro && centro.telefono) || '',
         CIUDAD: (centro && centro.ubicacion) || '',
+        SECRETARIO: (centro && centro.secretarioComision) || '',
+        VOCAL1: (centro && centro.vocal1Comision) || '',
+        VOCAL2: (centro && centro.vocal2Comision) || '',
         FECHA: fechaTexto,
         MES: nombreMes,
         ANIO: String(anioNum),

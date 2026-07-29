@@ -24,6 +24,12 @@ alter table centros_trabajo add column if not exists razon_social text;
 alter table centros_trabajo add column if not exists direccion text;
 alter table centros_trabajo add column if not exists telefono text;
 
+-- 1.1.3) Comisión de Seguridad e Higiene (NOM-019): el Coordinador ya es
+--        el "Responsable" del centro; estos 3 son los demás integrantes.
+alter table centros_trabajo add column if not exists secretario_comision text;
+alter table centros_trabajo add column if not exists vocal1_comision text;
+alter table centros_trabajo add column if not exists vocal2_comision text;
+
 -- 1.2) Marca del centro (Nissan, Renault, Changan, Ecos Digitales...) para
 --      mostrar su logo correspondiente junto al de Grupo Chesa.
 alter table centros_trabajo add column if not exists marca text;
