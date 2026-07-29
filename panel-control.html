@@ -2156,7 +2156,7 @@ function datosPlaceholders(centro, extra){
             const areas = [];
             if(centro.tieneHojalateriaPintura) areas.push('Hojalatería y Pintura');
             if(centro.tieneTallerServicio) areas.push('Taller de Servicio');
-            return areas.join(', ');
+            return areas.length ? areas.join(', ') + ', ' : '';
         })(),
         FECHA: fechaTexto,
         MES: nombreMes,

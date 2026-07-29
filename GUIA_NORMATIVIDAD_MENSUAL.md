@@ -111,6 +111,10 @@ responsable y correo de cada uno.
   - `{{MES}}` — mes de la actividad, en letras (ej. "Agosto") — el que elijas al generar, no la fecha en que lo generas
   - `{{MES_ANIO}}` — mes y año juntos (ej. "Agosto 2026"), por si lo necesitas en una sola celda
   - `{{NORMA}}` — el código de la norma a la que pertenece ese documento
+  - `{{SECRETARIO}}`, `{{VOCAL1}}`, `{{VOCAL2}}` — los otros 3 integrantes de la Comisión de Seguridad e Higiene (el Coordinador es tu `{{RESPONSABLE}}`)
+  - `{{SECRETARIO_PUESTO}}`, `{{VOCAL1_PUESTO}}`, `{{VOCAL2_PUESTO}}` — el puesto de cada uno
+  - `{{FECHA_INICIO_OPERACIONES}}`, `{{RFC}}`, `{{REGISTRO_PATRONAL}}`, `{{NUM_TRABAJADORES}}` — datos legales/operativos del centro (para el acta de constitución de la comisión)
+  - `{{AREAS_ESPECIALES}}` — texto listo para insertar antes de otras áreas (ej. "Hojalatería y Pintura, Taller de Servicio, ") según lo que hayas marcado que tiene ese centro; si no tiene ninguna, sale vacío sin dejar coma suelta
   - `{{CENTRO}}` — nombre del centro de trabajo
   - `{{FECHA}}` — fecha del día, en español
   Captura razón social, dirección y teléfono una sola vez por centro, en
