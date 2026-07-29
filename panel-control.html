@@ -2075,13 +2075,6 @@ async function reemplazarLogoMarca(zip, marca){
         const archivoZip = zip.file(nombre);
         if(!archivoZip) continue;
         const xml = archivoZip.asText();
-        const idx = xml.indexOf('descr="LOGO_MARCA"');
-        if(idx === -1) continue;
-
-        const ventana = xml.slice(idx, idx + 2500);
-        const m = ventana.match(/r:embed="([^"]+)"/);
-        if(!m) continue;
-        const rId = m[1];
 
         const partes = nombre.split('/');
         const archivoXml = partes.pop();
@@ -2089,13 +2082,26 @@ async function reemplazarLogoMarca(zip, marca){
         const relsPath = dir + '/_rels/' + archivoXml + '.rels';
         const relsZip = zip.file(relsPath);
         if(!relsZip) continue;
-
         const relsXml = relsZip.asText();
-        const relMatch = relsXml.match(new RegExp('Id="' + rId + '"[^>]*Target="([^"]+)"'));
-        if(!relMatch) continue;
 
-        const mediaPath = dir + '/' + relMatch[1];
-        zip.file(mediaPath, bytesLogo);
+        // Un mismo archivo puede tener el marcador varias veces (el mismo
+        // logo repetido en distintas tablas/páginas); procesamos todas las
+        // apariciones, no solo la primera.
+        const rIdsEncontrados = new Set();
+        let idx = xml.indexOf('descr="LOGO_MARCA"');
+        while(idx !== -1){
+            const ventana = xml.slice(idx, idx + 2500);
+            const m = ventana.match(/r:embed="([^"]+)"/);
+            if(m) rIdsEncontrados.add(m[1]);
+            idx = xml.indexOf('descr="LOGO_MARCA"', idx + 1);
+        }
+
+        rIdsEncontrados.forEach(rId => {
+            const relMatch = relsXml.match(new RegExp('Id="' + rId + '"[^>]*Target="([^"]+)"'));
+            if(!relMatch) return;
+            const mediaPath = dir + '/' + relMatch[1];
+            zip.file(mediaPath, bytesLogo);
+        });
     }
 }
 
