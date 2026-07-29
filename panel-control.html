@@ -2133,6 +2133,7 @@ function datosPlaceholders(centro, extra){
     const nombreMes = NOMBRES_MES[mesNum - 1] || '';
     return {
         RESPONSABLE: (centro && centro.responsable) || '',
+        RESPONSABLE_EMAIL: (centro && centro.responsableEmail) || '',
         PUESTO: (centro && centro.responsablePuesto) || '',
         CENTRO: (centro && centro.nombre) || '',
         RAZON_SOCIAL: (centro && centro.razonSocial) || '',
