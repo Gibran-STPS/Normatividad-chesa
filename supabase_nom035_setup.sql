@@ -9,7 +9,7 @@
 --    El token es lo único que viaja en la URL / QR que ven los colaboradores.
 create table if not exists nom035_tokens (
     id uuid primary key default gen_random_uuid(),
-    centro_id uuid not null references centros_trabajo(id) on delete cascade,
+    centro_id text not null references centros_trabajo(id) on delete cascade,
     token text not null unique,
     activo boolean not null default true,
     created_at timestamptz not null default now()
@@ -20,7 +20,7 @@ create index if not exists idx_nom035_tokens_centro on nom035_tokens(centro_id);
 -- 2) Respuestas de los colaboradores (anónimas: no se guarda nombre).
 create table if not exists nom035_respuestas (
     id uuid primary key default gen_random_uuid(),
-    centro_id uuid not null references centros_trabajo(id) on delete cascade,
+    centro_id text not null references centros_trabajo(id) on delete cascade,
     token text not null,
     guia text not null check (guia in ('I','II','III')),
     respuestas jsonb not null,           -- { "1": 4, "2": 3, ... } valores 0-4 ya normalizados
@@ -38,7 +38,7 @@ create index if not exists idx_nom035_respuestas_fecha on nom035_respuestas(crea
 -- 3) Plan de acción / seguimiento (uso interno del equipo de cumplimiento).
 create table if not exists nom035_planes_accion (
     id uuid primary key default gen_random_uuid(),
-    centro_id uuid not null references centros_trabajo(id) on delete cascade,
+    centro_id text not null references centros_trabajo(id) on delete cascade,
     nivel_riesgo text not null,
     descripcion text not null,
     responsable text,
@@ -96,7 +96,7 @@ create policy nom035_respuestas_anon_insert on nom035_respuestas
 -- centros_trabajo, pero solo devuelve las 3 columnas indicadas.
 -- =====================================================================
 create or replace function obtener_centro_por_token(p_token text)
-returns table (centro_id uuid, nombre text, numero_trabajadores int)
+returns table (centro_id text, nombre text, numero_trabajadores int)
 language sql
 security definer
 set search_path = public
