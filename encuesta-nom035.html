@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cuestionario NOM-035 · Grupo Automotriz Chesa</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{font-family:'Segoe UI',Roboto,Inter,Arial,sans-serif;background:#f2f4f6;}
+  .opt{cursor:pointer;}
+  .opt input{position:absolute;opacity:0;}
+  .opt-label{display:block;text-align:center;padding:.5rem .25rem;border:1px solid #d8dadc;border-radius:.25rem;font-size:.72rem;line-height:1.1;user-select:none;}
+  .opt input:checked + .opt-label{background:#041632;color:#fff;border-color:#041632;}
+  .progress-bar{height:6px;background:#e0e3e5;border-radius:4px;overflow:hidden;}
+  .progress-fill{height:100%;background:#041632;transition:width .25s ease;}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-xl mx-auto px-4 py-8">
+
+  <!-- HEADER -->
+  <div class="mb-6 text-center">
+    <h1 class="text-xl font-bold text-[#041632]">Cuestionario NOM-035-STPS</h1>
+    <p class="text-sm text-gray-500">Factores de riesgo psicosocial · Grupo Automotriz Chesa</p>
+  </div>
+
+  <div id="progreso-wrap" class="progress-bar mb-6 hidden"><div id="progreso-fill" class="progress-fill" style="width:0%"></div></div>
+
+  <div id="app" class="bg-white border border-gray-200 rounded p-5 shadow-sm">
+    <p class="text-sm text-gray-500 flex items-center gap-2">
+      <span class="animate-spin inline-block w-4 h-4 border-2 border-gray-300 border-t-[#041632] rounded-full"></span>
+      Cargando cuestionario…
+    </p>
+  </div>
+
+  <p class="text-[11px] text-gray-400 text-center mt-6 leading-snug">
+    Tus respuestas son anónimas: no se registra tu nombre. La información se usa únicamente
+    para identificar y prevenir factores de riesgo psicosocial en tu centro de trabajo,
+    conforme a la NOM-035-STPS-2018.
+  </p>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN SUPABASE
+===================================================================== */
+const SUPABASE_URL = 'https://ptukbtqxqscgozwduima.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0dWtidHF4cXNjZ296d2R1aW1hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NDI1MzAsImV4cCI6MjEwMDMxODUzMH0.7z-peGJ0OGCZ4OWoO2N1XvjBMk6xgb7rw74UrbEIs7M';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const app = document.getElementById('app');
+const progresoWrap = document.getElementById('progreso-wrap');
+const progresoFill = document.getElementById('progreso-fill');
+
+const params = new URLSearchParams(location.search);
+const TOKEN = params.get('t');
+
+const ESCALA = ['Siempre','Casi siempre','Algunas veces','Casi nunca','Nunca'];
+
+/* =====================================================================
+   BANCOS DE REACTIVOS (transcritos de la NOM-035-STPS-2018)
+===================================================================== */
+const GUIA_I_ITEMS = [
+  "¿Ha presenciado o sufrido alguna vez, durante o con motivo del trabajo, un accidente que tenga como consecuencia la muerte, la pérdida de un miembro o una lesión grave?",
+  "¿Ha presenciado o sufrido asaltos?",
+  "¿Ha presenciado o sufrido actos violentos que derivaron en lesiones graves?",
+  "¿Ha presenciado o sufrido un secuestro?",
+  "¿Ha recibido amenazas?",
+  "¿Ha presenciado o sufrido cualquier otro suceso que ponga en riesgo su vida o salud, y/o la de otras personas?"
+];
+const GUIA_I_SEGUIMIENTO = {
+  II: ["¿Ha tenido recuerdos recurrentes sobre el acontecimiento que le provocan malestar?",
+       "¿Ha tenido sueños de carácter recurrente sobre el acontecimiento, que le producen malestar?"],
+  III: ["¿Se ha esforzado por evitar sentimientos, conversaciones o situaciones que le recuerden el acontecimiento?",
+        "¿Se ha esforzado por evitar actividades, lugares o personas que le recuerden el acontecimiento?",
+        "¿Ha tenido dificultad para recordar alguna parte importante del evento?",
+        "¿Ha disminuido su interés en sus actividades cotidianas?",
+        "¿Se ha sentido alejado o distante de los demás?",
+        "¿Ha notado dificultad para expresar sus sentimientos?",
+        "¿Ha tenido la impresión de que su vida se va a acortar o que tiene un futuro limitado?"],
+  IV: ["¿Ha tenido dificultades para dormir?",
+       "¿Ha estado particularmente irritable o le han dado arranques de coraje?",
+       "¿Ha tenido dificultad para concentrarse?",
+       "¿Ha estado nervioso o constantemente en alerta?",
+       "¿Se ha sobresaltado fácilmente por cualquier cosa?"]
+};
+
+// Guía II — 46 reactivos, centros de 16 a 50 trabajadores
+const GUIA_II_ITEMS = [
+"Mi trabajo me exige hacer mucho esfuerzo físico","Me preocupa sufrir un accidente en mi trabajo",
+"Considero que las actividades que realizo son peligrosas","Por la cantidad de trabajo que tengo debo quedarme tiempo adicional a mi turno",
+"Por la cantidad de trabajo que tengo debo trabajar sin parar","Considero que es necesario mantener un ritmo de trabajo acelerado",
+"Mi trabajo exige que esté muy concentrado","Mi trabajo requiere que memorice mucha información",
+"Mi trabajo exige que atienda varios asuntos al mismo tiempo","En mi trabajo soy responsable de cosas de mucho valor",
+"Respondo ante mi jefe por los resultados de toda mi área de trabajo","En mi trabajo me dan órdenes contradictorias",
+"Considero que en mi trabajo me piden hacer cosas innecesarias","Trabajo horas extras más de tres veces a la semana",
+"Mi trabajo me exige laborar en días de descanso, festivos o fines de semana","Considero que el tiempo en el trabajo es mucho y perjudica mis actividades familiares o personales",
+"Pienso en las actividades familiares o personales cuando estoy en mi trabajo","Mi trabajo permite que desarrolle nuevas habilidades",
+"En mi trabajo puedo aspirar a un mejor puesto","Durante mi jornada de trabajo puedo tomar pausas cuando las necesito",
+"Puedo decidir la velocidad a la que realizo mis actividades en mi trabajo","Puedo cambiar el orden de las actividades que realizo en mi trabajo",
+"Me informan con claridad cuáles son mis funciones","Me explican claramente los resultados que debo obtener en mi trabajo",
+"Me informan con quién puedo resolver problemas o asuntos de trabajo","Me permiten asistir a capacitaciones relacionadas con mi trabajo",
+"Recibo capacitación útil para hacer mi trabajo","Mi jefe tiene en cuenta mis puntos de vista y opiniones",
+"Mi jefe ayuda a solucionar los problemas que se presentan en el trabajo","Puedo confiar en mis compañeros de trabajo",
+"Cuando tenemos que realizar trabajo de equipo los compañeros colaboran","Mis compañeros de trabajo me ayudan cuando tengo dificultades",
+"En mi trabajo puedo expresarme libremente sin interrupciones","Recibo críticas constantes a mi persona y/o trabajo",
+"Recibo burlas, calumnias, difamaciones, humillaciones o ridiculizaciones","Se ignora mi presencia o se me excluye de las reuniones de trabajo y en la toma de decisiones",
+"Se manipulan las situaciones de trabajo para hacerme parecer un mal trabajador","Se ignoran mis éxitos laborales y se atribuyen a otros trabajadores",
+"Me bloquean o impiden las oportunidades que tengo para obtener ascenso o mejora en mi trabajo","He presenciado actos de violencia en mi centro de trabajo",
+"Atiendo clientes o usuarios muy enojados","Mi trabajo me exige atender personas muy necesitadas de ayuda o enfermas",
+"Para hacer mi trabajo debo demostrar sentimientos distintos a los míos","Comunican tarde los asuntos de trabajo",
+"Dificultan el logro de los resultados del trabajo","Ignoran las sugerencias para mejorar su trabajo"
+];
+const GUIA_II_REVERSA = new Set([18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33]);
+const GUIA_II_COND_CLIENTES = [41,42,43];
+const GUIA_II_COND_JEFE = [44,45,46];
+const GUIA_II_DOMINIOS = [
+ {nombre:"Condiciones en el ambiente de trabajo", items:[1,2,3], umbrales:[3,5,7,9]},
+ {nombre:"Carga de trabajo", items:[4,5,6,7,8,9,10,11,12,13,41,42,43], umbrales:[12,16,20,24]},
+ {nombre:"Falta de control sobre el trabajo", items:[18,19,20,21,22,26,27], umbrales:[5,8,11,14]},
+ {nombre:"Jornada de trabajo", items:[14,15], umbrales:[1,2,4,6]},
+ {nombre:"Interferencia trabajo-familia", items:[16,17], umbrales:[1,2,4,6]},
+ {nombre:"Liderazgo", items:[23,24,25,28,29], umbrales:[3,5,8,11]},
+ {nombre:"Relaciones en el trabajo", items:[30,31,32,44,45,46], umbrales:[5,8,11,14]},
+ {nombre:"Violencia", items:[33,34,35,36,37,38,39,40], umbrales:[7,10,13,16]}
+];
+const GUIA_II_CFINAL_UMBRALES = [20,45,70,90];
+
+// Guía III — 72 reactivos, centros con más de 50 trabajadores
+const GUIA_III_ITEMS = [
+"El espacio donde trabajo me permite realizar mis actividades de manera segura e higiénica","Mi trabajo me exige hacer mucho esfuerzo físico",
+"Me preocupa sufrir un accidente en mi trabajo","Considero que en mi trabajo se aplican las normas de seguridad y salud en el trabajo",
+"Considero que las actividades que realizo son peligrosas","Por la cantidad de trabajo que tengo debo quedarme tiempo adicional a mi turno",
+"Por la cantidad de trabajo que tengo debo trabajar sin parar","Considero que es necesario mantener un ritmo de trabajo acelerado",
+"Mi trabajo exige que esté muy concentrado","Mi trabajo requiere que memorice mucha información",
+"En mi trabajo tengo que tomar decisiones difíciles muy rápido","Mi trabajo exige que atienda varios asuntos al mismo tiempo",
+"En mi trabajo soy responsable de cosas de mucho valor","Respondo ante mi jefe por los resultados de toda mi área de trabajo",
+"En el trabajo me dan órdenes contradictorias","Considero que en mi trabajo me piden hacer cosas innecesarias",
+"Trabajo horas extras más de tres veces a la semana","Mi trabajo me exige laborar en días de descanso, festivos o fines de semana",
+"Considero que el tiempo en el trabajo es mucho y perjudica mis actividades familiares o personales","Debo atender asuntos de trabajo cuando estoy en casa",
+"Pienso en las actividades familiares o personales cuando estoy en mi trabajo","Pienso que mis responsabilidades familiares afectan mi trabajo",
+"Mi trabajo permite que desarrolle nuevas habilidades","En mi trabajo puedo aspirar a un mejor puesto",
+"Durante mi jornada de trabajo puedo tomar pausas cuando las necesito","Puedo decidir cuánto trabajo realizo durante la jornada laboral",
+"Puedo decidir la velocidad a la que realizo mis actividades en mi trabajo","Puedo cambiar el orden de las actividades que realizo en mi trabajo",
+"Los cambios que se presentan en mi trabajo dificultan mi labor","Cuando se presentan cambios en mi trabajo se tienen en cuenta mis ideas o aportaciones",
+"Me informan con claridad cuáles son mis funciones","Me explican claramente los resultados que debo obtener en mi trabajo",
+"Me explican claramente los objetivos de mi trabajo","Me informan con quién puedo resolver problemas o asuntos de trabajo",
+"Me permiten asistir a capacitaciones relacionadas con mi trabajo","Recibo capacitación útil para hacer mi trabajo",
+"Mi jefe ayuda a organizar mejor el trabajo","Mi jefe tiene en cuenta mis puntos de vista y opiniones",
+"Mi jefe me comunica a tiempo la información relacionada con el trabajo","La orientación que me da mi jefe me ayuda a realizar mejor mi trabajo",
+"Mi jefe ayuda a solucionar los problemas que se presentan en el trabajo","Puedo confiar en mis compañeros de trabajo",
+"Entre compañeros solucionamos los problemas de trabajo de forma respetuosa","En mi trabajo me hacen sentir parte del grupo",
+"Cuando tenemos que realizar trabajo de equipo los compañeros colaboran","Mis compañeros de trabajo me ayudan cuando tengo dificultades",
+"Me informan sobre lo que hago bien en mi trabajo","La forma como evalúan mi trabajo en mi centro de trabajo me ayuda a mejorar mi desempeño",
+"En mi centro de trabajo me pagan a tiempo mi salario","El pago que recibo es el que merezco por el trabajo que realizo",
+"Si obtengo los resultados esperados en mi trabajo me recompensan o reconocen","Las personas que hacen bien el trabajo pueden crecer laboralmente",
+"Considero que mi trabajo es estable","En mi trabajo existe continua rotación de personal",
+"Siento orgullo de laborar en este centro de trabajo","Me siento comprometido con mi trabajo",
+"En mi trabajo puedo expresarme libremente sin interrupciones","Recibo críticas constantes a mi persona y/o trabajo",
+"Recibo burlas, calumnias, difamaciones, humillaciones o ridiculizaciones","Se ignora mi presencia o se me excluye de las reuniones de trabajo y en la toma de decisiones",
+"Se manipulan las situaciones de trabajo para hacerme parecer un mal trabajador","Se ignoran mis éxitos laborales y se atribuyen a otros trabajadores",
+"Me bloquean o impiden las oportunidades que tengo para obtener ascenso o mejora en mi trabajo","He presenciado actos de violencia en mi centro de trabajo",
+"Atiendo clientes o usuarios muy enojados","Mi trabajo me exige atender personas muy necesitadas de ayuda o enfermas",
+"Para hacer mi trabajo debo demostrar sentimientos distintos a los míos","Mi trabajo me exige atender situaciones de violencia",
+"Comunican tarde los asuntos de trabajo","Dificultan el logro de los resultados del trabajo",
+"Cooperan poco cuando se necesita","Ignoran las sugerencias para mejorar su trabajo"
+];
+const GUIA_III_REVERSA = new Set([1,4,23,24,25,26,27,28,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,55,56,57]);
+const GUIA_III_COND_CLIENTES = [65,66,67,68];
+const GUIA_III_COND_JEFE = [69,70,71,72];
+const GUIA_III_DOMINIOS = [
+ {nombre:"Condiciones en el ambiente de trabajo", items:[1,2,3,4,5], umbrales:[5,9,11,14]},
+ {nombre:"Carga de trabajo", items:[6,7,8,9,10,11,12,13,14,15,16,65,66,67,68], umbrales:[15,21,27,37]},
+ {nombre:"Falta de control sobre el trabajo", items:[23,24,25,26,27,28,29,30,35,36], umbrales:[11,16,21,25]},
+ {nombre:"Jornada de trabajo", items:[17,18], umbrales:[1,2,4,6]},
+ {nombre:"Interferencia trabajo-familia", items:[19,20,21,22], umbrales:[4,6,8,10]},
+ {nombre:"Liderazgo", items:[31,32,33,34,37,38,39,40,41], umbrales:[9,12,16,20]},
+ {nombre:"Relaciones en el trabajo", items:[42,43,44,45,46,69,70,71,72], umbrales:[10,13,17,21]},
+ {nombre:"Violencia", items:[57,58,59,60,61,62,63,64], umbrales:[7,10,13,16]},
+ {nombre:"Reconocimiento del desempeño", items:[47,48,49,50,51,52], umbrales:[6,10,14,18]},
+ {nombre:"Insuficiente sentido de pertenencia e inestabilidad", items:[53,54,55,56], umbrales:[4,6,8,10]}
+];
+const GUIA_III_CFINAL_UMBRALES = [50,75,99,140];
+
+const NIVELES = ['Nulo','Bajo','Medio','Alto','Muy alto'];
+function clasificar(valor, umbrales){
+  for(let i=0;i<umbrales.length;i++){ if(valor < umbrales[i]) return NIVELES[i]; }
+  return NIVELES[4];
+}
+
+/* =====================================================================
+   ESTADO Y FLUJO
+===================================================================== */
+let centro = null;
+let guiaPrincipal = null; // 'II' | 'III' | null (centros <=15 solo Guía I)
+let respGuiaI = {};
+let seguimientoRespuestas = {};
+let respPrincipal = {}; // {itemIndex(1-based): valor 0-4 normalizado a "riesgo"}
+let datosTrabajador = {};
+let tieneClientes = null;
+let esJefe = null;
+
+function setProgreso(pct){ progresoWrap.classList.remove('hidden'); progresoFill.style.width = pct+'%'; }
+
+async function init(){
+  if(!TOKEN){
+    app.innerHTML = `<p class="text-sm text-red-600">Falta el código de acceso en el enlace. Solicita el QR o enlace correcto a tu responsable de Recursos Humanos / STPS.</p>`;
+    return;
+  }
+  const { data, error } = await sb.rpc('obtener_centro_por_token', { p_token: TOKEN });
+  if(error || !data || data.length === 0){
+    app.innerHTML = `<p class="text-sm text-red-600">Este enlace ya no es válido. Pide a tu responsable que genere un nuevo código QR.</p>`;
+    return;
+  }
+  centro = data[0];
+  const n = centro.numero_trabajadores || 0;
+  guiaPrincipal = n > 50 ? 'III' : (n >= 16 ? 'II' : null);
+  renderIntro();
+}
+
+function renderIntro(){
+  app.innerHTML = `
+    <h2 class="font-bold text-lg mb-2">${centro.nombre}</h2>
+    <p class="text-sm text-gray-600 mb-4">Este cuestionario forma parte del cumplimiento de la NOM-035-STPS-2018
+    sobre factores de riesgo psicosocial en el trabajo. Tus respuestas son confidenciales y anónimas;
+    los resultados se usan únicamente para mejorar las condiciones de tu centro de trabajo.</p>
+    <p class="text-sm text-gray-600 mb-4">Toma entre 5 y 10 minutos. Responde pensando en los últimos dos meses de trabajo.</p>
+    <button id="btn-empezar" class="w-full bg-[#041632] text-white font-bold py-3 rounded">Comenzar</button>
+  `;
+  document.getElementById('btn-empezar').onclick = renderDatosBasicos;
+}
+
+function renderDatosBasicos(){
+  setProgreso(5);
+  app.innerHTML = `
+    <h3 class="font-bold mb-3">Antes de empezar (datos anónimos)</h3>
+    <div class="space-y-4 text-sm">
+      <div>
+        <p class="mb-1 font-semibold">Sexo</p>
+        <select id="d-sexo" class="w-full border rounded p-2"><option value="">Selecciona…</option><option>Masculino</option><option>Femenino</option></select>
+      </div>
+      <div>
+        <p class="mb-1 font-semibold">Rango de edad</p>
+        <select id="d-edad" class="w-full border rounded p-2"><option value="">Selecciona…</option>
+          <option>15-19</option><option>20-24</option><option>25-29</option><option>30-34</option><option>35-39</option>
+          <option>40-44</option><option>45-49</option><option>50-54</option><option>55-59</option><option>60-64</option><option>65-69</option><option>70 o más</option>
+        </select>
+      </div>
+      <div>
+        <p class="mb-1 font-semibold">Tipo de puesto</p>
+        <select id="d-puesto" class="w-full border rounded p-2"><option value="">Selecciona…</option>
+          <option>Operativo</option><option>Profesional o técnico</option><option>Supervisor</option><option>Gerente</option>
+        </select>
+      </div>
+      <div>
+        <p class="mb-1 font-semibold">En mi trabajo debo brindar servicio a clientes o usuarios</p>
+        <div class="flex gap-3"><label><input type="radio" name="d-clientes" value="si"> Sí</label><label class="ml-4"><input type="radio" name="d-clientes" value="no"> No</label></div>
+      </div>
+      <div>
+        <p class="mb-1 font-semibold">Soy jefe de otros trabajadores</p>
+        <div class="flex gap-3"><label><input type="radio" name="d-jefe" value="si"> Sí</label><label class="ml-4"><input type="radio" name="d-jefe" value="no"> No</label></div>
+      </div>
+    </div>
+    <button id="btn-continuar" class="w-full bg-[#041632] text-white font-bold py-3 rounded mt-5">Continuar</button>
+  `;
+  document.getElementById('btn-continuar').onclick = () => {
+    datosTrabajador = {
+      sexo: document.getElementById('d-sexo').value,
+      edad: document.getElementById('d-edad').value,
+      puesto: document.getElementById('d-puesto').value
+    };
+    tieneClientes = (document.querySelector('input[name="d-clientes"]:checked') || {}).value === 'si';
+    esJefe = (document.querySelector('input[name="d-jefe"]:checked') || {}).value === 'si';
+    renderGuiaI(0);
+  };
+}
+
+// --- Guía I: acontecimiento traumático severo ---
+function renderGuiaI(i){
+  setProgreso(10 + (i/GUIA_I_ITEMS.length)*15);
+  if(i >= GUIA_I_ITEMS.length){
+    const huboEvento = Object.values(respGuiaI).some(v => v === 'si');
+    if(!huboEvento){ return avanzarDespuesDeGuiaI(false); }
+    return renderSeguimientoTraumatico('II', 0);
+  }
+  app.innerHTML = `
+    <p class="text-xs uppercase tracking-wide text-gray-400 mb-1">Sección I · Acontecimientos en el trabajo</p>
+    <p class="font-semibold mb-4">${GUIA_I_ITEMS[i]}</p>
+    <div class="grid grid-cols-2 gap-3">
+      <button data-v="si" class="btn-guiai border rounded py-3 font-bold hover:bg-gray-50">Sí</button>
+      <button data-v="no" class="btn-guiai border rounded py-3 font-bold hover:bg-gray-50">No</button>
+    </div>
+  `;
+  document.querySelectorAll('.btn-guiai').forEach(b => b.onclick = () => {
+    respGuiaI[i] = b.dataset.v;
+    renderGuiaI(i+1);
+  });
+}
+
+function renderSeguimientoTraumatico(seccion, i){
+  const lista = GUIA_I_SEGUIMIENTO[seccion];
+  if(i >= lista.length){
+    if(seccion === 'II') return renderSeguimientoTraumatico('III', 0);
+    if(seccion === 'III') return renderSeguimientoTraumatico('IV', 0);
+    // terminado: evaluar criterios de atención clínica
+    const siII = Object.values(seguimientoRespuestas.II||{}).some(v=>v==='si');
+    const siIII = Object.values(seguimientoRespuestas.III||{}).filter(v=>v==='si').length;
+    const siIV = Object.values(seguimientoRespuestas.IV||{}).filter(v=>v==='si').length;
+    const requiereAtencion = siII || siIII >= 3 || siIV >= 2;
+    return avanzarDespuesDeGuiaI(requiereAtencion);
+  }
+  seguimientoRespuestas[seccion] = seguimientoRespuestas[seccion] || {};
+  app.innerHTML = `
+    <p class="text-xs uppercase tracking-wide text-gray-400 mb-1">Sección ${seccion} · Durante el último mes</p>
+    <p class="font-semibold mb-4">${lista[i]}</p>
+    <div class="grid grid-cols-2 gap-3">
+      <button data-v="si" class="btn-seg border rounded py-3 font-bold hover:bg-gray-50">Sí</button>
+      <button data-v="no" class="btn-seg border rounded py-3 font-bold hover:bg-gray-50">No</button>
+    </div>
+  `;
+  document.querySelectorAll('.btn-seg').forEach(b => b.onclick = () => {
+    seguimientoRespuestas[seccion][i] = b.dataset.v;
+    renderSeguimientoTraumatico(seccion, i+1);
+  });
+}
+
+let requiereAtencionClinica = false;
+function avanzarDespuesDeGuiaI(requiereAtencion){
+  requiereAtencionClinica = requiereAtencion;
+  if(guiaPrincipal === 'II') return renderPrincipal('II', 1);
+  if(guiaPrincipal === 'III') return renderPrincipal('III', 1);
+  return renderResumenFinal(); // centros <=15: solo Guía I
+}
+
+// --- Guía II / III: banco principal de factores de riesgo psicosocial ---
+function itemsDe(guia){ return guia === 'II' ? GUIA_II_ITEMS : GUIA_III_ITEMS; }
+function condClientesDe(guia){ return guia === 'II' ? GUIA_II_COND_CLIENTES : GUIA_III_COND_CLIENTES; }
+function condJefeDe(guia){ return guia === 'II' ? GUIA_II_COND_JEFE : GUIA_III_COND_JEFE; }
+function reversaDe(guia){ return guia === 'II' ? GUIA_II_REVERSA : GUIA_III_REVERSA; }
+
+function renderPrincipal(guia, n){
+  const items = itemsDe(guia);
+  const total = items.length;
+  if(n > total){ return renderResumenFinal(); }
+
+  const esClienteItem = condClientesDe(guia).includes(n);
+  const esJefeItem = condJefeDe(guia).includes(n);
+  if(esClienteItem && !tieneClientes){ respPrincipal[n] = 0; return renderPrincipal(guia, n+1); }
+  if(esJefeItem && !esJefe){ respPrincipal[n] = 0; return renderPrincipal(guia, n+1); }
+
+  setProgreso(25 + (n/total)*70);
+  const reversa = reversaDe(guia).has(n);
+  app.innerHTML = `
+    <p class="text-xs uppercase tracking-wide text-gray-400 mb-1">Pregunta ${n} de ${total}</p>
+    <p class="font-semibold mb-4">${items[n-1]}</p>
+    <div class="grid grid-cols-5 gap-2">
+      ${ESCALA.map((et,idx)=>`
+        <label class="opt">
+          <input type="radio" name="escala" value="${idx}">
+          <span class="opt-label">${et}</span>
+        </label>`).join('')}
+    </div>
+  `;
+  document.querySelectorAll('input[name="escala"]').forEach(inp => inp.onchange = () => {
+    const idx = parseInt(inp.value,10); // 0=Siempre ... 4=Nunca
+    const valor = reversa ? idx : (4 - idx); // normalizamos a "puntaje de riesgo" 0-4 según Tabla de la Norma
+    respPrincipal[n] = valor;
+    setTimeout(()=>renderPrincipal(guia, n+1), 150);
+  });
+}
+
+function renderResumenFinal(){
+  setProgreso(98);
+  app.innerHTML = `<p class="text-sm text-gray-500 flex items-center gap-2">
+    <span class="animate-spin inline-block w-4 h-4 border-2 border-gray-300 border-t-[#041632] rounded-full"></span>
+    Guardando tus respuestas…</p>`;
+  guardarYFinalizar();
+}
+
+async function guardarYFinalizar(){
+  let guia = guiaPrincipal || 'I';
+  let calificacionFinal = null, nivelRiesgo = null, detalleDominios = [];
+
+  if(guiaPrincipal){
+    const dominios = guiaPrincipal === 'II' ? GUIA_II_DOMINIOS : GUIA_III_DOMINIOS;
+    const cfinalUmbrales = guiaPrincipal === 'II' ? GUIA_II_CFINAL_UMBRALES : GUIA_III_CFINAL_UMBRALES;
+    let cfinal = 0;
+    Object.values(respPrincipal).forEach(v => cfinal += v);
+    detalleDominios = dominios.map(d => {
+      const cdom = d.items.reduce((acc,i)=> acc + (respPrincipal[i]||0), 0);
+      return { dominio: d.nombre, calificacion: cdom, nivel: clasificar(cdom, d.umbrales) };
+    });
+    calificacionFinal = cfinal;
+    nivelRiesgo = clasificar(cfinal, cfinalUmbrales);
+  }
+
+  const payload = {
+    centro_id: centro.centro_id,
+    token: TOKEN,
+    guia: guia,
+    respuestas: respPrincipal,
+    datos_trabajador: datosTrabajador,
+    calificacion_final: calificacionFinal,
+    nivel_riesgo: nivelRiesgo,
+    detalle_dominios: detalleDominios,
+    requiere_atencion_clinica: requiereAtencionClinica
+  };
+
+  const { error } = await sb.from('nom035_respuestas').insert(payload);
+  setProgreso(100);
+  if(error){
+    app.innerHTML = `<p class="text-sm text-red-600">No se pudo guardar tu respuesta (${error.message}). Por favor inténtalo de nuevo o avisa a tu responsable de RH.</p>
+      <button id="btn-reintentar" class="w-full border border-[#041632] text-[#041632] font-bold py-3 rounded mt-4">Reintentar</button>`;
+    document.getElementById('btn-reintentar').onclick = guardarYFinalizar;
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="text-center py-6">
+      <div class="text-4xl mb-3">✅</div>
+      <h3 class="font-bold text-lg mb-2">¡Gracias por participar!</h3>
+      <p class="text-sm text-gray-600">Tus respuestas fueron registradas de forma anónima. Esta información
+      ayuda a tu centro de trabajo a cumplir con la NOM-035 y a mejorar el ambiente laboral.</p>
+      ${requiereAtencionClinica ? `<p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3 mt-4">
+        Notamos que reportaste haber vivido o presenciado un acontecimiento traumático severo. Te recomendamos
+        acercarte a tu servicio médico, psicólogo del centro de trabajo o institución de seguridad social para
+        recibir orientación y acompañamiento.</p>` : ''}
+    </div>
+  `;
+}
+
+init();
+</script>
+</body>
+</html>

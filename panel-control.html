@@ -107,6 +107,10 @@
 <span class="material-symbols-outlined mr-sm" data-icon="verified_user">verified_user</span>
 <span class="font-body-md text-body-md">Progreso NOM-STPS</span>
 </button>
+<button class="nav-link w-full flex items-center px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" data-target="sec-nom035" onclick="showSection('sec-nom035')">
+<span class="material-symbols-outlined mr-sm" data-icon="psychology">psychology</span>
+<span class="font-body-md text-body-md">NOM-035 Riesgo Psicosocial</span>
+</button>
 <button class="nav-link w-full flex items-center px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" data-target="sec-40h" onclick="showSection('sec-40h')">
 <span class="material-symbols-outlined mr-sm" data-icon="schedule">schedule</span>
 <span class="font-body-md text-body-md">Semana Laboral 40h</span>
@@ -952,6 +956,83 @@
 </tr>
 </tbody>
 </table>
+</div>
+</div>
+
+<!-- ============ SEC: NOM-035 RIESGO PSICOSOCIAL ============ -->
+<div class="page-section" id="sec-nom035">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-lg">
+<div>
+<h2 class="font-display-lg text-display-lg text-primary mb-xs">NOM-035 · Riesgo Psicosocial</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Cuestionarios por centro de trabajo (Guía I, II o III según número de trabajadores), acceso por código QR para los colaboradores, y planes de acción según el nivel de riesgo resultante.</p>
+</div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-lg" id="nom035-resumen-cards">
+<div class="bg-white border border-outline-variant p-md">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-sm">CENTROS CON QR ACTIVO</p>
+<h3 class="font-display-lg text-display-lg text-primary" id="nom035-kpi-qr">—</h3>
+</div>
+<div class="bg-white border border-outline-variant p-md">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-sm">RESPUESTAS RECIBIDAS</p>
+<h3 class="font-display-lg text-display-lg text-primary" id="nom035-kpi-respuestas">—</h3>
+</div>
+<div class="bg-white border border-outline-variant p-md">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-sm">CENTROS EN RIESGO ALTO/MUY ALTO</p>
+<h3 class="font-display-lg text-display-lg text-error" id="nom035-kpi-alto">—</h3>
+</div>
+<div class="bg-white border border-outline-variant p-md">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-sm">EVENTOS TRAUMÁTICOS REPORTADOS</p>
+<h3 class="font-display-lg text-display-lg text-error" id="nom035-kpi-traumatico">—</h3>
+</div>
+</div>
+
+<div class="bg-white border border-outline-variant rounded overflow-hidden overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Centro de Trabajo</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-center">Trabajadores</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Cuestionario Aplicable</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-center">Respuestas</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Nivel de Riesgo</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acciones</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant" id="nom035-tbody">
+<tr><td class="px-md py-sm text-sm text-on-surface-variant" colspan="6">Cargando centros…</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- MODAL: QR NOM-035 -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-qr-nom035">
+<div class="bg-white rounded max-w-sm w-full p-lg text-center">
+<div class="flex justify-end">
+<button class="material-symbols-outlined text-on-surface-variant" data-icon="close" onclick="toggleModal('modal-qr-nom035')" type="button">close</button>
+</div>
+<h3 class="font-bold text-lg mb-1" id="qr-nom035-titulo">Cuestionario NOM-035</h3>
+<p class="text-xs text-on-surface-variant mb-md">Los colaboradores escanean este código con su celular para responder el cuestionario de forma anónima.</p>
+<img alt="Código QR del cuestionario" class="mx-auto mb-md border border-outline-variant" id="qr-nom035-img" src="" style="width:220px;height:220px;"/>
+<div class="flex gap-sm">
+<input class="flex-1 bg-surface-container-highest border-none rounded-lg px-sm py-2 text-xs font-data-mono" id="qr-nom035-link" readonly type="text"/>
+<button class="border border-primary text-primary px-md py-2 font-bold text-xs hover:bg-surface-container-high transition-colors" onclick="copiarLinkNom035()" type="button">Copiar</button>
+</div>
+<button class="w-full text-xs text-on-surface-variant mt-md hover:underline" onclick="regenerarTokenNom035()" type="button">Generar un nuevo código (invalida el anterior)</button>
+</div>
+</div>
+
+<!-- MODAL: RESULTADOS NOM-035 -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-resultados-nom035">
+<div class="bg-white rounded max-w-2xl w-full p-lg max-h-[90vh] overflow-y-auto">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-bold text-lg" id="resultados-nom035-titulo">Resultados NOM-035</h3>
+<button class="material-symbols-outlined text-on-surface-variant" data-icon="close" onclick="toggleModal('modal-resultados-nom035')" type="button">close</button>
+</div>
+<div id="resultados-nom035-contenido">
+<p class="text-sm text-on-surface-variant">Cargando…</p>
+</div>
 </div>
 </div>
 
@@ -2471,6 +2552,7 @@ function showSection(id){
     window.scrollTo(0,0);
     if(id === 'sec-centros' && currentUser) cargarCentros();
     if(id === 'sec-actividades' && currentUser) poblarSelectoresMensual();
+    if(id === 'sec-nom035' && currentUser) renderNom035();
 }
 function toggleDropdown(id){
     const el = document.getElementById(id);
@@ -2526,6 +2608,192 @@ function subirArchivo(){
     list.prepend(item);
     mostrarToast('Archivo subido a la Nube de Archivos.');
 }
+/* =====================================================================
+   MÓDULO NOM-035 · FACTORES DE RIESGO PSICOSOCIAL
+===================================================================== */
+const NOM035_NIVEL_ESTILOS = {
+    'Nulo':      'bg-surface-container-highest text-on-surface-variant',
+    'Bajo':      'bg-tertiary-fixed-dim text-on-tertiary-fixed',
+    'Medio':     'bg-secondary-container text-on-secondary-container',
+    'Alto':      'bg-error-container text-on-error-container',
+    'Muy alto':  'bg-error text-on-error',
+    'Sin datos': 'bg-surface-container text-on-surface-variant'
+};
+const NOM035_PLAN_TEXTOS = {
+    'Muy alto': 'Se requiere Programa de intervención con evaluaciones específicas (clínicas y/o cualitativas), campaña de sensibilización, y revisión de la política de prevención de riesgos psicosociales y de los programas de prevención, entorno organizacional favorable y violencia laboral.',
+    'Alto': 'Se requiere analizar cada categoría y dominio para definir acciones apropiadas mediante un Programa de intervención, que podrá incluir una evaluación específica, y deberá incluir campaña de sensibilización y revisión de la política y programas de prevención.',
+    'Medio': 'Se requiere revisar la política de prevención de riesgos psicosociales y los programas de prevención, entorno organizacional favorable y violencia laboral, reforzando su aplicación y difusión mediante un Programa de intervención.',
+    'Bajo': 'Se recomienda una mayor difusión de la política de prevención de riesgos psicosociales y de los programas de prevención, entorno organizacional favorable y violencia laboral.',
+    'Nulo': 'El riesgo resulta despreciable; no se requieren medidas adicionales por el momento.'
+};
+function nom035Cuestionario(numTrabajadores){
+    const n = numTrabajadores || 0;
+    if(n > 50) return { clave: 'Guía III', detalle: 'Identificación y análisis + entorno organizacional (>50 trab.)' };
+    if(n >= 16) return { clave: 'Guía II', detalle: 'Identificación y análisis de factores de riesgo (16-50 trab.)' };
+    return { clave: 'Guía I', detalle: 'Solo obligaciones básicas (≤15 trab.), sin cuestionario extenso' };
+}
+function nom035GenerarToken(){
+    return Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b => b.toString(36)).join('').slice(0,8);
+}
+function nom035LinkEncuesta(token){
+    return `https://gibran-stps.github.io/Normatividad-chesa/encuesta-nom035.html?t=${token}`;
+}
+
+let NOM035_CENTRO_ACTUAL = null;
+
+async function renderNom035(){
+    const tbody = document.getElementById('nom035-tbody');
+    tbody.innerHTML = '<tr><td class="px-md py-sm text-sm text-on-surface-variant" colspan="6">Cargando centros…</td></tr>';
+
+    const [{ data: tokens }, { data: respuestas }] = await Promise.all([
+        supabaseClient.from('nom035_tokens').select('centro_id, token, activo').eq('activo', true),
+        supabaseClient.from('nom035_respuestas').select('centro_id, nivel_riesgo, created_at').order('created_at', { ascending: false })
+    ]);
+
+    const tokenPorCentro = {};
+    (tokens||[]).forEach(t => tokenPorCentro[t.centro_id] = t.token);
+    const respPorCentro = {};
+    (respuestas||[]).forEach(r => {
+        if(!respPorCentro[r.centro_id]) respPorCentro[r.centro_id] = [];
+        respPorCentro[r.centro_id].push(r);
+    });
+
+    let totalRespuestas = 0, centrosConQR = 0, centrosAltoRiesgo = 0, eventosTraumaticos = 0;
+
+    tbody.innerHTML = centrosData.map(c => {
+        const cuestionario = nom035Cuestionario(c.numeroTrabajadores);
+        const respsCentro = respPorCentro[c.id] || [];
+        totalRespuestas += respsCentro.length;
+        const tieneQR = !!tokenPorCentro[c.id];
+        if(tieneQR) centrosConQR++;
+        const ultimoNivel = respsCentro.length ? (respsCentro[0].nivel_riesgo || 'Sin datos') : 'Sin datos';
+        if(ultimoNivel === 'Alto' || ultimoNivel === 'Muy alto') centrosAltoRiesgo++;
+        eventosTraumaticos += respsCentro.filter(r => r.requiere_atencion_clinica).length;
+        const badge = NOM035_NIVEL_ESTILOS[ultimoNivel] || NOM035_NIVEL_ESTILOS['Sin datos'];
+        return `
+        <tr class="hover:bg-surface-container transition-colors">
+        <td class="px-md py-sm"><div class="font-bold text-sm">${c.nombre}</div><div class="text-xs text-on-surface-variant">${c.ubicacion||''}</div></td>
+        <td class="px-md py-sm text-center text-sm">${c.numeroTrabajadores ?? '—'}</td>
+        <td class="px-md py-sm"><div class="text-sm font-bold">${cuestionario.clave}</div><div class="text-xs text-on-surface-variant">${cuestionario.detalle}</div></td>
+        <td class="px-md py-sm text-center text-sm">${respsCentro.length}</td>
+        <td class="px-md py-sm"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${ultimoNivel}</span></td>
+        <td class="px-md py-sm text-right whitespace-nowrap">
+            <button class="material-symbols-outlined text-secondary text-lg mr-sm" data-icon="qr_code_2" onclick="abrirModalQRNom035('${c.id}')" type="button" title="Generar / ver código QR">qr_code_2</button>
+            <button class="material-symbols-outlined text-primary text-lg" data-icon="query_stats" onclick="verResultadosNom035('${c.id}')" type="button" title="Ver resultados y plan de acción">query_stats</button>
+        </td>
+        </tr>`;
+    }).join('') || '<tr><td class="px-md py-sm text-sm text-on-surface-variant" colspan="6">No hay centros de trabajo registrados.</td></tr>';
+
+    document.getElementById('nom035-kpi-qr').textContent = centrosConQR;
+    document.getElementById('nom035-kpi-respuestas').textContent = totalRespuestas;
+    document.getElementById('nom035-kpi-alto').textContent = centrosAltoRiesgo;
+    document.getElementById('nom035-kpi-traumatico').textContent = eventosTraumaticos;
+}
+
+async function abrirModalQRNom035(centroId){
+    NOM035_CENTRO_ACTUAL = centroId;
+    const c = centrosData.find(x => x.id === centroId);
+    document.getElementById('qr-nom035-titulo').textContent = 'Cuestionario NOM-035 · ' + (c ? c.nombre : '');
+    document.getElementById('qr-nom035-img').src = '';
+    document.getElementById('qr-nom035-link').value = 'Generando código…';
+    toggleModal('modal-qr-nom035');
+
+    let { data: existentes } = await supabaseClient.from('nom035_tokens').select('token').eq('centro_id', centroId).eq('activo', true).limit(1);
+    let token;
+    if(existentes && existentes.length){
+        token = existentes[0].token;
+    } else {
+        token = nom035GenerarToken();
+        const { error } = await supabaseClient.from('nom035_tokens').insert({ centro_id: centroId, token, activo: true });
+        if(error){ mostrarToast('No se pudo generar el código: ' + error.message); return; }
+    }
+    pintarQRNom035(token);
+}
+
+function pintarQRNom035(token){
+    const link = nom035LinkEncuesta(token);
+    document.getElementById('qr-nom035-link').value = link;
+    document.getElementById('qr-nom035-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(link)}`;
+}
+
+async function regenerarTokenNom035(){
+    if(!NOM035_CENTRO_ACTUAL) return;
+    if(!confirm('El código actual dejará de funcionar y se generará uno nuevo. ¿Continuar?')) return;
+    await supabaseClient.from('nom035_tokens').update({ activo: false }).eq('centro_id', NOM035_CENTRO_ACTUAL).eq('activo', true);
+    const token = nom035GenerarToken();
+    const { error } = await supabaseClient.from('nom035_tokens').insert({ centro_id: NOM035_CENTRO_ACTUAL, token, activo: true });
+    if(error){ mostrarToast('No se pudo regenerar el código: ' + error.message); return; }
+    pintarQRNom035(token);
+    mostrarToast('Nuevo código QR generado.');
+    renderNom035();
+}
+
+function copiarLinkNom035(){
+    const link = document.getElementById('qr-nom035-link').value;
+    navigator.clipboard.writeText(link).then(() => mostrarToast('Enlace copiado al portapapeles.'));
+}
+
+async function verResultadosNom035(centroId){
+    const c = centrosData.find(x => x.id === centroId);
+    document.getElementById('resultados-nom035-titulo').textContent = 'Resultados NOM-035 · ' + (c ? c.nombre : '');
+    const contenido = document.getElementById('resultados-nom035-contenido');
+    contenido.innerHTML = '<p class="text-sm text-on-surface-variant">Cargando…</p>';
+    toggleModal('modal-resultados-nom035');
+
+    const { data: resp, error } = await supabaseClient.from('nom035_respuestas').select('*').eq('centro_id', centroId).order('created_at', { ascending: false });
+    if(error){ contenido.innerHTML = `<p class="text-sm text-error">${error.message}</p>`; return; }
+    if(!resp || !resp.length){
+        contenido.innerHTML = `<p class="text-sm text-on-surface-variant">Aún no hay respuestas registradas para este centro. Genera el código QR y compártelo con los colaboradores.</p>`;
+        return;
+    }
+
+    const eventos = resp.filter(r => r.requiere_atencion_clinica).length;
+    const conNivel = resp.filter(r => r.nivel_riesgo);
+    const orden = ['Nulo','Bajo','Medio','Alto','Muy alto'];
+    let peorNivel = 'Nulo';
+    conNivel.forEach(r => { if(orden.indexOf(r.nivel_riesgo) > orden.indexOf(peorNivel)) peorNivel = r.nivel_riesgo; });
+    const badge = NOM035_NIVEL_ESTILOS[peorNivel] || NOM035_NIVEL_ESTILOS['Sin datos'];
+
+    // Promedio por dominio a partir de detalle_dominios de todas las respuestas con ese detalle
+    const dominiosAcc = {};
+    conNivel.forEach(r => (r.detalle_dominios||[]).forEach(d => {
+        dominiosAcc[d.dominio] = dominiosAcc[d.dominio] || [];
+        dominiosAcc[d.dominio].push(d.calificacion);
+    }));
+    const dominiosHTML = Object.keys(dominiosAcc).map(nombre => {
+        const arr = dominiosAcc[nombre];
+        const prom = (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1);
+        return `<div class="flex justify-between text-xs py-1 border-b border-outline-variant/50"><span>${nombre}</span><span class="font-bold">${prom}</span></div>`;
+    }).join('') || '<p class="text-xs text-on-surface-variant">Sin desglose por dominio disponible (centros ≤15 trabajadores solo aplican la Guía I).</p>';
+
+    contenido.innerHTML = `
+        <div class="flex items-center gap-sm mb-md">
+            <span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">Riesgo ${peorNivel}</span>
+            <span class="text-xs text-on-surface-variant">${resp.length} respuesta(s) recibida(s)</span>
+            ${eventos ? `<span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase">${eventos} evento(s) traumático(s)</span>` : ''}
+        </div>
+        <div class="bg-surface-container-low p-md rounded mb-md">
+            <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">PLAN DE ACCIÓN SUGERIDO (NOM-035, numeral 8)</p>
+            <p class="text-sm">${NOM035_PLAN_TEXTOS[peorNivel] || NOM035_PLAN_TEXTOS['Nulo']}</p>
+        </div>
+        <div class="mb-md">
+            <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">CALIFICACIÓN PROMEDIO POR DOMINIO</p>
+            ${dominiosHTML}
+        </div>
+        <button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="registrarPlanAccionNom035('${centroId}', '${peorNivel}')" type="button">Registrar plan de acción</button>
+        ${eventos ? `<p class="text-xs text-error mt-sm">Recuerda: los trabajadores identificados con acontecimientos traumáticos severos deben canalizarse a atención médica/psicológica conforme al numeral 5.5 de la Norma.</p>` : ''}
+    `;
+}
+
+async function registrarPlanAccionNom035(centroId, nivel){
+    const descripcion = NOM035_PLAN_TEXTOS[nivel] || NOM035_PLAN_TEXTOS['Nulo'];
+    const { error } = await supabaseClient.from('nom035_planes_accion').insert({
+        centro_id: centroId, nivel_riesgo: nivel, descripcion, estatus: 'Pendiente'
+    });
+    if(error){ mostrarToast('No se pudo registrar el plan: ' + error.message); return; }
+    mostrarToast('Plan de acción registrado. Dale seguimiento en la Nube de Archivos / Reportes.');
+}
+
 console.log("Normatividad Grupo Automotriz Chesa — app inicializada.");
 </script>
 </body>
