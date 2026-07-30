@@ -1266,17 +1266,17 @@
 <div class="space-y-sm">
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Nombre</label>
-<input class="w-full border border-outline-variant rounded p-sm text-sm bg-surface-container-low" id="firma-nombre" readonly="" type="text"/>
+<input class="w-full border border-outline-variant rounded p-sm text-sm" id="firma-nombre" type="text"/>
 </div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto</label>
-<input class="w-full border border-outline-variant rounded p-sm text-sm bg-surface-container-low" id="firma-puesto" readonly="" type="text"/>
+<input class="w-full border border-outline-variant rounded p-sm text-sm" id="firma-puesto" type="text"/>
 </div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Celular</label>
 <input class="w-full border border-outline-variant rounded p-sm text-sm" id="firma-telefono" placeholder="Ej. (967) 136 9256" type="text"/>
 </div>
-<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="guardarFirmaCorreo()" type="button">Guardar celular</button>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="guardarFirmaCorreo()" type="button">Guardar firma</button>
 </div>
 </div>
 
@@ -2491,11 +2491,22 @@ function cargarFirmaCorreo(){
 }
 
 async function guardarFirmaCorreo(){
+    const nombre = document.getElementById('firma-nombre').value.trim();
+    const puesto = document.getElementById('firma-puesto').value.trim();
     const telefono = document.getElementById('firma-telefono').value.trim();
-    const { error } = await supabaseClient.from('perfiles').update({ telefono }).eq('id', currentUser.id);
+    if(!nombre || !puesto){ mostrarToast('Nombre y puesto no pueden quedar vacíos.', 'error'); return; }
+
+    const { error } = await supabaseClient.from('perfiles').upsert({ id: currentUser.id, nombre, puesto, telefono });
     if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
+
+    currentUser.nombre = nombre;
+    currentUser.puesto = puesto;
     currentUser.telefono = telefono;
-    mostrarToast('Celular de la firma guardado.');
+    const iniciales = nombre.split(' ').filter(Boolean).slice(0,2).map(p => p[0]).join('').toUpperCase();
+    document.getElementById('header-user-name').textContent = nombre;
+    document.getElementById('header-user-role').textContent = puesto;
+    document.getElementById('header-user-initials').textContent = iniciales;
+    mostrarToast('Firma de correo guardada.');
 }
 
 async function asegurarReglamentosMarca(){
