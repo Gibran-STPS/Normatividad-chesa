@@ -21,6 +21,7 @@ insert into normas_catalogo (code, descripcion) values
   ('NOM-012-STPS-2012', 'Fuentes de radiación ionizante'),
   ('NOM-015-STPS-2001', 'Condiciones térmicas elevadas o abatidas'),
   ('NOM-017-STPS-2008', 'Equipo de protección personal'),
+  ('NOM-018-STPS-2015', 'Sistema armonizado para la identificación y comunicación de peligros y riesgos por sustancias químicas peligrosas en los centros de trabajo'),
   ('NOM-019-STPS-2011', 'Comisiones de seguridad e higiene'),
   ('NOM-020-STPS-2011', 'Recipientes sujetos a presión, calderas y generadores de vapor'),
   ('NOM-021-STPS-2018', 'Informar sobre peligros y riesgos por sustancias químicas peligrosas'),
