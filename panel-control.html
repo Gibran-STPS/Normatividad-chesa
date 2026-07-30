@@ -1923,23 +1923,33 @@ async function importarCalendarioExcel(event){
 
         centrosProcesados++;
         const ws = wb.Sheets[nombreHoja];
-        const filasHoja = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+        // OJO: no usamos XLSX.utils.sheet_to_json(ws,{header:1}) para leer filas,
+        // porque esa función numera las columnas según dónde EMPIEZA a tener
+        // datos cada hoja (a veces columna A, a veces columna B, según el
+        // archivo) — eso corría todo un lugar en varias hojas sin dar ningún
+        // error. Leyendo por dirección de celda (B, C, D...) siempre es la
+        // columna real, sin importar esa particularidad de cada hoja.
+        const rango = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : null;
+        if(!rango) continue;
+        const celda = (r, c) => { const cel = ws[XLSX.utils.encode_cell({ r, c })]; return cel ? cel.v : null; };
+
         let normaActualCode = null;
         let normaActualTitulo = null;
         let actividadesEnHoja = 0;
 
-        filasHoja.forEach(fila => {
-            const colB = fila[1];
-            const colC = fila[2];
+        for(let r = rango.s.r; r <= rango.e.r; r++){
+            const colB = celda(r, 1); // columna B
+            const colC = celda(r, 2); // columna C
+
             if(colB && typeof colB === 'string' && colB.toUpperCase().includes('NOM')){
                 normaActualTitulo = colB.trim();
                 normaActualCode = buscarNormaCode(colB);
-                return;
+                continue;
             }
             if(colC && typeof colC === 'string' && colC.trim().length > 2 && !colB){
                 const actividadTxt = colC.trim();
                 for(let mIdx = 0; mIdx < 12; mIdx++){
-                    const clasificacion = clasificarValorCelda(fila[3 + mIdx]);
+                    const clasificacion = clasificarValorCelda(celda(r, 3 + mIdx)); // columnas D..O
                     if(!clasificacion) continue;
                     actividadesEnHoja++;
                     filas.push({
@@ -1957,7 +1967,7 @@ async function importarCalendarioExcel(event){
                     }
                 }
             }
-        });
+        }
 
         if(actividadesEnHoja === 0){
             mostrarToast(`Aviso: la hoja "${nombreHoja}" no tiene ninguna celda con "P" o "R" en las columnas de mes — revisa el formato de esa hoja.`);
