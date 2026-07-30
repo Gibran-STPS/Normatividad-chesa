@@ -30,9 +30,9 @@
         .page-section.active { display: block; }
         .nav-link.nav-active { background-color: #d0e1fb; color: #54647a; font-weight: 600; border-right: 4px solid #6ffbbe; }
         .nav-link:not(.nav-active) { color: #b7c8e1; }
-        .toast { animation: toastIn 0.25s ease-out, toastOut 0.25s ease-in 2.5s forwards; }
+        .toast { animation: toastIn 0.25s ease-out; transition: opacity 0.25s ease-in, transform 0.25s ease-in; }
+        .toast.toast-hide { opacity: 0; transform: translateY(8px); }
         @keyframes toastIn { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform: translateY(0);} }
-        @keyframes toastOut { to { opacity:0; transform: translateY(8px);} }
         @keyframes iaSpin { to { transform: rotate(360deg); } }
         .animate-spin { animation: iaSpin 1s linear infinite; display: inline-block; }
     </style>
@@ -2575,13 +2575,28 @@ document.addEventListener('click', (e) => {
 function toggleModal(id){
     document.getElementById(id).classList.toggle('hidden');
 }
-function mostrarToast(msg){
+function mostrarToast(msg, tipo){
     const container = document.getElementById('toast-container');
+    const esError = tipo === 'error' || /error|no se pud|fall[oó]|fallaron/i.test(msg);
+
     const toast = document.createElement('div');
-    toast.className = 'toast bg-primary text-on-primary px-md py-sm rounded shadow-lg font-body-md text-body-md flex items-center gap-2';
-    toast.innerHTML = `<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="check_circle">check_circle</span>${msg}`;
+    toast.className = 'toast px-md py-sm rounded shadow-lg font-body-md text-body-md flex items-start gap-2 max-w-md '
+        + (esError ? 'bg-error text-on-error' : 'bg-primary text-on-primary');
+    const icono = esError ? 'error' : 'check_circle';
+    const colorIcono = esError ? 'text-on-error' : 'text-tertiary-fixed-dim';
+    toast.innerHTML = `
+        <span class="material-symbols-outlined ${colorIcono}" data-icon="${icono}">${icono}</span>
+        <span class="flex-1 whitespace-pre-line">${msg}</span>
+        <button class="material-symbols-outlined text-sm opacity-80 hover:opacity-100 cursor-pointer" data-icon="close" type="button">close</button>
+    `;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+
+    const cerrar = () => { toast.classList.add('toast-hide'); setTimeout(() => toast.remove(), 250); };
+    toast.querySelector('button').onclick = cerrar;
+
+    // Los éxitos se ocultan solos; los errores se quedan hasta que el usuario los cierre,
+    // para que le dé tiempo a leerlos (y en su caso copiarlos).
+    if(!esError) setTimeout(cerrar, 4500);
 }
 function generarReporte(){
     showSection('sec-reportes');
