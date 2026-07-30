@@ -599,11 +599,11 @@
 </div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Ubicación</label>
-<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-ubicacion" required="" type="text"/>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-ubicacion" placeholder="Pendiente de captura" required="" type="text"/>
 </div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Responsable</label>
-<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-responsable" required="" type="text"/>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-responsable" placeholder="Pendiente de captura" required="" type="text"/>
 </div>
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto del responsable (para documentos)</label>
@@ -1583,8 +1583,8 @@ async function abrirModalCentro(id){
         document.getElementById('centro-id').value = c.id;
         document.getElementById('centro-id-display').value = c.id;
         document.getElementById('centro-nombre').value = c.nombre;
-        document.getElementById('centro-ubicacion').value = c.ubicacion;
-        document.getElementById('centro-responsable').value = c.responsable;
+        document.getElementById('centro-ubicacion').value = c.ubicacion || '';
+        document.getElementById('centro-responsable').value = c.responsable || '';
         document.getElementById('centro-estado').value = c.estado;
         document.getElementById('centro-codigo-agencia').value = c.codigoAgencia || '';
         document.getElementById('centro-responsable-email').value = c.responsableEmail || '';
@@ -1831,8 +1831,8 @@ async function crearCentroAutomatico(nombreHoja){
     const nuevoCentro = {
         id: nuevoId,
         nombre: nombreLimpio,
-        ubicacion: 'Pendiente de captura',
-        responsable: 'Pendiente de captura',
+        ubicacion: '',
+        responsable: '',
         estado: 'Pendiente',
         codigo_agencia: nombreLimpio,
         marca: detectarMarca(nombreLimpio)
