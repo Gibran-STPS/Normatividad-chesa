@@ -1235,6 +1235,14 @@
 </div>
 <button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="mostrarToast('Preferencias guardadas.')">Guardar Cambios</button>
 </div>
+
+<div class="bg-white border border-outline-variant rounded p-lg max-w-xl mt-lg">
+<h3 class="font-display-md text-display-md text-primary mb-xs">Reglamento Interior de Trabajo por marca</h3>
+<p class="text-xs text-on-surface-variant mb-md">Cada marca tiene su propio expediente de Reglamento Interior de Trabajo (RIT). Captúralo aquí <strong>una sola vez por marca</strong> — el marcador <span class="font-data-mono">{{RIT_EXPEDIENTE}}</span> en tus plantillas se rellena automáticamente según la marca de cada centro, así nunca se mezcla el folio de una marca con el de otra.</p>
+<div class="space-y-sm" id="reglamentos-marca-lista">
+<p class="text-sm text-on-surface-variant">Cargando...</p>
+</div>
+</div>
 </div>
 
 <!-- ============ SEC: SOPORTE ============ -->
@@ -2244,8 +2252,45 @@ function datosPlaceholders(centro, extra){
         MES: nombreMes,
         ANIO: String(anioNum),
         MES_ANIO: nombreMes ? (nombreMes + ' ' + anioNum) : String(anioNum),
-        NORMA: extra.normaCode || ''
+        NORMA: extra.normaCode || '',
+        RIT_EXPEDIENTE: (centro && centro.marca && RIT_POR_MARCA[centro.marca]) || ''
     };
+}
+
+// ---- Reglamento Interior de Trabajo (RIT) por marca ----
+// El folio del RIT es por marca (Nissan/Renault/Changan/Ecos), no por
+// centro individual, así que se guarda una sola vez por marca y todos
+// los centros de esa marca usan el mismo valor al generar documentos.
+const NOMBRES_MARCA = { NISSAN: 'Nissan', RENAULT: 'Renault', CHANGAN: 'Changan', ECOS: 'Ecos Digitales' };
+let RIT_POR_MARCA = {};
+let RIT_CARGADO = false;
+
+async function asegurarReglamentosMarca(){
+    if(RIT_CARGADO) return;
+    const { data, error } = await supabaseClient.from('reglamentos_marca').select('marca, rit_expediente');
+    if(!error) (data || []).forEach(r => { RIT_POR_MARCA[r.marca] = r.rit_expediente; });
+    RIT_CARGADO = true;
+}
+
+async function renderReglamentosMarca(){
+    RIT_CARGADO = false; // siempre refresca al abrir Configuración, por si se editó desde otra sesión
+    await asegurarReglamentosMarca();
+    const cont = document.getElementById('reglamentos-marca-lista');
+    cont.innerHTML = Object.keys(NOMBRES_MARCA).map(marca => `
+        <div class="flex items-center gap-sm">
+            <span class="w-32 text-sm font-semibold">${NOMBRES_MARCA[marca]}</span>
+            <input class="flex-1 border border-outline-variant rounded p-sm text-sm font-data-mono" id="rit-input-${marca}" placeholder="Ej. RIT/114/2013" type="text" value="${RIT_POR_MARCA[marca] || ''}"/>
+            <button class="border border-primary text-primary px-sm py-1.5 rounded text-xs font-bold hover:bg-surface-container-high transition-colors" onclick="guardarRitMarca('${marca}')" type="button">Guardar</button>
+        </div>
+    `).join('');
+}
+
+async function guardarRitMarca(marca){
+    const valor = document.getElementById(`rit-input-${marca}`).value.trim();
+    const { error } = await supabaseClient.from('reglamentos_marca').upsert({ marca, rit_expediente: valor });
+    if(error){ mostrarToast('No se pudo guardar: ' + error.message); return; }
+    RIT_POR_MARCA[marca] = valor;
+    mostrarToast(`Folio RIT de ${NOMBRES_MARCA[marca]} guardado.`);
 }
 
 const LOGOS_LETTERHEAD = {
@@ -2311,6 +2356,7 @@ async function reemplazarLogoMarca(zip, marca){
 
 async function personalizarArchivo(blob, nombreArchivo, centro, extra){
     const ext = (nombreArchivo.split('.').pop() || '').toLowerCase();
+    await asegurarReglamentosMarca();
     const datos = datosPlaceholders(centro, extra);
 
     if(ext === 'docx'){
@@ -2561,6 +2607,7 @@ function showSection(id){
     if(id === 'sec-centros' && currentUser) cargarCentros();
     if(id === 'sec-actividades' && currentUser) poblarSelectoresMensual();
     if(id === 'sec-nom035' && currentUser) renderNom035();
+    if(id === 'sec-config' && currentUser) renderReglamentosMarca();
 }
 function toggleDropdown(id){
     const el = document.getElementById(id);
