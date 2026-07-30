@@ -804,7 +804,10 @@
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <div class="flex justify-between items-center p-md border-b border-outline-variant">
 <p class="text-sm text-on-surface-variant">Colaboradores con aniversario ese mes en el centro seleccionado.</p>
+<div class="flex gap-sm">
+<button class="border border-outline-variant px-md py-sm font-bold text-sm hover:bg-surface-container-high transition-colors" onclick="exportarVacacionesExcel()" type="button">Exportar Excel del mes</button>
 <button class="bg-primary text-on-primary px-md py-sm font-bold text-sm hover:opacity-90 transition-all" onclick="generarTodasConstancias()">Generar todas (ZIP)</button>
+</div>
 </div>
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
@@ -817,6 +820,24 @@
 </tr>
 </thead>
 <tbody id="vac-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Elige un centro para ver sus aniversarios del mes.</td></tr></tbody>
+</table>
+</div>
+
+<div class="bg-white border border-outline-variant rounded overflow-hidden mt-lg">
+<div class="p-md border-b border-outline-variant">
+<p class="text-sm font-bold">Carnets IMSS — nuevo ingreso este mes</p>
+<p class="text-xs text-on-surface-variant">Marca aquí quién ya entregó su evidencia de alta ante el IMSS. El correo mensual solo lista a los que sigan "Pendiente".</p>
+</div>
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Colaborador</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Fecha de ingreso</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Estatus</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
+</tr>
+</thead>
+<tbody id="carnets-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Elige un centro para ver los ingresos del mes.</td></tr></tbody>
 </table>
 </div>
 </div>
@@ -1240,6 +1261,26 @@
 </div>
 
 <div class="bg-white border border-outline-variant rounded p-lg max-w-xl mt-lg">
+<h3 class="font-display-md text-display-md text-primary mb-xs">Firma de correo</h3>
+<p class="text-xs text-on-surface-variant mb-md">Se usa al final del cuerpo del correo mensual de Actividades Normativas (nombre y puesto vienen de tu cuenta; agrega tu celular aquí).</p>
+<div class="space-y-sm">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Nombre</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm bg-surface-container-low" id="firma-nombre" readonly="" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puesto</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm bg-surface-container-low" id="firma-puesto" readonly="" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Celular</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm" id="firma-telefono" placeholder="Ej. (967) 136 9256" type="text"/>
+</div>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="guardarFirmaCorreo()" type="button">Guardar celular</button>
+</div>
+</div>
+
+<div class="bg-white border border-outline-variant rounded p-lg max-w-xl mt-lg">
 <h3 class="font-display-md text-display-md text-primary mb-xs">Reglamento Interior de Trabajo por marca</h3>
 <p class="text-xs text-on-surface-variant mb-md">Cada marca tiene su propio expediente de Reglamento Interior de Trabajo (RIT). Captúralo aquí <strong>una sola vez por marca</strong> — el marcador <span class="font-data-mono">{{RIT_EXPEDIENTE}}</span> en tus plantillas se rellena automáticamente según la marca de cada centro, así nunca se mezcla el folio de una marca con el de otra.</p>
 <div class="space-y-sm" id="reglamentos-marca-lista">
@@ -1339,7 +1380,7 @@ async function entrarConSesion(user){
     // Se usa tanto al hacer login manual como al restaurar una sesión guardada.
     const { data: perfil } = await supabaseClient
         .from('perfiles')
-        .select('nombre, puesto')
+        .select('nombre, puesto, telefono')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -1347,7 +1388,7 @@ async function entrarConSesion(user){
     const puesto = perfil ? perfil.puesto : 'Sin perfil asignado';
     const iniciales = nombre.split(' ').filter(Boolean).slice(0,2).map(p => p[0]).join('').toUpperCase();
 
-    currentUser = { id: user.id, email: user.email, nombre, puesto };
+    currentUser = { id: user.id, email: user.email, nombre, puesto, telefono: perfil ? perfil.telefono : null };
     document.getElementById('login-error').classList.add('hidden');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-shell').classList.remove('hidden');
@@ -2231,6 +2272,7 @@ async function cargarVacacionesMes(){
     }, []);
 
     COLABORADORES_CENTRO_CACHE = { centroId, mes, anio, data: filas };
+    await cargarCarnetsImssMes(centroId, mes, anio);
 
     if(!filas.length){
         tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">No hay colaboradores con aniversario ese mes en este centro (o falta importar el Cuadro de Antigüedades).</td></tr>';
@@ -2246,6 +2288,70 @@ async function cargarVacacionesMes(){
 <td class="px-md py-sm text-sm">${fmt(c.inicio)} – ${fmt(c.fin)}</td>
 <td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="generarConstanciaIndividual('${c.clave}')" type="button">Generar PDF</button></td>
 </tr>`).join('');
+}
+
+let CARNETS_IMSS_CACHE = { centroId: null, mes: null, anio: null, data: [] };
+
+async function cargarCarnetsImssMes(centroId, mes, anio){
+    const tbody = document.getElementById('carnets-tbody');
+    if(!centroId){
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Elige un centro para ver los ingresos del mes.</td></tr>';
+        CARNETS_IMSS_CACHE = { centroId: null, mes: null, anio: null, data: [] };
+        return;
+    }
+    const { data, error } = await supabaseClient.from('colaboradores')
+        .select('clave, nombre, fecha_ingreso, carnet_imss_estatus')
+        .eq('centro_id', centroId).eq('activo', true);
+    if(error){ mostrarToast('Error: ' + error.message, 'error'); return; }
+
+    const nuevos = (data || []).filter(c => {
+        const f = new Date(c.fecha_ingreso + 'T00:00:00');
+        return (f.getMonth() + 1) === mes && f.getFullYear() === anio;
+    });
+    CARNETS_IMSS_CACHE = { centroId, mes, anio, data: nuevos };
+
+    if(!nuevos.length){
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay colaboradores de nuevo ingreso ese mes en este centro.</td></tr>';
+        return;
+    }
+    const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+    tbody.innerHTML = nuevos.map(c => {
+        const enviado = c.carnet_imss_estatus === 'Enviado';
+        const badge = enviado ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed' : 'bg-orange-500 text-white';
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm"><div class="font-bold">${c.nombre}</div><div class="text-xs text-on-surface-variant font-data-mono">${c.clave}</div></td>
+<td class="px-md py-sm text-sm">${fmt(c.fecha_ingreso)}</td>
+<td class="px-md py-sm"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${c.carnet_imss_estatus}</span></td>
+<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="toggleCarnetImss('${c.clave}','${enviado ? 'Pendiente' : 'Enviado'}')" type="button">${enviado ? 'Marcar pendiente' : 'Marcar enviado'}</button></td>
+</tr>`;
+    }).join('');
+}
+
+async function toggleCarnetImss(clave, nuevoEstatus){
+    const { error } = await supabaseClient.from('colaboradores').update({ carnet_imss_estatus: nuevoEstatus }).eq('clave', clave);
+    if(error){ mostrarToast('No se pudo actualizar: ' + error.message, 'error'); return; }
+    mostrarToast('Carnet IMSS marcado como ' + nuevoEstatus + '.');
+    await cargarCarnetsImssMes(CARNETS_IMSS_CACHE.centroId, CARNETS_IMSS_CACHE.mes, CARNETS_IMSS_CACHE.anio);
+}
+
+function exportarVacacionesExcel(){
+    if(!COLABORADORES_CENTRO_CACHE.centroId){ mostrarToast('Elige un centro y mes primero.'); return; }
+    const centro = centrosData.find(c => c.id === COLABORADORES_CENTRO_CACHE.centroId);
+    const nombreMesTxt = NOMBRES_MES[COLABORADORES_CENTRO_CACHE.mes - 1];
+
+    const hojaVacaciones = COLABORADORES_CENTRO_CACHE.data.map(c => ({
+        'Colaborador': c.nombre, 'Clave': c.clave, 'Antigüedad (años)': c.anios, 'Días de vacaciones': c.dias,
+        'Inicio de periodo': c.inicio.toLocaleDateString('es-MX'), 'Fin de periodo': c.fin.toLocaleDateString('es-MX')
+    }));
+    const hojaCarnets = CARNETS_IMSS_CACHE.data.map(c => ({
+        'Colaborador': c.nombre, 'Clave': c.clave, 'Fecha de ingreso': c.fecha_ingreso, 'Estatus carnet IMSS': c.carnet_imss_estatus
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hojaVacaciones.length ? hojaVacaciones : [{ 'Sin datos': 'No hay aniversarios este mes' }]), 'Vacaciones');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hojaCarnets.length ? hojaCarnets : [{ 'Sin datos': 'Sin ingresos nuevos este mes' }]), 'Carnets IMSS');
+    XLSX.writeFile(wb, `Vacaciones_Carnets_${centro ? centro.id : 'centro'}_${nombreMesTxt}_${COLABORADORES_CENTRO_CACHE.anio}.xlsx`);
+    mostrarToast('Excel exportado.');
 }
 
 function construirConstanciaPDF(c, centro){
@@ -2377,6 +2483,20 @@ function datosPlaceholders(centro, extra){
 const NOMBRES_MARCA = { NISSAN: 'Nissan', RENAULT: 'Renault', CHANGAN: 'Changan', ECOS: 'Ecos Digitales' };
 let RIT_POR_MARCA = {};
 let RIT_CARGADO = false;
+
+function cargarFirmaCorreo(){
+    document.getElementById('firma-nombre').value = currentUser.nombre || '';
+    document.getElementById('firma-puesto').value = currentUser.puesto || '';
+    document.getElementById('firma-telefono').value = currentUser.telefono || '';
+}
+
+async function guardarFirmaCorreo(){
+    const telefono = document.getElementById('firma-telefono').value.trim();
+    const { error } = await supabaseClient.from('perfiles').update({ telefono }).eq('id', currentUser.id);
+    if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
+    currentUser.telefono = telefono;
+    mostrarToast('Celular de la firma guardado.');
+}
 
 async function asegurarReglamentosMarca(){
     if(RIT_CARGADO) return;
@@ -2656,8 +2776,22 @@ async function generarBorradorCorreo(){
     document.getElementById('correo-para').value = centro.responsableEmail || '(sin correo capturado — edítalo en Centros de Trabajo)';
     document.getElementById('correo-asunto').value = `Actividades Normativas STPS — ${centro.nombre} — ${nombreMesTxt} ${anio}`;
 
-    let cuerpo = `Estimado(a) ${centro.responsable || ''}:\n\n`;
-    cuerpo += `Te comparto las actividades del Programa Anual STPS que aplican para ${centro.nombre} durante ${nombreMesTxt} de ${anio}:\n\n`;
+    const { data: colaboradoresCentro } = await supabaseClient.from('colaboradores')
+        .select('clave, nombre, fecha_ingreso, carnet_imss_estatus')
+        .eq('centro_id', centroId).eq('activo', true);
+    const nuevosIngresosMes = (colaboradoresCentro || []).filter(c => {
+        const f = new Date(c.fecha_ingreso + 'T00:00:00');
+        return (f.getMonth() + 1) === mes && f.getFullYear() === anio && c.carnet_imss_estatus !== 'Enviado';
+    });
+
+    const hoy = new Date();
+    const fechaLimite = new Date(hoy);
+    fechaLimite.setDate(fechaLimite.getDate() + 14);
+    const MESES_MINUS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const fechaLimiteTxt = `${fechaLimite.getDate()} de ${MESES_MINUS[fechaLimite.getMonth()]} de ${fechaLimite.getFullYear()}`;
+
+    let cuerpo = `Para dar continuidad al Programa de Seguridad e Higiene ${anio} de ${centro.nombre}, envío las actividades normativas programadas para ${nombreMesTxt} de ${anio}.\n\n`;
+    cuerpo += `Adjunto también las constancias de vacaciones, favor de recabar las firmas correspondientes y, si algún colaborador ya no se encuentra laborando con nosotros, indicar con la leyenda "BAJA".\n\n`;
     if(actividades && actividades.length){
         actividades.forEach((a, i) => {
             cuerpo += `${i + 1}. [${a.norma_code || a.norma_titulo_original || 'Norma no identificada'}] ${a.actividad}\n`;
@@ -2666,6 +2800,15 @@ async function generarBorradorCorreo(){
         cuerpo += '(No hay actividades registradas en el calendario para este mes. Verifica que ya se importó el calendario del año.)\n';
     }
     cuerpo += '\n';
+    cuerpo += 'CARNETS IMSS (recordar que este trámite es de carácter OBLIGATORIO)\n';
+    cuerpo += 'Se solicita la evidencia en formato PDF del alta ante el IMSS de los siguientes colaboradores:\n';
+    if(nuevosIngresosMes.length){
+        nuevosIngresosMes.forEach((c, i) => { cuerpo += `${i + 1}. ${c.nombre}\n`; });
+    } else {
+        cuerpo += '(Sin colaboradores de nuevo ingreso registrados este mes.)\n';
+    }
+    cuerpo += '\n';
+    cuerpo += `Fecha límite de entrega: ${fechaLimiteTxt}\n\n`;
     if(plantillasAplicables.length){
         cuerpo += 'Formatos anexos a este correo:\n';
         plantillasAplicables.forEach(p => { cuerpo += `- ${p.nombre_archivo}\n`; });
@@ -2676,7 +2819,8 @@ async function generarBorradorCorreo(){
     if(colaboradoresMes.length){
         cuerpo += `También se anexan ${colaboradoresMes.length} constancia(s) de vacaciones de colaboradores que cumplen aniversario este mes.\n\n`;
     }
-    cuerpo += 'Quedo al pendiente de la confirmación de recepción y cumplimiento de cada actividad.\n\nSaludos.';
+    const firmaPartes = [currentUser.nombre, currentUser.puesto, currentUser.telefono ? `Cel: ${currentUser.telefono}` : null, 'Grupo Automotriz Chesa'].filter(Boolean);
+    cuerpo += firmaPartes.join(' | ');
 
     document.getElementById('correo-cuerpo').value = cuerpo;
 
@@ -2745,7 +2889,7 @@ function showSection(id){
     if(id === 'sec-centros' && currentUser) cargarCentros();
     if(id === 'sec-actividades' && currentUser) poblarSelectoresMensual();
     if(id === 'sec-nom035' && currentUser) renderNom035();
-    if(id === 'sec-config' && currentUser) renderReglamentosMarca();
+    if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); }
 }
 function toggleDropdown(id){
     const el = document.getElementById(id);
