@@ -761,7 +761,7 @@
 <input accept=".xlsx" class="hidden" id="input-importar-calendario" onchange="importarCalendarioExcel(event)" type="file"/>
 </label>
 </div>
-<p class="text-xs text-on-surface-variant mt-sm">El Excel debe tener una hoja por centro (el nombre de la hoja debe coincidir con el "Código de agencia" que capturaste en cada centro, en Centros de Trabajo).</p>
+<p class="text-xs text-on-surface-variant mt-sm">El Excel debe tener una hoja por centro. El nombre de cada hoja debe coincidir con el "Código de agencia" del centro (o, si no lo capturaste, con su nombre completo en "Centros de Trabajo"). <strong>Solo necesitas subir este archivo una vez al año</strong> — importa los 12 meses de todos los centros de una sola vez; el "Mes" y "Centro" de abajo son únicamente para <em>ver</em> el resultado, no afectan la importación. Si más adelante el calendario cambia, vuelve a subir el archivo actualizado con el mismo "Año": se actualiza sin duplicar nada.</p>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <table class="w-full text-left border-collapse">
@@ -1754,13 +1754,56 @@ function switchMensualTab(panelId, el){
     if(panelId === 'panel-plantillas') cargarPlantillas();
 }
 
+function extraerNumeroNorma(texto){
+    // Compara solo el "número" de la norma (ej. "NOM-017" o "NOM-036-1"),
+    // ignorando el año de edición ("-STPS-2008" vs "-STPS-2024") — así,
+    // si la STPS publica una edición nueva y el Excel ya la usa, la
+    // actividad sigue emparejando con la norma correcta en el catálogo.
+    const m = (texto || '').toUpperCase().match(/NOM-?\s*0*(\d{3})(-\d+)?/);
+    if(!m) return null;
+    return 'NOM-' + m[1] + (m[2] || '');
+}
+
 function buscarNormaCode(textoHeader){
     if(!textoHeader || !CATALOGO_NOM.length) return null;
-    const norm = normalizarClave(textoHeader);
+    const numHeader = extraerNumeroNorma(textoHeader);
+    if(!numHeader) return null;
     for(const n of CATALOGO_NOM){
-        if(norm.includes(normalizarClave(n.code))) return n.code;
+        if(extraerNumeroNorma(n.code) === numHeader) return n.code;
     }
     return null;
+}
+
+function clasificarValorCelda(valorCelda){
+    // El calendario real no solo usa "P"/"R": también usa palabras como
+    // "EN PROCESO", "PENDIENTE", "VIGENTE 2026", "Se validarán para 2027",
+    // "PREVENIMSS", etc. Esta función traduce todo ese vocabulario a los
+    // dos estados que maneja el panel (Planeada/Realizada), guardando
+    // siempre el texto original en "notas" para no perder el detalle.
+    // Devuelve null si la celda no debe importarse (vacía o "X"/"N/A").
+    if(valorCelda === null || valorCelda === undefined) return null;
+    const original = valorCelda.toString().trim();
+    if(!original) return null;
+    const norm = normalizarClave(original); // solo A-Z0-9, sin acentos/espacios
+
+    if(norm === 'X' || norm === 'NA' || norm === 'NOAPLICA') return null; // explícitamente no aplica
+
+    if(norm === 'R' || norm === 'P') {
+        return { estado: norm === 'R' ? 'Realizada' : 'Planeada', notas: null };
+    }
+    if(norm.startsWith('REALIZ') || norm.startsWith('VIGEN') || norm.startsWith('ENTREGA')) {
+        // "Vigente 2026/2027/2028", "Vigente hasta/por/agosto 2026", "Entrega en el transcurso del año"
+        return { estado: 'Realizada', notas: original };
+    }
+    if(norm.startsWith('PENDIENT') || norm.startsWith('PROCESO') || norm.includes('PROCESO')
+        || norm.startsWith('PROGRAMA') || norm.startsWith('PREVENIMSS') || norm.startsWith('VALIDAR')
+        || norm.includes('VALIDARAN')) {
+        // "Pendiente", "En proceso", "Programa Preven IMSS", "Se validarán para 2027"
+        return { estado: 'Planeada', notas: original };
+    }
+    // Cualquier otra palabra que no reconozcamos: se importa como Planeada
+    // (para no perderla) y se reporta en el resumen para que la revises.
+    return { estado: 'Planeada', notas: original, noReconocido: true };
 }
 
 // ---- TAB 1: Calendario del Mes ----
@@ -1840,21 +1883,41 @@ async function importarCalendarioExcel(event){
     const wb = XLSX.read(buffer, { type: 'array' });
     const anioInput = parseInt(document.getElementById('cal-anio').value, 10) || new Date().getFullYear();
 
+    // Dos formas de encontrar el centro de cada hoja: primero por "Código
+    // de agencia" (si lo capturaste), y si no coincide, por el nombre
+    // completo del centro. Solo si ninguna de las dos coincide se crea
+    // un centro nuevo — así ya no se duplican centros que ya existían
+    // con otro nombre de hoja parecido.
     const centrosPorCodigo = {};
-    centrosData.forEach(c => { if(c.codigoAgencia) centrosPorCodigo[normalizarClave(c.codigoAgencia)] = c.id; });
+    const centrosPorNombre = {};
+    centrosData.forEach(c => {
+        if(c.codigoAgencia) centrosPorCodigo[normalizarClave(c.codigoAgencia)] = c.id;
+        if(c.nombre) centrosPorNombre[normalizarClave(c.nombre)] = c.id;
+    });
 
     const filas = [];
     const centrosCreados = [];
+    const emparejadosPorCodigo = [];
+    const emparejadosPorNombre = [];
+    const valoresNoReconocidos = new Set();
     let centrosProcesados = 0;
 
     for(const nombreHoja of wb.SheetNames){
         if(nombreHoja.toUpperCase().includes('MACHOTE')) continue; // hoja plantilla, no es un centro real
 
-        let centroId = centrosPorCodigo[normalizarClave(nombreHoja)];
+        const claveHoja = normalizarClave(nombreHoja);
+        let centroId = centrosPorCodigo[claveHoja];
+        if(centroId){
+            emparejadosPorCodigo.push(nombreHoja.trim());
+        } else {
+            centroId = centrosPorNombre[claveHoja];
+            if(centroId) emparejadosPorNombre.push(nombreHoja.trim());
+        }
+
         if(!centroId){
             centroId = await crearCentroAutomatico(nombreHoja);
             if(!centroId) continue; // no se pudo crear (ver el aviso de error)
-            centrosPorCodigo[normalizarClave(nombreHoja)] = centroId;
+            centrosPorCodigo[claveHoja] = centroId;
             centrosCreados.push(nombreHoja.trim());
         }
 
@@ -1863,6 +1926,7 @@ async function importarCalendarioExcel(event){
         const filasHoja = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
         let normaActualCode = null;
         let normaActualTitulo = null;
+        let actividadesEnHoja = 0;
 
         filasHoja.forEach(fila => {
             const colB = fila[1];
@@ -1875,31 +1939,38 @@ async function importarCalendarioExcel(event){
             if(colC && typeof colC === 'string' && colC.trim().length > 2 && !colB){
                 const actividadTxt = colC.trim();
                 for(let mIdx = 0; mIdx < 12; mIdx++){
-                    const valorCelda = fila[3 + mIdx];
-                    const valor = typeof valorCelda === 'string' ? valorCelda.trim().toUpperCase() : valorCelda;
-                    if(valor === 'P' || valor === 'R'){
-                        filas.push({
-                            centro_id: centroId,
-                            norma_code: normaActualCode,
-                            norma_titulo_original: normaActualTitulo,
-                            actividad: actividadTxt,
-                            mes: mIdx + 1,
-                            anio: anioInput,
-                            estado: valor === 'R' ? 'Realizada' : 'Planeada'
-                        });
+                    const clasificacion = clasificarValorCelda(fila[3 + mIdx]);
+                    if(!clasificacion) continue;
+                    actividadesEnHoja++;
+                    filas.push({
+                        centro_id: centroId,
+                        norma_code: normaActualCode,
+                        norma_titulo_original: normaActualTitulo,
+                        actividad: actividadTxt,
+                        mes: mIdx + 1,
+                        anio: anioInput,
+                        estado: clasificacion.estado,
+                        notas: clasificacion.notas
+                    });
+                    if(clasificacion.noReconocido){
+                        valoresNoReconocidos.add(clasificacion.notas);
                     }
                 }
             }
         });
+
+        if(actividadesEnHoja === 0){
+            mostrarToast(`Aviso: la hoja "${nombreHoja}" no tiene ninguna celda con "P" o "R" en las columnas de mes — revisa el formato de esa hoja.`);
+        }
     }
 
     if(centrosCreados.length){
-        mostrarToast('Se crearon ' + centrosCreados.length + ' centro(s) nuevo(s) a partir de hojas no reconocidas. Entra a "Centros de Trabajo" para completar su nombre, ubicación y responsable: ' + centrosCreados.join(', '));
+        mostrarToast(`Se crearon ${centrosCreados.length} centro(s) nuevo(s) porque su hoja no coincidió con ningún centro existente (ni por código de agencia ni por nombre): ${centrosCreados.join(', ')}. Entra a "Centros de Trabajo" para revisarlos — si alguno debía ser un centro que ya tenías, corrige el nombre de la hoja o el "Código de agencia" y vuelve a importar.`, 'error');
         await cargarCentros();
         poblarSelectoresMensual();
     }
     if(!filas.length){
-        mostrarToast('No se detectaron actividades para importar. Verifica los códigos de agencia.');
+        mostrarToast('No se detectaron actividades para importar. Revisa que las columnas D a O tengan "P" o "R", y que la columna C tenga el texto de la actividad en la misma fila.', 'error');
         return;
     }
 
@@ -1908,12 +1979,21 @@ async function importarCalendarioExcel(event){
         const bloque = filas.slice(i, i + 500);
         const { error } = await supabaseClient.from('calendario_normativo').upsert(bloque, { onConflict: 'clave_unica' });
         if(error){
-            mostrarToast('Error importando calendario: ' + error.message);
+            mostrarToast('Error importando calendario: ' + error.message, 'error');
             return;
         }
         insertados += bloque.length;
     }
-    mostrarToast(`Calendario importado: ${insertados} actividades de ${centrosProcesados} centro(s).`);
+
+    let resumen = `Calendario ${anioInput} importado: ${insertados} actividades de ${centrosProcesados} hoja(s). `;
+    resumen += `Emparejadas por código: ${emparejadosPorCodigo.length}. Por nombre: ${emparejadosPorNombre.length}.`;
+    mostrarToast(resumen);
+    if(emparejadosPorNombre.length){
+        mostrarToast('Emparejadas por nombre (revisa que sean el centro correcto): ' + emparejadosPorNombre.join(', '));
+    }
+    if(valoresNoReconocidos.size){
+        mostrarToast('Se importaron como "Planeada" algunos valores de estado que no reconocimos (revísalos): ' + Array.from(valoresNoReconocidos).join(' | '), 'error');
+    }
     cargarCalendarioMes();
 }
 
@@ -1930,11 +2010,11 @@ async function cargarCalendarioMes(){
 
     const { data, error } = await supabaseClient
         .from('calendario_normativo')
-        .select('id, norma_code, norma_titulo_original, actividad, estado')
+        .select('id, norma_code, norma_titulo_original, actividad, estado, notas')
         .eq('centro_id', centroId).eq('mes', mes).eq('anio', anio)
         .order('norma_code', { ascending: true, nullsFirst: false });
 
-    if(error){ mostrarToast('Error: ' + error.message); return; }
+    if(error){ mostrarToast('Error: ' + error.message, 'error'); return; }
 
     if(!data || !data.length){
         tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay actividades importadas para este centro / mes / año todavía. Usa "Importar calendario" arriba.</td></tr>';
@@ -1949,7 +2029,7 @@ async function cargarCalendarioMes(){
         const accionTxt = esRealizada ? 'Marcar pendiente' : 'Marcar realizada';
         return `<tr class="hover:bg-surface-container transition-colors">
 <td class="px-md py-sm font-data-mono text-data-mono text-xs align-top">${normaTxt}</td>
-<td class="px-md py-sm text-sm align-top">${f.actividad}</td>
+<td class="px-md py-sm text-sm align-top">${f.actividad}${f.notas ? `<div class="text-xs text-on-surface-variant italic mt-0.5">Excel original: "${f.notas}"</div>` : ''}</td>
 <td class="px-md py-sm align-top"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f.estado}</span></td>
 <td class="px-md py-sm text-right align-top"><button class="text-primary hover:underline font-bold text-xs" onclick="cambiarEstadoActividad('${f.id}','${siguienteEstado}')" type="button">${accionTxt}</button></td>
 </tr>`;
