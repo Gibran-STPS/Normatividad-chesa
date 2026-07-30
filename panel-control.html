@@ -1754,6 +1754,26 @@ function switchMensualTab(panelId, el){
     if(panelId === 'panel-plantillas') cargarPlantillas();
 }
 
+function extraerNumeroSimpleNorma(normaCode){
+    // "NOM-036-1-STPS-2018" -> "36" ; "NOM-002-STPS-2022" -> "2"
+    // (solo el número principal de la norma, tal como se usa al inicio
+    // del nombre de archivo de las plantillas: "36_5_...", "2_9_...")
+    const m = (normaCode || '').toUpperCase().match(/NOM-0*(\d+)/);
+    return m ? m[1] : null;
+}
+function extraerNumeroActividad(actividadTxt){
+    // "9.- Registro de revisión mensual de extintores." -> "9"
+    const m = (actividadTxt || '').match(/^\s*(\d+)/);
+    return m ? m[1] : null;
+}
+function extraerClaveArchivoPlantilla(nombreArchivo){
+    // "2_9_REGISTRO_REVISION_MENSUAL_EXTINTORES__PLANTILLA.xlsx" -> {norma:'2', actividad:'9'}
+    // Documentos sin esa numeración (ej. políticas generales) devuelven null
+    // y se emparejan solo por norma completa, como respaldo.
+    const m = (nombreArchivo || '').match(/^(\d+)_(\d+)/);
+    return m ? { norma: m[1], actividad: m[2] } : null;
+}
+
 function extraerNumeroNorma(texto){
     // Compara solo el "número" de la norma (ej. "NOM-017" o "NOM-036-1"),
     // ignorando el año de edición ("-STPS-2008" vs "-STPS-2024") — así,
@@ -2609,7 +2629,22 @@ async function generarBorradorCorreo(){
     const colaboradoresMes = COLABORADORES_CENTRO_CACHE.centroId === centroId ? COLABORADORES_CENTRO_CACHE.data : [];
 
     const normasEnCorreo = [...new Set((actividades || []).map(a => a.norma_code).filter(Boolean))];
-    const plantillasAplicables = (plantillas || []).filter(p => normasEnCorreo.includes(p.norma_code));
+    // Clave "normaNum_actividadNum" de cada actividad realmente programada este mes
+    // (ej. "2_9" para "9.- Registro de revisión mensual de extintores.")
+    const clavesActividadesMes = new Set(
+        (actividades || []).map(a => {
+            const n = extraerNumeroSimpleNorma(a.norma_code);
+            const act = extraerNumeroActividad(a.actividad);
+            return (n && act) ? `${n}_${act}` : null;
+        }).filter(Boolean)
+    );
+    const plantillasAplicables = (plantillas || []).filter(p => {
+        const clave = extraerClaveArchivoPlantilla(p.nombre_archivo);
+        if(clave) return clavesActividadesMes.has(`${clave.norma}_${clave.actividad}`);
+        // Documentos sin número de actividad en el nombre (ej. políticas
+        // generales): se anexan si la norma completa aplica este mes.
+        return normasEnCorreo.includes(p.norma_code);
+    });
 
     CORREO_CONTEXTO = { centro, mes, anio, actividades: actividades || [], plantillas: plantillasAplicables, colaboradores: colaboradoresMes };
 
