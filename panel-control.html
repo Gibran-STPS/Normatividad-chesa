@@ -887,13 +887,16 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Cuerpo del correo</label>
 <textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar" id="correo-cuerpo" rows="16"></textarea>
 </div>
+<div class="mb-md p-md rounded border border-orange-300 bg-orange-50 flex gap-sm items-start">
+<span class="material-symbols-outlined text-orange-600" data-icon="warning">warning</span>
+<p class="text-sm text-orange-900"><strong>Ningún sitio web puede adjuntar archivos automáticamente a un correo</strong> — es una restricción de seguridad del navegador, no un límite de esta app. Por eso son <strong>2 pasos obligatorios en orden</strong>: primero descarga el ZIP, luego abre el borrador y arrástralo tú mismo dentro de Outlook antes de darle Enviar ahí.</p>
+</div>
 <div class="mb-md" id="correo-adjuntos-lista"></div>
 <div class="flex flex-wrap gap-sm justify-end pt-md border-t border-outline-variant">
 <button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-colors" onclick="copiarCuerpoCorreo()" type="button">Copiar cuerpo</button>
-<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-colors" onclick="descargarAdjuntosCorreo()" type="button">Descargar adjuntos (ZIP)</button>
-<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="abrirBorradorOutlook()" type="button">Abrir en Outlook</button>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" id="btn-descargar-zip" onclick="descargarAdjuntosCorreo()" type="button">1. Descargar adjuntos (ZIP)</button>
+<button class="border-2 border-primary text-primary px-lg py-sm font-bold hover:bg-surface-container-high transition-colors" id="btn-abrir-outlook" onclick="abrirBorradorOutlook()" type="button">2. Abrir en Outlook y adjuntar el ZIP</button>
 </div>
-<p class="text-xs text-on-surface-variant mt-sm">Outlook no permite adjuntar archivos automáticamente desde un enlace por seguridad del navegador: descarga el ZIP y adjúntalo tú mismo antes de enviar.</p>
 </div>
 </div>
 </div>
@@ -2647,6 +2650,7 @@ async function generarBorradorCorreo(){
     });
 
     CORREO_CONTEXTO = { centro, mes, anio, actividades: actividades || [], plantillas: plantillasAplicables, colaboradores: colaboradoresMes };
+    ZIP_ADJUNTOS_DESCARGADO = false;
 
     const nombreMesTxt = NOMBRES_MES[mes - 1];
     document.getElementById('correo-para').value = centro.responsableEmail || '(sin correo capturado — edítalo en Centros de Trabajo)';
@@ -2686,6 +2690,8 @@ async function generarBorradorCorreo(){
     document.getElementById('correo-resultado').classList.remove('hidden');
 }
 
+let ZIP_ADJUNTOS_DESCARGADO = false;
+
 async function descargarAdjuntosCorreo(){
     if(!CORREO_CONTEXTO){ mostrarToast('Primero genera el borrador.'); return; }
     mostrarToast('Preparando el ZIP de adjuntos...');
@@ -2693,7 +2699,7 @@ async function descargarAdjuntosCorreo(){
 
     for(const p of CORREO_CONTEXTO.plantillas){
         const { data, error } = await supabaseClient.storage.from('plantillas').download(p.storage_path);
-        if(error){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + error.message); continue; }
+        if(error){ mostrarToast('No se pudo descargar ' + p.nombre_archivo + ': ' + error.message, 'error'); continue; }
         const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro, { normaCode: p.norma_code, mes: CORREO_CONTEXTO.mes, anio: CORREO_CONTEXTO.anio });
         zip.file(p.nombre_archivo, personalizado);
     }
@@ -2702,9 +2708,11 @@ async function descargarAdjuntosCorreo(){
         zip.file(`Constancia_Vacaciones_${c.clave}.pdf`, doc.output('blob'));
     });
 
+    const nombreZip = `Adjuntos_${CORREO_CONTEXTO.centro.id}_${CORREO_CONTEXTO.mes}_${CORREO_CONTEXTO.anio}.zip`;
     const blob = await zip.generateAsync({ type: 'blob' });
-    descargarBlob(blob, `Adjuntos_${CORREO_CONTEXTO.centro.id}_${CORREO_CONTEXTO.mes}_${CORREO_CONTEXTO.anio}.zip`);
-    mostrarToast('ZIP de adjuntos descargado.');
+    descargarBlob(blob, nombreZip);
+    ZIP_ADJUNTOS_DESCARGADO = true;
+    mostrarToast(`ZIP descargado como "${nombreZip}" (revisa tu carpeta de Descargas). Ahora dale a "2. Abrir en Outlook" y arrastra ese archivo dentro del correo antes de enviarlo — Outlook no lo adjunta solo.`);
 }
 
 function copiarCuerpoCorreo(){
@@ -2713,12 +2721,17 @@ function copiarCuerpoCorreo(){
 }
 
 function abrirBorradorOutlook(){
+    if(CORREO_CONTEXTO && CORREO_CONTEXTO.plantillas.length && !ZIP_ADJUNTOS_DESCARGADO){
+        mostrarToast('Todavía no descargaste el ZIP de adjuntos — sin ese paso el correo se va a enviar SIN los formatos. Dale primero a "1. Descargar adjuntos (ZIP)".', 'error');
+        return;
+    }
     const para = document.getElementById('correo-para').value;
     const asunto = document.getElementById('correo-asunto').value;
     const cuerpo = document.getElementById('correo-cuerpo').value;
     const paraLimpio = para.includes('@') ? para : '';
     const link = `mailto:${encodeURIComponent(paraLimpio)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
     window.location.href = link;
+    mostrarToast('Se abrió el borrador en Outlook. No olvides arrastrar el ZIP que descargaste hacia esa ventana antes de darle Enviar ahí — Outlook no lo adjunta automáticamente.', 'error');
 }
 
 function showSection(id){
