@@ -2433,7 +2433,7 @@ async function subirPlantilla(event, normaCode){
     }
 
     if(subidos) mostrarToast(`${subidos} plantilla(s) subida(s) correctamente.`);
-    if(fallidos.length) mostrarToast(`${fallidos.length} archivo(s) con error: ${fallidos.join(' | ')}`);
+    if(fallidos.length) mostrarToast(`${fallidos.length} archivo(s) con error:\n${fallidos.join('\n')}`);
     cargarPlantillas();
 }
 
@@ -2580,14 +2580,14 @@ function mostrarToast(msg, tipo){
     const esError = tipo === 'error' || /error|no se pud|fall[oó]|fallaron/i.test(msg);
 
     const toast = document.createElement('div');
-    toast.className = 'toast px-md py-sm rounded shadow-lg font-body-md text-body-md flex items-start gap-2 max-w-md '
+    toast.className = 'toast px-md py-sm rounded shadow-lg font-body-md text-body-md flex items-start gap-2 w-[min(92vw,26rem)] '
         + (esError ? 'bg-error text-on-error' : 'bg-primary text-on-primary');
     const icono = esError ? 'error' : 'check_circle';
     const colorIcono = esError ? 'text-on-error' : 'text-tertiary-fixed-dim';
     toast.innerHTML = `
-        <span class="material-symbols-outlined ${colorIcono}" data-icon="${icono}">${icono}</span>
-        <span class="flex-1 whitespace-pre-line">${msg}</span>
-        <button class="material-symbols-outlined text-sm opacity-80 hover:opacity-100 cursor-pointer" data-icon="close" type="button">close</button>
+        <span class="material-symbols-outlined ${colorIcono} shrink-0" data-icon="${icono}">${icono}</span>
+        <span class="flex-1 min-w-0 whitespace-pre-line break-words max-h-40 overflow-y-auto">${msg}</span>
+        <button class="material-symbols-outlined text-sm opacity-80 hover:opacity-100 cursor-pointer shrink-0" data-icon="close" type="button">close</button>
     `;
     container.appendChild(toast);
 
