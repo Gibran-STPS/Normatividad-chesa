@@ -2402,7 +2402,7 @@ async function cargarPlantillas(){
 <td class="px-md py-sm align-top">${listaHtml}</td>
 <td class="px-md py-sm text-right align-top">
 <label class="border border-outline-variant px-sm py-1 rounded text-xs font-bold cursor-pointer hover:bg-surface-container-high transition-colors inline-block">
-Subir<input class="hidden" type="file" onchange="subirPlantilla(event,'${n.code}')"/>
+Subir<input accept=".doc,.docx,.xls,.xlsx,.pdf,.png,.jpg,.jpeg" class="hidden" multiple="" onchange="subirPlantilla(event,'${n.code}')" type="file"/>
 </label>
 </td>
 </tr>`;
@@ -2410,22 +2410,30 @@ Subir<input class="hidden" type="file" onchange="subirPlantilla(event,'${n.code}
 }
 
 async function subirPlantilla(event, normaCode){
-    const file = event.target.files[0];
-    if(!file) return;
+    const files = Array.from(event.target.files || []);
+    if(!files.length) return;
     event.target.value = '';
-    const path = `${normaCode}/${Date.now()}_${file.name}`;
-    mostrarToast('Subiendo ' + file.name + '...');
-
-    const { error: errUpload } = await supabaseClient.storage.from('plantillas').upload(path, file, { upsert: true });
-    if(errUpload){ mostrarToast('Error al subir: ' + errUpload.message); return; }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
-    const { error: errDb } = await supabaseClient.from('plantillas_documentos').insert({
-        norma_code: normaCode, nombre_archivo: file.name, storage_path: path, subido_por: user ? user.id : null
-    });
-    if(errDb){ mostrarToast('Archivo subido, pero hubo un error al registrarlo: ' + errDb.message); return; }
+    let subidos = 0, fallidos = [];
 
-    mostrarToast('Plantilla subida: ' + file.name);
+    for(const file of files){
+        mostrarToast(`Subiendo ${file.name} (${subidos + fallidos.length + 1}/${files.length})...`);
+        const path = `${normaCode}/${Date.now()}_${file.name}`;
+
+        const { error: errUpload } = await supabaseClient.storage.from('plantillas').upload(path, file, { upsert: true });
+        if(errUpload){ fallidos.push(`${file.name}: ${errUpload.message}`); continue; }
+
+        const { error: errDb } = await supabaseClient.from('plantillas_documentos').insert({
+            norma_code: normaCode, nombre_archivo: file.name, storage_path: path, subido_por: user ? user.id : null
+        });
+        if(errDb){ fallidos.push(`${file.name}: ${errDb.message}`); continue; }
+
+        subidos++;
+    }
+
+    if(subidos) mostrarToast(`${subidos} plantilla(s) subida(s) correctamente.`);
+    if(fallidos.length) mostrarToast(`${fallidos.length} archivo(s) con error: ${fallidos.join(' | ')}`);
     cargarPlantillas();
 }
 
