@@ -2717,10 +2717,11 @@ async function cargarPlantillas(){
         return `<tr class="hover:bg-surface-container transition-colors">
 <td class="px-md py-sm font-data-mono text-data-mono text-xs align-top">${n.code}</td>
 <td class="px-md py-sm align-top">${listaHtml}</td>
-<td class="px-md py-sm text-right align-top">
-<label class="border border-outline-variant px-sm py-1 rounded text-xs font-bold cursor-pointer hover:bg-surface-container-high transition-colors inline-block">
+<td class="px-md py-sm text-right align-top whitespace-nowrap">
+<label class="border border-outline-variant px-sm py-1 rounded text-xs font-bold cursor-pointer hover:bg-surface-container-high transition-colors inline-block mr-sm">
 Subir<input accept=".doc,.docx,.xls,.xlsx,.pdf,.png,.jpg,.jpeg" class="hidden" multiple="" onchange="subirPlantilla(event,'${n.code}')" type="file"/>
 </label>
+${lista.length ? `<button class="border border-error text-error px-sm py-1 rounded text-xs font-bold hover:bg-error hover:text-on-error transition-colors" onclick="quitarTodasPlantillasNorma('${n.code}', ${lista.length})" type="button">Quitar todas (${lista.length})</button>` : ''}
 </td>
 </tr>`;
     }).join('');
@@ -2759,6 +2760,26 @@ async function borrarPlantilla(id, storagePath){
     await supabaseClient.storage.from('plantillas').remove([storagePath]);
     await supabaseClient.from('plantillas_documentos').delete().eq('id', id);
     mostrarToast('Plantilla eliminada.');
+    cargarPlantillas();
+}
+
+async function quitarTodasPlantillasNorma(normaCode, cantidad){
+    if(!confirm(`¿Quitar las ${cantidad} plantilla(s) de ${normaCode}? Esta acción no se puede deshacer.`)) return;
+
+    const { data, error } = await supabaseClient.from('plantillas_documentos').select('id, storage_path').eq('norma_code', normaCode);
+    if(error){ mostrarToast('Error al listar: ' + error.message, 'error'); return; }
+    if(!data || !data.length){ mostrarToast('No hay plantillas que quitar para ' + normaCode + '.'); return; }
+
+    mostrarToast(`Quitando ${data.length} plantilla(s) de ${normaCode}...`);
+
+    const rutas = data.map(p => p.storage_path);
+    const { error: errStorage } = await supabaseClient.storage.from('plantillas').remove(rutas);
+    if(errStorage){ mostrarToast('Aviso al borrar archivos de Storage: ' + errStorage.message, 'error'); }
+
+    const { error: errDb } = await supabaseClient.from('plantillas_documentos').delete().eq('norma_code', normaCode);
+    if(errDb){ mostrarToast('Error al borrar los registros: ' + errDb.message, 'error'); return; }
+
+    mostrarToast(`Se quitaron ${data.length} plantilla(s) de ${normaCode}.`);
     cargarPlantillas();
 }
 
