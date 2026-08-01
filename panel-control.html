@@ -2559,11 +2559,11 @@ async function obtenerBytesLogoMarca(marca){
 // Busca, en cualquier encabezado/pie/cuerpo del documento, la imagen marcada
 // con descr="LOGO_MARCA" y sustituye el archivo de imagen real por el logo
 // de la marca del centro (Nissan/Renault/Changan/Ecos Digitales).
-async function reemplazarLogoMarca(zip, marca){
+async function reemplazarLogoMarcaEnPartes(zip, marca, patronArchivos, prefijoRels){
     const bytesLogo = await obtenerBytesLogoMarca(marca);
     if(!bytesLogo) return;
 
-    const nombresArchivo = Object.keys(zip.files).filter(n => /^word\/(header\d*|footer\d*|document)\.xml$/.test(n));
+    const nombresArchivo = Object.keys(zip.files).filter(n => patronArchivos.test(n));
     for(const nombre of nombresArchivo){
         const archivoZip = zip.file(nombre);
         if(!archivoZip) continue;
@@ -2578,8 +2578,8 @@ async function reemplazarLogoMarca(zip, marca){
         const relsXml = relsZip.asText();
 
         // Un mismo archivo puede tener el marcador varias veces (el mismo
-        // logo repetido en distintas tablas/páginas); procesamos todas las
-        // apariciones, no solo la primera.
+        // logo repetido en distintas tablas/páginas/hojas); procesamos
+        // todas las apariciones, no solo la primera.
         const rIdsEncontrados = new Set();
         let idx = xml.indexOf('descr="LOGO_MARCA"');
         while(idx !== -1){
@@ -2596,6 +2596,17 @@ async function reemplazarLogoMarca(zip, marca){
             zip.file(mediaPath, bytesLogo);
         });
     }
+}
+
+async function reemplazarLogoMarca(zip, marca){
+    // Word: el logo vive en los encabezados/pies/documento.
+    await reemplazarLogoMarcaEnPartes(zip, marca, /^word\/(header\d*|footer\d*|document)\.xml$/);
+    // Excel: el logo vive en los "drawings" de cada hoja (no en el XML de la hoja misma).
+    await reemplazarLogoMarcaEnPartes(zip, marca, /^xl\/drawings\/drawing\d*\.xml$/);
+}
+
+function escaparXml(texto){
+    return String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function personalizarArchivo(blob, nombreArchivo, centro, extra){
@@ -2621,26 +2632,33 @@ async function personalizarArchivo(blob, nombreArchivo, centro, extra){
     if(ext === 'xlsx' || ext === 'xls'){
         try {
             const arrayBuffer = await blob.arrayBuffer();
-            const wb = XLSX.read(arrayBuffer, { type: 'array' });
-            wb.SheetNames.forEach(nombreHoja => {
-                const ws = wb.Sheets[nombreHoja];
-                Object.keys(ws).forEach(celda => {
-                    if(celda[0] === '!') return;
-                    const cell = ws[celda];
-                    if(cell && cell.t === 's' && typeof cell.v === 'string' && cell.v.includes('{{')){
-                        let texto = cell.v;
-                        Object.keys(datos).forEach(clave => {
-                            texto = texto.split('{{' + clave + '}}').join(datos[clave]);
-                        });
-                        cell.v = texto;
-                        if(cell.w) cell.w = texto;
-                    }
+            const zip = new PizZip(arrayBuffer);
+
+            // OJO: antes esto se hacía con XLSX.read()/XLSX.write(), pero esa
+            // librería (versión "mini") no conserva imágenes, bordes, celdas
+            // combinadas ni anchos de columna al reescribir el archivo — el
+            // resultado se veía "vacío y sin logos". Ahora, igual que con los
+            // Word, solo tocamos el texto de los marcadores directamente en el
+            // XML interno, sin reconstruir el archivo: así se conserva
+            // absolutamente todo el formato original.
+            const rutasTexto = Object.keys(zip.files).filter(n =>
+                n === 'xl/sharedStrings.xml' || /^xl\/worksheets\/sheet\d*\.xml$/.test(n)
+            );
+            rutasTexto.forEach(ruta => {
+                const archivo = zip.file(ruta);
+                if(!archivo) return;
+                let xml = archivo.asText();
+                if(!xml.includes('{{')) return;
+                Object.keys(datos).forEach(clave => {
+                    xml = xml.split('{{' + clave + '}}').join(escaparXml(datos[clave]));
                 });
+                zip.file(ruta, xml);
             });
-            const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-            return new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+            await reemplazarLogoMarca(zip, centro && centro.marca);
+            return zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         } catch(err){
-            mostrarToast('No se pudo personalizar "' + nombreArchivo + '" (se anexa sin rellenar): ' + (err.message || err));
+            mostrarToast('No se pudo personalizar "' + nombreArchivo + '" (se anexa sin rellenar): ' + (err.message || err), 'error');
             return blob;
         }
     }
