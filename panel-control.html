@@ -618,6 +618,10 @@
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-direccion" placeholder="Ej. Carretera Panamericana Km 1169, Barrio de Fátima, C.P. 29264" type="text"/>
 </div>
 <div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Ciudad (solo el nombre, para el pie de página de documentos)</label>
+<input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-ciudad" placeholder="Ej. San Cristóbal de Las Casas" type="text"/>
+</div>
+<div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Teléfono de la agencia</label>
 <input class="w-full border border-outline-variant rounded p-sm font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary" id="centro-telefono" placeholder="Ej. 01 (967) 678 13 60" type="text"/>
 </div>
@@ -1484,7 +1488,7 @@ async function cargarCentros(){
 
     const { data, error } = await supabaseClient
         .from('centros_trabajo')
-        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, razon_social, direccion, telefono, secretario_comision, vocal1_comision, vocal2_comision, secretario_puesto, vocal1_puesto, vocal2_puesto, fecha_inicio_operaciones, rfc, registro_patronal_imss, numero_trabajadores, tiene_hojalateria_pintura, tiene_taller_servicio, marca, centro_normas(norma_code)')
+        .select('id, nombre, ubicacion, responsable, estado, codigo_agencia, responsable_email, responsable_puesto, razon_social, direccion, ciudad, telefono, secretario_comision, vocal1_comision, vocal2_comision, secretario_puesto, vocal1_puesto, vocal2_puesto, fecha_inicio_operaciones, rfc, registro_patronal_imss, numero_trabajadores, tiene_hojalateria_pintura, tiene_taller_servicio, marca, centro_normas(norma_code)')
         .order('id');
 
     if(error){
@@ -1504,6 +1508,7 @@ async function cargarCentros(){
         responsablePuesto: c.responsable_puesto,
         razonSocial: c.razon_social,
         direccion: c.direccion,
+        ciudad: c.ciudad,
         telefono: c.telefono,
         secretarioComision: c.secretario_comision,
         vocal1Comision: c.vocal1_comision,
@@ -1635,6 +1640,7 @@ async function abrirModalCentro(id){
         document.getElementById('centro-responsable-puesto').value = c.responsablePuesto || '';
         document.getElementById('centro-razon-social').value = c.razonSocial || '';
         document.getElementById('centro-direccion').value = c.direccion || '';
+        document.getElementById('centro-ciudad').value = c.ciudad || '';
         document.getElementById('centro-telefono').value = c.telefono || '';
         document.getElementById('centro-secretario').value = c.secretarioComision || '';
         document.getElementById('centro-vocal1').value = c.vocal1Comision || '';
@@ -1684,6 +1690,7 @@ async function guardarCentro(event){
     const responsablePuesto = document.getElementById('centro-responsable-puesto').value.trim() || null;
     const razonSocial = document.getElementById('centro-razon-social').value.trim() || null;
     const direccion = document.getElementById('centro-direccion').value.trim() || null;
+    const ciudad = document.getElementById('centro-ciudad').value.trim() || null;
     const telefono = document.getElementById('centro-telefono').value.trim() || null;
     const secretarioComision = document.getElementById('centro-secretario').value.trim() || null;
     const vocal1Comision = document.getElementById('centro-vocal1').value.trim() || null;
@@ -1709,7 +1716,7 @@ async function guardarCentro(event){
 
     const { error: errorCentro } = await supabaseClient
         .from('centros_trabajo')
-        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, razon_social: razonSocial, direccion, telefono, secretario_comision: secretarioComision, vocal1_comision: vocal1Comision, vocal2_comision: vocal2Comision, secretario_puesto: secretarioPuesto, vocal1_puesto: vocal1Puesto, vocal2_puesto: vocal2Puesto, fecha_inicio_operaciones: fechaInicioOperaciones, rfc, registro_patronal_imss: registroPatronalImss, numero_trabajadores: numeroTrabajadores, tiene_hojalateria_pintura: tieneHojalateriaPintura, tiene_taller_servicio: tieneTallerServicio, marca });
+        .upsert({ id: centroId, nombre, ubicacion, responsable, estado, codigo_agencia: codigoAgencia, responsable_email: responsableEmail, responsable_puesto: responsablePuesto, razon_social: razonSocial, direccion, ciudad, telefono, secretario_comision: secretarioComision, vocal1_comision: vocal1Comision, vocal2_comision: vocal2Comision, secretario_puesto: secretarioPuesto, vocal1_puesto: vocal1Puesto, vocal2_puesto: vocal2Puesto, fecha_inicio_operaciones: fechaInicioOperaciones, rfc, registro_patronal_imss: registroPatronalImss, numero_trabajadores: numeroTrabajadores, tiene_hojalateria_pintura: tieneHojalateriaPintura, tiene_taller_servicio: tieneTallerServicio, marca });
 
     if(errorCentro){
         mostrarToast('Error al guardar: ' + errorCentro.message);
@@ -1917,6 +1924,7 @@ async function crearCentroAutomatico(nombreHoja){
         responsablePuesto: null,
         razonSocial: null,
         direccion: null,
+        ciudad: null,
         telefono: null,
         secretarioComision: null,
         vocal1Comision: null,
@@ -2448,6 +2456,7 @@ function datosPlaceholders(centro, extra){
         DIRECCION: (centro && centro.direccion) || '',
         TELEFONO: (centro && centro.telefono) || '',
         CIUDAD: (centro && centro.ubicacion) || '',
+        CIUDAD_CORTA: (centro && centro.ciudad) || '',
         SECRETARIO: (centro && centro.secretarioComision) || '',
         VOCAL1: (centro && centro.vocal1Comision) || '',
         VOCAL2: (centro && centro.vocal2Comision) || '',
