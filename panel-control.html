@@ -3293,6 +3293,92 @@ async function eliminarTodasRespuestasNom035(centroId, cantidad){
     renderNom035();
 }
 
+// Umbrales oficiales de la Norma (Tabla 2c/3c para Guía II y Tabla 5c/6c
+// para Guía III) — para construir la tabla de clasificación tal como la
+// usas en tu reporte manual, con el resultado colocado en la columna
+// que corresponde según el nivel.
+const NOM035_CFINAL_UMBRALES = { 'II': [20,45,70,90], 'III': [50,75,99,140] };
+const NOM035_DOMINIOS_UMBRALES = {
+    'II': {
+        'Condiciones en el ambiente de trabajo': { items: '1, 2, 3', umbrales: [3,5,7,9] },
+        'Carga de trabajo': { items: '4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 41, 42, 43', umbrales: [12,16,20,24] },
+        'Falta de control sobre el trabajo': { items: '18, 19, 20, 21, 22, 26, 27', umbrales: [5,8,11,14] },
+        'Jornada de trabajo': { items: '14, 15', umbrales: [1,2,4,6] },
+        'Interferencia trabajo-familia': { items: '16, 17', umbrales: [1,2,4,6] },
+        'Liderazgo': { items: '23, 24, 25, 28, 29', umbrales: [3,5,8,11] },
+        'Relaciones en el trabajo': { items: '30, 31, 32, 44, 45, 46', umbrales: [5,8,11,14] },
+        'Violencia': { items: '33, 34, 35, 36, 37, 38, 39, 40', umbrales: [7,10,13,16] }
+    },
+    'III': {
+        'Condiciones en el ambiente de trabajo': { items: '1, 2, 3, 4, 5', umbrales: [5,9,11,14] },
+        'Carga de trabajo': { items: '6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 65, 66, 67, 68', umbrales: [15,21,27,37] },
+        'Falta de control sobre el trabajo': { items: '23, 24, 25, 26, 27, 28, 29, 30, 35, 36', umbrales: [11,16,21,25] },
+        'Jornada de trabajo': { items: '17, 18', umbrales: [1,2,4,6] },
+        'Interferencia trabajo-familia': { items: '19, 20, 21, 22', umbrales: [4,6,8,10] },
+        'Liderazgo': { items: '31, 32, 33, 34, 37, 38, 39, 40, 41', umbrales: [9,12,16,20] },
+        'Relaciones en el trabajo': { items: '42, 43, 44, 45, 46, 69, 70, 71, 72', umbrales: [10,13,17,21] },
+        'Violencia': { items: '57, 58, 59, 60, 61, 62, 63, 64', umbrales: [7,10,13,16] },
+        'Reconocimiento del desempeño': { items: '47, 48, 49, 50, 51, 52', umbrales: [6,10,14,18] },
+        'Insuficiente sentido de pertenencia e inestabilidad': { items: '53, 54, 55, 56', umbrales: [4,6,8,10] }
+    }
+};
+
+function nom035ClasificarValor(valor, umbrales){
+    for(let i = 0; i < umbrales.length; i++){ if(valor < umbrales[i]) return NOM035_ORDEN_NIVELES[i]; }
+    return 'Muy alto';
+}
+
+function nom035FilaClasificacion(etiquetaIzq, valor, umbrales, formulaPrefijo){
+    // Construye la fila-tabla oficial: columnas Nulo/Bajo/Medio/Alto/Muy alto,
+    // con las fórmulas de cada nivel y el resultado solo en la columna que
+    // corresponde (igual que en tu reporte manual).
+    const nivel = nom035ClasificarValor(valor, umbrales);
+    const [u1,u2,u3,u4] = umbrales;
+    const formulas = [`${formulaPrefijo}<${u1}`, `${u1}<${formulaPrefijo}<${u2}`, `${u2}<${formulaPrefijo}<${u3}`, `${u3}<${formulaPrefijo}<${u4}`, `${formulaPrefijo}>${u4}`];
+    const filaEncabezado = [etiquetaIzq, '', '', '', '', 'Nulo o despreciable','Bajo','Medio','Alto','Muy alto'];
+    const filaFormulas = ['', '', '', '', '', ...formulas];
+    const filaResultado = ['', '', '', '', 'Resultado', ...NOM035_ORDEN_NIVELES.map(n => n === nivel ? Number(valor.toFixed(1)) : '')];
+    const filaVisual = ['', '', '', '', 'Nivel', `${nom035Emoji(nivel)} ${nivel}`, '', 'Gráfica', nom035Barra(nivel), ''];
+    return { nivel, filas: [filaEncabezado, filaFormulas, filaResultado, filaVisual, []] };
+}
+
+function nom035HojaReporteProfesional(resp, guia){
+    // Reporte estilo "oficial": tabla de clasificación general + una por
+    // cada dominio, usando el promedio de todas las respuestas del centro
+    // (igual metodología que tu reporte manual con varias encuestas).
+    const cfinales = resp.map(r => r.calificacion_final).filter(v => v !== null && v !== undefined);
+    const promCfinal = cfinales.length ? cfinales.reduce((a,b)=>a+b,0) / cfinales.length : null;
+
+    const filas = [
+        ['REPORTE NOM-035-STPS-2018 — FACTORES DE RIESGO PSICOSOCIAL'],
+        [`Guía aplicada: ${guia} · Encuestas consideradas: ${resp.length} · Promedio de calificación final: ${promCfinal !== null ? promCfinal.toFixed(1) : 'N/D'}`],
+        []
+    ];
+
+    if(promCfinal !== null){
+        const bloque = nom035FilaClasificacion('RESULTADO GENERAL DEL CUESTIONARIO', promCfinal, NOM035_CFINAL_UMBRALES[guia], 'Cfinal');
+        filas.push(...bloque.filas);
+    }
+
+    const dominiosAcc = {};
+    resp.forEach(r => (r.detalle_dominios || []).forEach(d => {
+        if(!dominiosAcc[d.dominio]) dominiosAcc[d.dominio] = [];
+        dominiosAcc[d.dominio].push(d.calificacion);
+    }));
+
+    Object.keys(NOM035_DOMINIOS_UMBRALES[guia] || {}).forEach(nombreDominio => {
+        const arr = dominiosAcc[nombreDominio];
+        if(!arr || !arr.length) return;
+        const prom = arr.reduce((a,b)=>a+b,0) / arr.length;
+        const info = NOM035_DOMINIOS_UMBRALES[guia][nombreDominio];
+        filas.push([`${nombreDominio}  (ítems: ${info.items})`]);
+        const bloque = nom035FilaClasificacion('Resultado por dominio', prom, info.umbrales, 'Cdom');
+        filas.push(...bloque.filas);
+    });
+
+    return XLSX.utils.aoa_to_sheet(filas);
+}
+
 async function exportarNom035Centro(centroId){
     const c = centrosData.find(x => x.id === centroId);
     const { data: resp, error } = await supabaseClient.from('nom035_respuestas').select('*').eq('centro_id', centroId).order('created_at', { ascending: false });
@@ -3369,6 +3455,21 @@ function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
         }));
 
     const wb = XLSX.utils.book_new();
+
+    // El reporte estilo "oficial" (tabla de clasificación por dominio) solo
+    // aplica cuando exportamos UN centro específico y ese centro sí tiene
+    // desglose por dominio (Guía II o III; los de ≤15 trabajadores con solo
+    // Guía I no aplican, ya que no tienen ese desglose).
+    if(nombreCentroFiltro && filasDominios.length){
+        const conteoGuia = {};
+        resp.forEach(r => { if(r.guia === 'II' || r.guia === 'III') conteoGuia[r.guia] = (conteoGuia[r.guia] || 0) + 1; });
+        const guiaPredominante = Object.keys(conteoGuia).sort((a,b) => conteoGuia[b] - conteoGuia[a])[0];
+        if(guiaPredominante){
+            const respGuia = resp.filter(r => r.guia === guiaPredominante);
+            XLSX.utils.book_append_sheet(wb, nom035HojaReporteProfesional(respGuia, guiaPredominante), 'Reporte NOM-035');
+        }
+    }
+
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasResumenCentro), 'Resumen por Centro');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resp.map(filaResumen)), 'Respuestas');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasDominios.length ? filasDominios : [{ 'Sin datos': 'Sin desglose por dominio' }]), 'Dominios');
