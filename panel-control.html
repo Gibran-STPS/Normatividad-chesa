@@ -994,6 +994,7 @@
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">NOM-035 · Riesgo Psicosocial</h2>
 <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Cuestionarios por centro de trabajo (Guía I, II o III según número de trabajadores), acceso por código QR para los colaboradores, y planes de acción según el nivel de riesgo resultante.</p>
 </div>
+<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-colors whitespace-nowrap" onclick="exportarNom035Anual()" type="button">Exportar respaldo anual (todos los centros)</button>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-lg" id="nom035-resumen-cards">
@@ -3178,10 +3179,11 @@ async function verResultadosNom035(centroId){
     }).join('') || '<p class="text-xs text-on-surface-variant">Sin desglose por dominio disponible (centros ≤15 trabajadores solo aplican la Guía I).</p>';
 
     contenido.innerHTML = `
-        <div class="flex items-center gap-sm mb-md">
+        <div class="flex items-center gap-sm mb-md flex-wrap">
             <span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">Riesgo ${peorNivel}</span>
             <span class="text-xs text-on-surface-variant">${resp.length} respuesta(s) recibida(s)</span>
             ${eventos ? `<span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase">${eventos} evento(s) traumático(s)</span>` : ''}
+            <button class="ml-auto border border-outline-variant px-sm py-1 rounded text-xs font-bold hover:bg-surface-container-high transition-colors" onclick="exportarNom035Centro('${centroId}')" type="button">Exportar Excel de este centro</button>
         </div>
         <div class="bg-surface-container-low p-md rounded mb-md">
             <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">PLAN DE ACCIÓN SUGERIDO (NOM-035, numeral 8)</p>
@@ -3190,6 +3192,22 @@ async function verResultadosNom035(centroId){
         <div class="mb-md">
             <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">CALIFICACIÓN PROMEDIO POR DOMINIO</p>
             ${dominiosHTML}
+        </div>
+        <div class="mb-md">
+            <div class="flex justify-between items-center mb-xs">
+                <p class="font-label-caps text-label-caps text-on-surface-variant">RESPUESTAS INDIVIDUALES (borra aquí tus pruebas)</p>
+                <button class="text-error hover:underline font-bold text-xs" onclick="eliminarTodasRespuestasNom035('${centroId}', ${resp.length})" type="button">Eliminar todas (${resp.length})</button>
+            </div>
+            <div class="max-h-56 overflow-y-auto border border-outline-variant rounded divide-y divide-outline-variant">
+                ${resp.map(r => {
+                    const fecha = new Date(r.created_at).toLocaleString('es-MX', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                    const nivelTxt = r.nivel_riesgo || (r.guia === 'I' ? 'Solo Guía I' : 'Sin datos');
+                    return `<div class="flex items-center justify-between px-sm py-1.5 text-xs">
+                        <span>${fecha} · Guía ${r.guia} · ${nivelTxt}${r.requiere_atencion_clinica ? ' · ⚠️ evento traumático' : ''}</span>
+                        <button class="text-error hover:underline font-bold" onclick="eliminarRespuestaNom035('${r.id}', '${centroId}')" type="button">Eliminar</button>
+                    </div>`;
+                }).join('')}
+            </div>
         </div>
         <button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="registrarPlanAccionNom035('${centroId}', '${peorNivel}')" type="button">Registrar plan de acción</button>
         ${eventos ? `<p class="text-xs text-error mt-sm">Recuerda: los trabajadores identificados con acontecimientos traumáticos severos deben canalizarse a atención médica/psicológica conforme al numeral 5.5 de la Norma.</p>` : ''}
@@ -3201,8 +3219,69 @@ async function registrarPlanAccionNom035(centroId, nivel){
     const { error } = await supabaseClient.from('nom035_planes_accion').insert({
         centro_id: centroId, nivel_riesgo: nivel, descripcion, estatus: 'Pendiente'
     });
-    if(error){ mostrarToast('No se pudo registrar el plan: ' + error.message); return; }
+    if(error){ mostrarToast('No se pudo registrar el plan: ' + error.message, 'error'); return; }
     mostrarToast('Plan de acción registrado. Dale seguimiento en la Nube de Archivos / Reportes.');
+}
+
+async function eliminarRespuestaNom035(respuestaId, centroId){
+    if(!confirm('¿Eliminar esta respuesta? No se puede deshacer.')) return;
+    const { error } = await supabaseClient.from('nom035_respuestas').delete().eq('id', respuestaId);
+    if(error){ mostrarToast('No se pudo eliminar: ' + error.message, 'error'); return; }
+    mostrarToast('Respuesta eliminada.');
+    verResultadosNom035(centroId);
+    renderNom035();
+}
+
+async function eliminarTodasRespuestasNom035(centroId, cantidad){
+    if(!confirm(`¿Eliminar las ${cantidad} respuesta(s) de este centro? No se puede deshacer.`)) return;
+    const { error } = await supabaseClient.from('nom035_respuestas').delete().eq('centro_id', centroId);
+    if(error){ mostrarToast('No se pudo eliminar: ' + error.message, 'error'); return; }
+    mostrarToast('Se eliminaron todas las respuestas de este centro.');
+    toggleModal('modal-resultados-nom035');
+    renderNom035();
+}
+
+async function exportarNom035Centro(centroId){
+    const c = centrosData.find(x => x.id === centroId);
+    const { data: resp, error } = await supabaseClient.from('nom035_respuestas').select('*').eq('centro_id', centroId).order('created_at', { ascending: false });
+    if(error){ mostrarToast('Error: ' + error.message, 'error'); return; }
+    exportarNom035AExcel(resp || [], c ? c.nombre : centroId, `NOM035_${c ? c.id : centroId}`);
+}
+
+async function exportarNom035Anual(){
+    const { data: resp, error } = await supabaseClient.from('nom035_respuestas').select('*').order('created_at', { ascending: false });
+    if(error){ mostrarToast('Error: ' + error.message, 'error'); return; }
+    exportarNom035AExcel(resp || [], null, `NOM035_Respaldo_Todos_Los_Centros_${new Date().getFullYear()}`);
+}
+
+function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
+    if(!resp.length){ mostrarToast('No hay respuestas para exportar.'); return; }
+
+    const filaResumen = r => ({
+        'Centro': (centrosData.find(c => c.id === r.centro_id) || {}).nombre || r.centro_id,
+        'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
+        'Guía aplicada': r.guia,
+        'Calificación final': r.calificacion_final ?? '',
+        'Nivel de riesgo': r.nivel_riesgo || '',
+        'Evento traumático reportado': r.requiere_atencion_clinica ? 'Sí' : 'No',
+        'Sexo': (r.datos_trabajador || {}).sexo || '',
+        'Rango de edad': (r.datos_trabajador || {}).edad || '',
+        'Tipo de puesto': (r.datos_trabajador || {}).puesto || ''
+    });
+    const filasDominios = [];
+    resp.forEach(r => (r.detalle_dominios || []).forEach(d => {
+        filasDominios.push({
+            'Centro': (centrosData.find(c => c.id === r.centro_id) || {}).nombre || r.centro_id,
+            'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
+            'Dominio': d.dominio, 'Calificación': d.calificacion, 'Nivel': d.nivel
+        });
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resp.map(filaResumen)), 'Respuestas');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasDominios.length ? filasDominios : [{ 'Sin datos': 'Sin desglose por dominio' }]), 'Dominios');
+    XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
+    mostrarToast('Excel exportado.');
 }
 
 console.log("Normatividad Grupo Automotriz Chesa — app inicializada.");
