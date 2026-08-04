@@ -3323,29 +3323,129 @@ const NOM035_DOMINIOS_UMBRALES = {
     }
 };
 
+function nom035ColorHexPorNivel(nivel){
+    return { 'Nulo':'9CA3AF', 'Bajo':'22C55E', 'Medio':'FBBF24', 'Alto':'F97316', 'Muy alto':'DC2626' }[nivel] || '9CA3AF';
+}
+function nom035TextoColorPorNivel(nivel){
+    return (nivel === 'Alto' || nivel === 'Muy alto') ? 'FFFFFF' : '000000';
+}
+function nom035Barra(nivel){
+    // Barra de texto (bloques Unicode básicos, sin emoji) como mini gráfica
+    // de magnitud dentro de la celda — esto sí se ve igual en cualquier
+    // Excel. El color real de riesgo lo pone aplicarColoresNom035Xlsx().
+    const pasos = { 'Nulo':1, 'Bajo':3, 'Medio':5, 'Alto':7, 'Muy alto':10 }[nivel] || 1;
+    return '█'.repeat(pasos) + '░'.repeat(10 - pasos);
+}
+function nom035ColLetra(idx){
+    let s = '', n = idx + 1;
+    while(n > 0){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+}
+
+async function aplicarColoresNom035Xlsx(buffer, coloresPorHoja){
+    // Los emoji de color (🟩🟥...) no se ven igual en todos los Excel —
+    // en muchos equipos salen como un cuadro vacío roto. Por eso el color
+    // real se aplica aquí directamente sobre el XML interno del archivo
+    // (como ya hacemos con las plantillas Word/Excel), en vez de depender
+    // de que la librería que arma el libro soporte escribir estilos
+    // (la versión que usamos no lo soporta).
+    try {
+        const zip = new PizZip(buffer);
+
+        const workbookXml = zip.file('xl/workbook.xml').asText();
+        const relsFile = zip.file('xl/_rels/workbook.xml.rels');
+        if(!relsFile) return buffer;
+        const relsXml = relsFile.asText();
+        const relEntries = {};
+        [...relsXml.matchAll(/<Relationship[^>]*Id="([^"]*)"[^>]*Target="([^"]*)"/g)].forEach(m => { relEntries[m[1]] = m[2]; });
+        const archivoPorHoja = {};
+        [...workbookXml.matchAll(/<sheet[^>]*name="([^"]*)"[^>]*r:id="([^"]*)"/g)].forEach(m => {
+            const target = relEntries[m[2]];
+            if(target) archivoPorHoja[m[1]] = 'xl/' + target.replace(/^\/+/, '');
+        });
+
+        const stylesFile = zip.file('xl/styles.xml');
+        if(!stylesFile) return buffer;
+        let stylesXml = stylesFile.asText();
+        const fillsMatch = stylesXml.match(/<fills count="(\d+)">([\s\S]*?)<\/fills>/);
+        const fontsMatch = stylesXml.match(/<fonts count="(\d+)">([\s\S]*?)<\/fonts>/);
+        const cellXfsMatch = stylesXml.match(/<cellXfs count="(\d+)">([\s\S]*?)<\/cellXfs>/);
+        if(!fillsMatch || !fontsMatch || !cellXfsMatch) return buffer;
+
+        let fillsCount = parseInt(fillsMatch[1], 10), fillsInner = fillsMatch[2];
+        let fontsCount = parseInt(fontsMatch[1], 10), fontsInner = fontsMatch[2];
+        let cellXfsCount = parseInt(cellXfsMatch[1], 10), cellXfsInner = cellXfsMatch[2];
+
+        const estiloPorNivel = {};
+        NOM035_ORDEN_NIVELES.forEach(nivel => {
+            const colorFondo = nom035ColorHexPorNivel(nivel);
+            const colorTexto = nom035TextoColorPorNivel(nivel);
+            fillsInner += `<fill><patternFill patternType="solid"><fgColor rgb="FF${colorFondo}"/><bgColor indexed="64"/></patternFill></fill>`;
+            const fillId = fillsCount++;
+            fontsInner += `<font><b/><sz val="11"/><color rgb="FF${colorTexto}"/><name val="Calibri"/></font>`;
+            const fontId = fontsCount++;
+            cellXfsInner += `<xf numFmtId="0" fontId="${fontId}" fillId="${fillId}" borderId="0" xfId="0" applyFill="1" applyFont="1"/>`;
+            estiloPorNivel[nivel] = cellXfsCount++;
+        });
+
+        stylesXml = stylesXml
+            .replace(fillsMatch[0], `<fills count="${fillsCount}">${fillsInner}</fills>`)
+            .replace(fontsMatch[0], `<fonts count="${fontsCount}">${fontsInner}</fonts>`)
+            .replace(cellXfsMatch[0], `<cellXfs count="${cellXfsCount}">${cellXfsInner}</cellXfs>`);
+        zip.file('xl/styles.xml', stylesXml);
+
+        Object.keys(coloresPorHoja).forEach(nombreHoja => {
+            const archivo = archivoPorHoja[nombreHoja];
+            const hojaFile = archivo && zip.file(archivo);
+            if(!hojaFile) return;
+            let xml = hojaFile.asText();
+            Object.keys(coloresPorHoja[nombreHoja]).forEach(celda => {
+                const idx = estiloPorNivel[coloresPorHoja[nombreHoja][celda]];
+                if(idx === undefined) return;
+                const regex = new RegExp(`<c r="${celda}"([^>]*)>`);
+                let reemplazado = false;
+                xml = xml.replace(regex, (m, attrs) => { reemplazado = true; return `<c r="${celda}" s="${idx}"${attrs.replace(/\s+s="\d+"/, '')}>`; });
+                if(!reemplazado){
+                    const fila = celda.match(/^[A-Z]+(\d+)$/)[1];
+                    const filaRegex = new RegExp(`(<row r="${fila}"[^>]*>)([\\s\\S]*?)(<\\/row>)`);
+                    xml = xml.replace(filaRegex, (m, abre, contenido, cierra) => `${abre}${contenido}<c r="${celda}" s="${idx}"/>${cierra}`);
+                }
+            });
+            zip.file(archivo, xml);
+        });
+
+        return zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    } catch(err){
+        console.error('No se pudo aplicar el color de riesgo al Excel:', err);
+        return buffer;
+    }
+}
+
 function nom035ClasificarValor(valor, umbrales){
     for(let i = 0; i < umbrales.length; i++){ if(valor < umbrales[i]) return NOM035_ORDEN_NIVELES[i]; }
     return 'Muy alto';
 }
 
-function nom035FilaClasificacion(etiquetaIzq, valor, umbrales, formulaPrefijo){
-    // Construye la fila-tabla oficial: columnas Nulo/Bajo/Medio/Alto/Muy alto,
-    // con las fórmulas de cada nivel y el resultado solo en la columna que
-    // corresponde (igual que en tu reporte manual).
+function nom035FilaClasificacion(etiquetaIzq, valor, umbrales, formulaPrefijo, filaInicial, colores){
+    // Construye la tabla oficial (Nulo/Bajo/Medio/Alto/Muy alto) con las
+    // fórmulas exactas de la Norma, colocando el resultado SOLO en su
+    // columna, y anota en "colores" qué celda debe pintarse de qué color.
     const nivel = nom035ClasificarValor(valor, umbrales);
     const [u1,u2,u3,u4] = umbrales;
     const formulas = [`${formulaPrefijo}<${u1}`, `${u1}<${formulaPrefijo}<${u2}`, `${u2}<${formulaPrefijo}<${u3}`, `${u3}<${formulaPrefijo}<${u4}`, `${formulaPrefijo}>${u4}`];
     const filaEncabezado = [etiquetaIzq, '', '', '', '', 'Nulo o despreciable','Bajo','Medio','Alto','Muy alto'];
     const filaFormulas = ['', '', '', '', '', ...formulas];
     const filaResultado = ['', '', '', '', 'Resultado', ...NOM035_ORDEN_NIVELES.map(n => n === nivel ? Number(valor.toFixed(1)) : '')];
-    const filaVisual = ['', '', '', '', 'Nivel', `${nom035Emoji(nivel)} ${nivel}`, '', 'Gráfica', nom035Barra(nivel), ''];
-    return { nivel, filas: [filaEncabezado, filaFormulas, filaResultado, filaVisual, []] };
+    const filaVisual = ['', '', '', '', 'Nivel', nivel, '', 'Gráfica', nom035Barra(nivel)];
+
+    const colResultado = nom035ColLetra(5 + NOM035_ORDEN_NIVELES.indexOf(nivel));
+    colores[`${colResultado}${filaInicial + 3}`] = nivel; // fila del "Resultado" (1-based, +3 por encabezado+fórmulas antes)
+    colores[`F${filaInicial + 4}`] = nivel; // celda "Nivel: <nivel>"
+
+    return { filas: [filaEncabezado, filaFormulas, filaResultado, filaVisual, []] };
 }
 
-function nom035HojaReporteProfesional(resp, guia){
-    // Reporte estilo "oficial": tabla de clasificación general + una por
-    // cada dominio, usando el promedio de todas las respuestas del centro
-    // (igual metodología que tu reporte manual con varias encuestas).
+function nom035HojaReporteProfesional(resp, guia, colores){
     const cfinales = resp.map(r => r.calificacion_final).filter(v => v !== null && v !== undefined);
     const promCfinal = cfinales.length ? cfinales.reduce((a,b)=>a+b,0) / cfinales.length : null;
 
@@ -3356,7 +3456,7 @@ function nom035HojaReporteProfesional(resp, guia){
     ];
 
     if(promCfinal !== null){
-        const bloque = nom035FilaClasificacion('RESULTADO GENERAL DEL CUESTIONARIO', promCfinal, NOM035_CFINAL_UMBRALES[guia], 'Cfinal');
+        const bloque = nom035FilaClasificacion('RESULTADO GENERAL DEL CUESTIONARIO', promCfinal, NOM035_CFINAL_UMBRALES[guia], 'Cfinal', filas.length, colores);
         filas.push(...bloque.filas);
     }
 
@@ -3372,55 +3472,48 @@ function nom035HojaReporteProfesional(resp, guia){
         const prom = arr.reduce((a,b)=>a+b,0) / arr.length;
         const info = NOM035_DOMINIOS_UMBRALES[guia][nombreDominio];
         filas.push([`${nombreDominio}  (ítems: ${info.items})`]);
-        const bloque = nom035FilaClasificacion('Resultado por dominio', prom, info.umbrales, 'Cdom');
+        const bloque = nom035FilaClasificacion('Resultado por dominio', prom, info.umbrales, 'Cdom', filas.length, colores);
         filas.push(...bloque.filas);
     });
 
-    return XLSX.utils.aoa_to_sheet(filas);
+    const ws = XLSX.utils.aoa_to_sheet(filas);
+    ws['!cols'] = [{wch:40},{wch:2},{wch:2},{wch:2},{wch:12},{wch:20},{wch:18},{wch:18},{wch:18},{wch:18}];
+    return ws;
 }
 
 async function exportarNom035Centro(centroId){
     const c = centrosData.find(x => x.id === centroId);
     const { data: resp, error } = await supabaseClient.from('nom035_respuestas').select('*').eq('centro_id', centroId).order('created_at', { ascending: false });
     if(error){ mostrarToast('Error: ' + error.message, 'error'); return; }
-    exportarNom035AExcel(resp || [], c ? c.nombre : centroId, `NOM035_${c ? c.id : centroId}`);
+    await exportarNom035AExcel(resp || [], c ? c.nombre : centroId, `NOM035_${c ? c.id : centroId}`);
 }
 
 async function exportarNom035Anual(){
     const { data: resp, error } = await supabaseClient.from('nom035_respuestas').select('*').order('created_at', { ascending: false });
     if(error){ mostrarToast('Error: ' + error.message, 'error'); return; }
-    exportarNom035AExcel(resp || [], null, `NOM035_Respaldo_Todos_Los_Centros_${new Date().getFullYear()}`);
+    await exportarNom035AExcel(resp || [], null, `NOM035_Respaldo_Todos_Los_Centros_${new Date().getFullYear()}`);
 }
 
-function nom035Emoji(nivel){
-    return { 'Nulo':'⬜', 'Bajo':'🟩', 'Medio':'🟨', 'Alto':'🟧', 'Muy alto':'🟥' }[nivel] || '⬜';
-}
-function nom035Barra(nivel){
-    // Barra de texto (10 bloques) según el nivel, para que se vea como una
-    // mini gráfica de riesgo dentro de la celda de Excel — sin depender de
-    // que la librería de Excel soporte colores de celda ni gráficas nativas
-    // (la versión que usamos no los soporta al escribir un archivo nuevo).
-    const pasos = { 'Nulo':1, 'Bajo':3, 'Medio':5, 'Alto':7, 'Muy alto':10 }[nivel] || 1;
-    return '█'.repeat(pasos) + '░'.repeat(10 - pasos);
-}
-
-function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
+async function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
     if(!resp.length){ mostrarToast('No hay respuestas para exportar.'); return; }
-    const orden = ['Nulo','Bajo','Medio','Alto','Muy alto'];
+    const orden = NOM035_ORDEN_NIVELES;
     const nombreCentro = r => (centrosData.find(c => c.id === r.centro_id) || {}).nombre || r.centro_id;
+    const colores = { 'Resumen por Centro': {}, 'Respuestas': {}, 'Dominios': {} };
 
     const filaResumen = r => ({
         'Centro': nombreCentro(r),
         'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
         'Guía aplicada': r.guia,
         'Calificación final': r.calificacion_final ?? '',
-        'Nivel de riesgo': r.nivel_riesgo ? `${nom035Emoji(r.nivel_riesgo)} ${r.nivel_riesgo}` : '',
+        'Nivel de riesgo': r.nivel_riesgo || '',
         'Riesgo (gráfica)': r.nivel_riesgo ? nom035Barra(r.nivel_riesgo) : '',
-        'Evento traumático reportado': r.requiere_atencion_clinica ? '🟥 Sí' : 'No',
+        'Evento traumático reportado': r.requiere_atencion_clinica ? 'Sí' : 'No',
         'Sexo': (r.datos_trabajador || {}).sexo || '',
         'Rango de edad': (r.datos_trabajador || {}).edad || '',
         'Tipo de puesto': (r.datos_trabajador || {}).puesto || ''
     });
+    const filasRespuestas = resp.map(filaResumen);
+    filasRespuestas.forEach((f, i) => { if(f['Nivel de riesgo']) colores['Respuestas'][`E${i + 2}`] = f['Nivel de riesgo']; });
 
     const filasDominios = [];
     resp.forEach(r => (r.detalle_dominios || []).forEach(d => {
@@ -3429,10 +3522,11 @@ function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
             'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
             'Dominio': d.dominio,
             'Calificación': d.calificacion,
-            'Nivel de riesgo': `${nom035Emoji(d.nivel)} ${d.nivel}`,
+            'Nivel de riesgo': d.nivel,
             'Riesgo (gráfica)': nom035Barra(d.nivel)
         });
     }));
+    filasDominios.forEach((f, i) => { colores['Dominios'][`E${i + 2}`] = f['Nivel de riesgo']; });
 
     // Resumen por centro / área del grupo: el PEOR nivel visto entre todas
     // sus respuestas (mismo criterio que usa el panel), más totales.
@@ -3448,11 +3542,12 @@ function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
         .sort((a,b) => orden.indexOf(b.peorNivel) - orden.indexOf(a.peorNivel))
         .map(c => ({
             'Centro / Área': c.nombre,
-            'Nivel de riesgo': `${nom035Emoji(c.peorNivel)} ${c.peorNivel}`,
+            'Nivel de riesgo': c.peorNivel,
             'Riesgo (gráfica)': nom035Barra(c.peorNivel),
             'Respuestas recibidas': c.respuestas,
             'Eventos traumáticos': c.eventos
         }));
+    filasResumenCentro.forEach((f, i) => { colores['Resumen por Centro'][`B${i + 2}`] = f['Nivel de riesgo']; });
 
     const wb = XLSX.utils.book_new();
 
@@ -3466,15 +3561,28 @@ function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
         const guiaPredominante = Object.keys(conteoGuia).sort((a,b) => conteoGuia[b] - conteoGuia[a])[0];
         if(guiaPredominante){
             const respGuia = resp.filter(r => r.guia === guiaPredominante);
-            XLSX.utils.book_append_sheet(wb, nom035HojaReporteProfesional(respGuia, guiaPredominante), 'Reporte NOM-035');
+            colores['Reporte NOM-035'] = {};
+            XLSX.utils.book_append_sheet(wb, nom035HojaReporteProfesional(respGuia, guiaPredominante, colores['Reporte NOM-035']), 'Reporte NOM-035');
         }
     }
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasResumenCentro), 'Resumen por Centro');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resp.map(filaResumen)), 'Respuestas');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasDominios.length ? filasDominios : [{ 'Sin datos': 'Sin desglose por dominio' }]), 'Dominios');
-    XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
-    mostrarToast('Excel exportado con semáforo de riesgo por centro y por dominio.');
+    const wsResumen = XLSX.utils.json_to_sheet(filasResumenCentro);
+    wsResumen['!cols'] = [{wch:28},{wch:14},{wch:14},{wch:18},{wch:16}];
+    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen por Centro');
+
+    const wsRespuestas = XLSX.utils.json_to_sheet(filasRespuestas);
+    wsRespuestas['!cols'] = [{wch:28},{wch:20},{wch:12},{wch:16},{wch:12},{wch:14},{wch:22},{wch:14},{wch:14},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, wsRespuestas, 'Respuestas');
+
+    const wsDominios = XLSX.utils.json_to_sheet(filasDominios.length ? filasDominios : [{ 'Sin datos': 'Sin desglose por dominio' }]);
+    wsDominios['!cols'] = [{wch:28},{wch:20},{wch:34},{wch:14},{wch:12},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, wsDominios, 'Dominios');
+
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const resultado = await aplicarColoresNom035Xlsx(buffer, colores);
+    const blob = resultado instanceof Blob ? resultado : new Blob([resultado], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    descargarBlob(blob, `${nombreArchivo}.xlsx`);
+    mostrarToast('Excel exportado con colores reales de celda según el nivel de riesgo.');
 }
 
 console.log("Normatividad Grupo Automotriz Chesa — app inicializada.");
