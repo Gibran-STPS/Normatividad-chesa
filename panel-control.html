@@ -3181,16 +3181,38 @@ async function verResultadosNom035(centroId){
     conNivel.forEach(r => { if(orden.indexOf(r.nivel_riesgo) > orden.indexOf(peorNivel)) peorNivel = r.nivel_riesgo; });
     const badge = NOM035_NIVEL_ESTILOS[peorNivel] || NOM035_NIVEL_ESTILOS['Sin datos'];
 
-    // Promedio por dominio a partir de detalle_dominios de todas las respuestas con ese detalle
+    // Por dominio: guardamos las calificaciones y el PEOR nivel visto entre
+    // todas las respuestas (igual criterio que el nivel general del centro).
     const dominiosAcc = {};
     conNivel.forEach(r => (r.detalle_dominios||[]).forEach(d => {
-        dominiosAcc[d.dominio] = dominiosAcc[d.dominio] || [];
-        dominiosAcc[d.dominio].push(d.calificacion);
+        if(!dominiosAcc[d.dominio]) dominiosAcc[d.dominio] = { calificaciones: [], peorNivel: 'Nulo' };
+        dominiosAcc[d.dominio].calificaciones.push(d.calificacion);
+        if(orden.indexOf(d.nivel) > orden.indexOf(dominiosAcc[d.dominio].peorNivel)) dominiosAcc[d.dominio].peorNivel = d.nivel;
     }));
-    const dominiosHTML = Object.keys(dominiosAcc).map(nombre => {
-        const arr = dominiosAcc[nombre];
-        const prom = (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1);
-        return `<div class="flex justify-between text-xs py-1 border-b border-outline-variant/50"><span>${nombre}</span><span class="font-bold">${prom}</span></div>`;
+
+    const dominiosHTML = Object.keys(dominiosAcc).map((nombre, i) => {
+        const info = dominiosAcc[nombre];
+        const prom = (info.calificaciones.reduce((a,b)=>a+b,0) / info.calificaciones.length).toFixed(1);
+        const pct = ((NOM035_ORDEN_NIVELES.indexOf(info.peorNivel) + 1) / 5) * 100;
+        const color = NOM035_COLOR_NIVEL[info.peorNivel] || '#9ca3af';
+        const idAcordeon = `nom035-dom-${i}`;
+        return `
+        <div class="border border-outline-variant rounded mb-sm overflow-hidden">
+            <button class="w-full flex items-center gap-sm px-sm py-2 text-left hover:bg-surface-container transition-colors" onclick="document.getElementById('${idAcordeon}').classList.toggle('hidden')" type="button">
+                <span class="text-xs flex-1">${nombre}</span>
+                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded" style="background:${color}22; color:${color};">${info.peorNivel}</span>
+                <span class="material-symbols-outlined text-sm text-on-surface-variant" data-icon="expand_more">expand_more</span>
+            </button>
+            <div class="px-sm pb-1">
+                <div class="w-full h-2 rounded bg-surface-container-highest overflow-hidden">
+                    <div style="width:${pct}%; height:100%; background:${color};"></div>
+                </div>
+            </div>
+            <div class="hidden px-sm pb-sm pt-1 border-t border-outline-variant/50" id="${idAcordeon}">
+                <p class="text-xs text-on-surface-variant mb-1">Calificación promedio: <strong>${prom}</strong></p>
+                <p class="text-xs">${NOM035_DOMINIO_RECOMENDACIONES[nombre] || 'Revisa este dominio con tu comisión de seguridad e higiene para definir acciones puntuales.'}</p>
+            </div>
+        </div>`;
     }).join('') || '<p class="text-xs text-on-surface-variant">Sin desglose por dominio disponible (centros ≤15 trabajadores solo aplican la Guía I).</p>';
 
     contenido.innerHTML = `
@@ -3205,7 +3227,7 @@ async function verResultadosNom035(centroId){
             <p class="text-sm">${NOM035_PLAN_TEXTOS[peorNivel] || NOM035_PLAN_TEXTOS['Nulo']}</p>
         </div>
         <div class="mb-md">
-            <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">CALIFICACIÓN PROMEDIO POR DOMINIO</p>
+            <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">ANÁLISIS POR DOMINIO (haz clic en cada uno para ver la recomendación)</p>
             ${dominiosHTML}
         </div>
         <div class="mb-md">
@@ -3228,6 +3250,21 @@ async function verResultadosNom035(centroId){
         ${eventos ? `<p class="text-xs text-error mt-sm">Recuerda: los trabajadores identificados con acontecimientos traumáticos severos deben canalizarse a atención médica/psicológica conforme al numeral 5.5 de la Norma.</p>` : ''}
     `;
 }
+
+const NOM035_DOMINIO_RECOMENDACIONES = {
+    'Condiciones en el ambiente de trabajo': 'Revisa que las instalaciones cumplan condiciones seguras e higiénicas, elimina condiciones peligrosas identificadas y refuerza la aplicación de las normas de seguridad y salud en el centro de trabajo.',
+    'Carga de trabajo': 'Revisa la distribución de la carga de trabajo entre colaboradores, planifica pausas y rotación de tareas, y evita ritmos acelerados o instrucciones contradictorias entre distintos jefes.',
+    'Falta de control sobre el trabajo': 'Involucra a los trabajadores en decisiones sobre su propio trabajo, amplía su margen de autonomía y refuerza la capacitación para que desarrollen nuevas habilidades.',
+    'Jornada de trabajo': 'Establece límites claros a las jornadas extensas y a la rotación de turnos conforme a la Ley Federal del Trabajo, y da seguimiento a quienes laboran en días de descanso.',
+    'Interferencia trabajo-familia': 'Da flexibilidad razonable en los horarios cuando el proceso lo permita, y facilita apoyos a los trabajadores para atender emergencias familiares.',
+    'Liderazgo': 'Capacita y sensibiliza a jefes y supervisores en manejo de conflictos, comunicación asertiva y retroalimentación oportuna; da seguimiento a quejas sobre el trato del liderazgo.',
+    'Relaciones en el trabajo': 'Fomenta el trabajo en equipo y el apoyo social entre compañeros; atiende oportunamente cualquier señal de mal ambiente entre colaboradores o con quienes supervisan.',
+    'Violencia': 'Activa el mecanismo confidencial de quejas, investiga cualquier reporte de hostigamiento, acoso o malos tratos, y difunde la política de cero tolerancia a la violencia laboral.',
+    'Reconocimiento del desempeño': 'Reconoce el desempeño sobresaliente de manera visible, da retroalimentación regular y revisa que el pago y las oportunidades de crecimiento se perciban como justos.',
+    'Insuficiente sentido de pertenencia e inestabilidad': 'Refuerza el sentido de pertenencia con comunicación sobre el rumbo de la empresa, y revisa las causas de rotación de personal en el área correspondiente.'
+};
+const NOM035_ORDEN_NIVELES = ['Nulo','Bajo','Medio','Alto','Muy alto'];
+const NOM035_COLOR_NIVEL = { 'Nulo':'#9ca3af', 'Bajo':'#22c58b', 'Medio':'#f2b705', 'Alto':'#f2790a', 'Muy alto':'#dc2626' };
 
 async function registrarPlanAccionNom035(centroId, nivel){
     const descripcion = NOM035_PLAN_TEXTOS[nivel] || NOM035_PLAN_TEXTOS['Nulo'];
