@@ -3091,7 +3091,8 @@ async function renderNom035(){
         <td class="px-md py-sm"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${ultimoNivel}</span></td>
         <td class="px-md py-sm text-right whitespace-nowrap">
             <button class="material-symbols-outlined text-secondary text-lg mr-sm" data-icon="qr_code_2" onclick="abrirModalQRNom035('${c.id}')" type="button" title="Generar / ver código QR">qr_code_2</button>
-            <button class="material-symbols-outlined text-primary text-lg" data-icon="query_stats" onclick="verResultadosNom035('${c.id}')" type="button" title="Ver resultados y plan de acción">query_stats</button>
+            <button class="material-symbols-outlined text-primary text-lg mr-sm" data-icon="query_stats" onclick="verResultadosNom035('${c.id}')" type="button" title="Ver resultados y plan de acción">query_stats</button>
+            ${respsCentro.length ? `<button class="material-symbols-outlined text-error text-lg" data-icon="delete" onclick="eliminarTodasRespuestasNom035('${c.id}', ${respsCentro.length})" type="button" title="Eliminar todas las respuestas de este centro">delete</button>` : ''}
         </td>
         </tr>`;
     }).join('') || '<tr><td class="px-md py-sm text-sm text-on-surface-variant" colspan="6">No hay centros de trabajo registrados.</td></tr>';
@@ -3237,7 +3238,7 @@ async function eliminarTodasRespuestasNom035(centroId, cantidad){
     const { error } = await supabaseClient.from('nom035_respuestas').delete().eq('centro_id', centroId);
     if(error){ mostrarToast('No se pudo eliminar: ' + error.message, 'error'); return; }
     mostrarToast('Se eliminaron todas las respuestas de este centro.');
-    toggleModal('modal-resultados-nom035');
+    document.getElementById('modal-resultados-nom035').classList.add('hidden');
     renderNom035();
 }
 
