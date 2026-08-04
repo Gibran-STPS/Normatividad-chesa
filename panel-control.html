@@ -52,6 +52,10 @@
 <h1 class="font-display-lg text-display-lg text-primary leading-tight">Normatividad</h1>
 <p class="font-title-sm text-title-sm text-on-surface-variant mt-1">Grupo Automotriz Chesa</p>
 </div>
+<div id="login-continuar-sesion" class="hidden mb-md">
+<button class="w-full border-2 border-primary text-primary font-bold py-sm hover:bg-surface-container-high transition-all" id="btn-continuar-sesion" type="button"></button>
+<p class="text-center text-xs text-on-surface-variant mt-xs">o inicia sesión con otra cuenta abajo</p>
+</div>
 <form class="space-y-md" onsubmit="handleLogin(event)">
 <div id="login-error" class="hidden bg-error-container text-on-error-container text-sm font-semibold rounded p-sm flex items-center gap-2">
 <span class="material-symbols-outlined text-lg" data-icon="error">error</span>
@@ -1407,14 +1411,23 @@ async function entrarConSesion(user){
 }
 
 async function intentarSesionGuardada(){
-    // Al cargar la página, revisa si el navegador ya tiene una sesión
-    // guardada de una visita anterior. Si la hay, entra directo al panel
-    // sin pedir usuario y contraseña de nuevo.
+    // Antes esto entraba directo al panel si había una sesión guardada.
+    // Ahora, aunque el navegador recuerde la sesión, NO se entra solo:
+    // se muestra un botón "Continuar como..." que hay que presionar.
+    // Así siempre queda a la vista la pantalla de acceso primero.
     if(!supabaseListo) return;
     const { data, error } = await supabaseClient.auth.getSession();
     if(error || !data.session || !data.session.user) return;
-    const nombre = await entrarConSesion(data.session.user);
-    mostrarToast('Sesión recordada. Hola de nuevo, ' + nombre.split(' ')[0] + '.');
+
+    const email = data.session.user.email;
+    const cont = document.getElementById('login-continuar-sesion');
+    const btn = document.getElementById('btn-continuar-sesion');
+    btn.textContent = 'Continuar como ' + email;
+    btn.onclick = async () => {
+        const nombre = await entrarConSesion(data.session.user);
+        mostrarToast('Hola de nuevo, ' + nombre.split(' ')[0] + '.');
+    };
+    cont.classList.remove('hidden');
 }
 intentarSesionGuardada();
 
