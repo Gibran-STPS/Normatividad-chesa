@@ -3306,34 +3306,74 @@ async function exportarNom035Anual(){
     exportarNom035AExcel(resp || [], null, `NOM035_Respaldo_Todos_Los_Centros_${new Date().getFullYear()}`);
 }
 
+function nom035Emoji(nivel){
+    return { 'Nulo':'⬜', 'Bajo':'🟩', 'Medio':'🟨', 'Alto':'🟧', 'Muy alto':'🟥' }[nivel] || '⬜';
+}
+function nom035Barra(nivel){
+    // Barra de texto (10 bloques) según el nivel, para que se vea como una
+    // mini gráfica de riesgo dentro de la celda de Excel — sin depender de
+    // que la librería de Excel soporte colores de celda ni gráficas nativas
+    // (la versión que usamos no los soporta al escribir un archivo nuevo).
+    const pasos = { 'Nulo':1, 'Bajo':3, 'Medio':5, 'Alto':7, 'Muy alto':10 }[nivel] || 1;
+    return '█'.repeat(pasos) + '░'.repeat(10 - pasos);
+}
+
 function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
     if(!resp.length){ mostrarToast('No hay respuestas para exportar.'); return; }
+    const orden = ['Nulo','Bajo','Medio','Alto','Muy alto'];
+    const nombreCentro = r => (centrosData.find(c => c.id === r.centro_id) || {}).nombre || r.centro_id;
 
     const filaResumen = r => ({
-        'Centro': (centrosData.find(c => c.id === r.centro_id) || {}).nombre || r.centro_id,
+        'Centro': nombreCentro(r),
         'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
         'Guía aplicada': r.guia,
         'Calificación final': r.calificacion_final ?? '',
-        'Nivel de riesgo': r.nivel_riesgo || '',
-        'Evento traumático reportado': r.requiere_atencion_clinica ? 'Sí' : 'No',
+        'Nivel de riesgo': r.nivel_riesgo ? `${nom035Emoji(r.nivel_riesgo)} ${r.nivel_riesgo}` : '',
+        'Riesgo (gráfica)': r.nivel_riesgo ? nom035Barra(r.nivel_riesgo) : '',
+        'Evento traumático reportado': r.requiere_atencion_clinica ? '🟥 Sí' : 'No',
         'Sexo': (r.datos_trabajador || {}).sexo || '',
         'Rango de edad': (r.datos_trabajador || {}).edad || '',
         'Tipo de puesto': (r.datos_trabajador || {}).puesto || ''
     });
+
     const filasDominios = [];
     resp.forEach(r => (r.detalle_dominios || []).forEach(d => {
         filasDominios.push({
-            'Centro': (centrosData.find(c => c.id === r.centro_id) || {}).nombre || r.centro_id,
+            'Centro': nombreCentro(r),
             'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
-            'Dominio': d.dominio, 'Calificación': d.calificacion, 'Nivel': d.nivel
+            'Dominio': d.dominio,
+            'Calificación': d.calificacion,
+            'Nivel de riesgo': `${nom035Emoji(d.nivel)} ${d.nivel}`,
+            'Riesgo (gráfica)': nom035Barra(d.nivel)
         });
     }));
 
+    // Resumen por centro / área del grupo: el PEOR nivel visto entre todas
+    // sus respuestas (mismo criterio que usa el panel), más totales.
+    const porCentro = {};
+    resp.forEach(r => {
+        const id = r.centro_id;
+        if(!porCentro[id]) porCentro[id] = { nombre: nombreCentro(r), respuestas: 0, eventos: 0, peorNivel: 'Nulo' };
+        porCentro[id].respuestas++;
+        if(r.requiere_atencion_clinica) porCentro[id].eventos++;
+        if(r.nivel_riesgo && orden.indexOf(r.nivel_riesgo) > orden.indexOf(porCentro[id].peorNivel)) porCentro[id].peorNivel = r.nivel_riesgo;
+    });
+    const filasResumenCentro = Object.values(porCentro)
+        .sort((a,b) => orden.indexOf(b.peorNivel) - orden.indexOf(a.peorNivel))
+        .map(c => ({
+            'Centro / Área': c.nombre,
+            'Nivel de riesgo': `${nom035Emoji(c.peorNivel)} ${c.peorNivel}`,
+            'Riesgo (gráfica)': nom035Barra(c.peorNivel),
+            'Respuestas recibidas': c.respuestas,
+            'Eventos traumáticos': c.eventos
+        }));
+
     const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasResumenCentro), 'Resumen por Centro');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resp.map(filaResumen)), 'Respuestas');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasDominios.length ? filasDominios : [{ 'Sin datos': 'Sin desglose por dominio' }]), 'Dominios');
     XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
-    mostrarToast('Excel exportado.');
+    mostrarToast('Excel exportado con semáforo de riesgo por centro y por dominio.');
 }
 
 console.log("Normatividad Grupo Automotriz Chesa — app inicializada.");
