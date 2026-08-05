@@ -276,9 +276,9 @@
 <span class="material-symbols-outlined text-on-secondary-container text-lg" data-icon="propane_tank">propane_tank</span>
 </div>
 </div>
-<h3 class="font-display-lg text-display-lg text-on-surface">1,204</h3>
-<p class="text-xs text-error flex items-center gap-1 font-semibold mt-1">
-<span class="material-symbols-outlined text-xs" data-icon="warning">warning</span> 38 vencen en menos de 30 días
+<h3 class="font-display-lg text-display-lg text-on-surface" id="panel-kpi-dictamenes-num">—</h3>
+<p class="text-xs text-error flex items-center gap-1 font-semibold mt-1 cursor-pointer hover:underline" id="panel-kpi-dictamenes-sub" onclick="showSection('sec-certs')">
+<span class="material-symbols-outlined text-xs" data-icon="warning">warning</span> <span id="panel-kpi-dictamenes-sub-txt">Cargando…</span>
                 </p>
 </div>
 </div>
@@ -2224,6 +2224,8 @@ async function renderPanelControl(){
     const mes = hoy.getMonth() + 1, anio = hoy.getFullYear();
     document.getElementById('panel-kpi-actividades-label').textContent = `ACTIVIDADES NORMATIVAS (${NOMBRES_MES[mes - 1].toUpperCase().slice(0,3)})`;
 
+    cargarResumenDictamenesPanel();
+
     const { data, error } = await supabaseClient.from('calendario_normativo').select('centro_id, estado').eq('mes', mes).eq('anio', anio);
     const tbody = document.getElementById('panel-actividades-tbody');
     if(error){
@@ -4115,7 +4117,7 @@ async function cargarPipc(){
 }
 
 // ---- KPIs consolidados ----
-async function cargarCertsKpis(){
+async function obtenerResumenCertsTecnicos(){
     let total = 0, vigentes = 0, porVencer = 0, vencidos = 0;
     const hoy = new Date(); hoy.setHours(0,0,0,0);
     for(const tabla of Object.keys(CERTS_CAMPOS_VIGENCIA)){
@@ -4130,10 +4132,40 @@ async function cargarCertsKpis(){
             });
         });
     }
-    document.getElementById('certs-kpi-total').textContent = total;
-    document.getElementById('certs-kpi-vigentes').textContent = vigentes;
-    document.getElementById('certs-kpi-por-vencer').textContent = porVencer;
-    document.getElementById('certs-kpi-vencidos').textContent = vencidos;
+    return { total, vigentes, porVencer, vencidos };
+}
+
+async function cargarResumenDictamenesPanel(){
+    const num = document.getElementById('panel-kpi-dictamenes-num');
+    const sub = document.getElementById('panel-kpi-dictamenes-sub');
+    const subTxt = document.getElementById('panel-kpi-dictamenes-sub-txt');
+    if(!num) return; // la tarjeta no está en esta vista
+    const r = await obtenerResumenCertsTecnicos();
+    if(!r.total){
+        num.textContent = '0';
+        subTxt.textContent = 'Sin registros todavía — captúralos en Certificados Técnicos';
+        sub.className = 'text-xs text-on-surface-variant flex items-center gap-1 font-semibold mt-1 cursor-pointer hover:underline';
+        return;
+    }
+    num.textContent = (r.vigentes + r.porVencer).toLocaleString('es-MX');
+    if(r.porVencer || r.vencidos){
+        const partes = [];
+        if(r.porVencer) partes.push(`${r.porVencer} vencen en menos de 30 días`);
+        if(r.vencidos) partes.push(`${r.vencidos} ya vencido(s)`);
+        subTxt.textContent = partes.join(' · ');
+        sub.className = 'text-xs text-error flex items-center gap-1 font-semibold mt-1 cursor-pointer hover:underline';
+    } else {
+        subTxt.textContent = 'Todos los dictámenes vigentes';
+        sub.className = 'text-xs text-on-tertiary-container flex items-center gap-1 font-semibold mt-1 cursor-pointer hover:underline';
+    }
+}
+
+async function cargarCertsKpis(){
+    const r = await obtenerResumenCertsTecnicos();
+    document.getElementById('certs-kpi-total').textContent = r.total;
+    document.getElementById('certs-kpi-vigentes').textContent = r.vigentes;
+    document.getElementById('certs-kpi-por-vencer').textContent = r.porVencer;
+    document.getElementById('certs-kpi-vencidos').textContent = r.vencidos;
 }
 
 async function cargarTodoCerts(){
