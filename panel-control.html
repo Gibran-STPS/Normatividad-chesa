@@ -103,22 +103,41 @@
 <span class="material-symbols-outlined mr-sm" data-icon="factory">factory</span>
 <span class="font-body-md text-body-md">Centros de Trabajo</span>
 </button>
+
+<div>
+<button class="nav-group-toggle w-full flex items-center justify-between px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" id="toggle-grupo-seguridad" onclick="toggleNavGroup('grupo-seguridad')" type="button">
+<span class="flex items-center"><span class="material-symbols-outlined mr-sm" data-icon="health_and_safety">health_and_safety</span><span class="font-body-md text-body-md">Seguridad e Higiene</span></span>
+<span class="material-symbols-outlined text-base transition-transform duration-150" data-icon="expand_more" id="grupo-seguridad-chevron">expand_more</span>
+</button>
+<div class="nav-group-body pl-lg space-y-xs mt-xs hidden" id="grupo-seguridad">
 <button class="nav-link w-full flex items-center px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" data-target="sec-actividades" onclick="showSection('sec-actividades')">
-<span class="material-symbols-outlined mr-sm" data-icon="mail">mail</span>
-<span class="font-body-md text-body-md">Actividades Normativas</span>
+<span class="material-symbols-outlined mr-sm text-lg" data-icon="mail">mail</span>
+<span class="font-body-sm text-body-sm">Actividades Normativas</span>
 </button>
 <button class="nav-link w-full flex items-center px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" data-target="sec-nom" onclick="showSection('sec-nom')">
-<span class="material-symbols-outlined mr-sm" data-icon="verified_user">verified_user</span>
-<span class="font-body-md text-body-md">Progreso NOM-STPS</span>
+<span class="material-symbols-outlined mr-sm text-lg" data-icon="verified_user">verified_user</span>
+<span class="font-body-sm text-body-sm">Progreso NOM-STPS</span>
 </button>
 <button class="nav-link w-full flex items-center px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" data-target="sec-nom035" onclick="showSection('sec-nom035')">
-<span class="material-symbols-outlined mr-sm" data-icon="psychology">psychology</span>
-<span class="font-body-md text-body-md">NOM-035 Riesgo Psicosocial</span>
+<span class="material-symbols-outlined mr-sm text-lg" data-icon="psychology">psychology</span>
+<span class="font-body-sm text-body-sm">NOM-035 Riesgo Psicosocial</span>
 </button>
+</div>
+</div>
+
+<div>
+<button class="nav-group-toggle w-full flex items-center justify-between px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" id="toggle-grupo-condiciones" onclick="toggleNavGroup('grupo-condiciones')" type="button">
+<span class="flex items-center"><span class="material-symbols-outlined mr-sm" data-icon="work">work</span><span class="font-body-md text-body-md">Condiciones Generales de Trabajo</span></span>
+<span class="material-symbols-outlined text-base transition-transform duration-150" data-icon="expand_more" id="grupo-condiciones-chevron">expand_more</span>
+</button>
+<div class="nav-group-body pl-lg space-y-xs mt-xs hidden" id="grupo-condiciones">
 <button class="nav-link w-full flex items-center px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" data-target="sec-40h" onclick="showSection('sec-40h')">
-<span class="material-symbols-outlined mr-sm" data-icon="schedule">schedule</span>
-<span class="font-body-md text-body-md">Semana Laboral 40h</span>
+<span class="material-symbols-outlined mr-sm text-lg" data-icon="schedule">schedule</span>
+<span class="font-body-sm text-body-sm">Semana Laboral 40h</span>
 </button>
+</div>
+</div>
+
 <button class="nav-link w-full flex items-center px-md py-sm rounded hover:bg-primary-fixed-variant/20 transition-colors duration-150 cursor-pointer text-left" data-target="sec-certs" onclick="showSection('sec-certs')">
 <span class="material-symbols-outlined mr-sm" data-icon="school">school</span>
 <span class="font-body-md text-body-md">Certificados Técnicos</span>
@@ -2961,6 +2980,8 @@ function showSection(id){
     document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('nav-active'));
     const link = document.querySelector(`[data-target="${id}"]`);
     if(link) link.classList.add('nav-active');
+    const grupo = link && link.closest('.nav-group-body');
+    if(grupo) abrirNavGroup(grupo.id);
     document.querySelectorAll('.dropdown-open').forEach(el => el.classList.add('hidden'));
     window.scrollTo(0,0);
     if(id === 'sec-centros' && currentUser) cargarCentros();
@@ -2968,6 +2989,20 @@ function showSection(id){
     if(id === 'sec-nom035' && currentUser) renderNom035();
     if(id === 'sec-panel' && currentUser) renderPanelControl();
     if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); }
+}
+function abrirNavGroup(id){
+    const el = document.getElementById(id);
+    const chevron = document.getElementById(id + '-chevron');
+    el.classList.remove('hidden');
+    if(chevron) chevron.style.transform = 'rotate(180deg)';
+}
+function toggleNavGroup(id){
+    const el = document.getElementById(id);
+    el.classList.contains('hidden') ? abrirNavGroup(id) : (() => {
+        el.classList.add('hidden');
+        const chevron = document.getElementById(id + '-chevron');
+        if(chevron) chevron.style.transform = 'rotate(0deg)';
+    })();
 }
 function toggleDropdown(id){
     const el = document.getElementById(id);
