@@ -264,9 +264,9 @@
 <span class="material-symbols-outlined text-on-secondary-container text-lg" data-icon="schedule">schedule</span>
 </div>
 </div>
-<h3 class="font-display-lg text-display-lg text-on-surface">68.5%</h3>
-<p class="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
-                    14 de 22 centros en ≤42h
+<h3 class="font-display-lg text-display-lg text-on-surface" id="panel-kpi-40h-num">—</h3>
+<p class="text-xs text-on-surface-variant flex items-center gap-1 mt-1" id="panel-kpi-40h-sub">
+                    Cargando…
                 </p>
 </div>
 <div class="bg-white border border-outline-variant p-md">
@@ -320,47 +320,15 @@
 <div class="lg:col-span-2 bg-white border border-outline-variant rounded p-md">
 <div class="flex justify-between items-center mb-md">
 <div>
-<h3 class="font-title-sm text-title-sm">Progreso Rumbo a la Jornada de 40 Horas (2030)</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Promedio de horas semanales reales por trimestre, todos los centros.</p>
+<h3 class="font-title-sm text-title-sm">Progreso Rumbo a la Jornada de 40 Horas</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">% de cumplimiento de jornada semanal por periodo (según los snapshots guardados en "Semana Laboral 40h").</p>
 </div>
 <button class="text-primary font-bold text-sm hover:underline" onclick="showSection('sec-40h')">Ver detalle</button>
 </div>
-<div class="flex items-end gap-md h-48 border-b border-outline-variant pb-2">
-<div class="flex-1 flex flex-col items-center gap-1">
-<div class="w-full bg-primary-container rounded-t" style="height: 96%;"></div>
-<span class="text-xs text-on-surface-variant">T1 '24</span>
+<div class="flex items-end gap-md h-48 border-b border-outline-variant pb-2" id="panel-40h-barras">
+<p class="text-sm text-on-surface-variant w-full text-center">Cargando...</p>
 </div>
-<div class="flex-1 flex flex-col items-center gap-1">
-<div class="w-full bg-primary-container rounded-t" style="height: 90%;"></div>
-<span class="text-xs text-on-surface-variant">T2 '24</span>
-</div>
-<div class="flex-1 flex flex-col items-center gap-1">
-<div class="w-full bg-primary-container rounded-t" style="height: 84%;"></div>
-<span class="text-xs text-on-surface-variant">T3 '24</span>
-</div>
-<div class="flex-1 flex flex-col items-center gap-1">
-<div class="w-full bg-primary-container rounded-t" style="height: 76%;"></div>
-<span class="text-xs text-on-surface-variant">T4 '24</span>
-</div>
-<div class="flex-1 flex flex-col items-center gap-1">
-<div class="w-full bg-primary-container rounded-t" style="height: 68%;"></div>
-<span class="text-xs text-on-surface-variant">T1 '25</span>
-</div>
-<div class="flex-1 flex flex-col items-center gap-1 relative">
-<span class="absolute -top-6 text-xs font-bold text-primary">44.5h</span>
-<div class="w-full bg-tertiary-fixed-dim rounded-t" style="height: 61%;"></div>
-<span class="text-xs font-bold text-primary">Hoy</span>
-</div>
-<div class="flex-1 flex flex-col items-center gap-1 opacity-40">
-<div class="w-full bg-surface-variant rounded-t border-2 border-dashed border-outline" style="height: 50%;"></div>
-<span class="text-xs text-on-surface-variant">T1 '26</span>
-</div>
-<div class="flex-1 flex flex-col items-center gap-1 opacity-40">
-<div class="w-full bg-surface-variant rounded-t border-2 border-dashed border-outline" style="height: 30%;"></div>
-<span class="text-xs text-on-surface-variant">'30 Meta</span>
-</div>
-</div>
-<p class="text-xs text-on-surface-variant mt-3">La velocidad de reducción actual es un <span class="font-bold text-on-tertiary-container">9% más rápida</span> que el ritmo mínimo requerido para llegar a 40h antes de 2030.</p>
+<p class="text-xs text-on-surface-variant mt-3" id="panel-40h-nota"></p>
 </div>
 <div class="bg-white border border-outline-variant rounded p-md flex flex-col">
 <h3 class="font-title-sm text-title-sm flex items-center gap-2 mb-md"><span class="material-symbols-outlined text-primary" data-icon="propane_tank">propane_tank</span> Dictámenes Técnicos</h3>
@@ -2214,12 +2182,78 @@ async function importarCalendarioExcel(event){
     cargarCalendarioMes();
 }
 
+function leerHistorialJornada40h(){
+    // Los "snapshots" mensuales del Tablero de Jornada 40h (herramienta
+    // /tablero-jornada-laboral.html, incrustada como iframe) se guardan en
+    // localStorage del navegador (no en Supabase, por diseño: esa
+    // herramienta procesa los archivos de reloj checador sin subir nada a
+    // ningún servidor). Como panel-control.html y el iframe están en el
+    // mismo origen, localStorage se comparte y podemos leerlo aquí directo.
+    try {
+        const raw = localStorage.getItem('chesa_jornada_historial_v1');
+        const arr = raw ? JSON.parse(raw) : [];
+        return arr.sort((a, b) => a.periodo_key.localeCompare(b.periodo_key));
+    } catch(e){
+        console.error('No se pudo leer el historial de Jornada 40h:', e);
+        return [];
+    }
+}
+
+function renderJornada40hPanel(){
+    const historial = leerHistorialJornada40h();
+
+    const kpiNum = document.getElementById('panel-kpi-40h-num');
+    const kpiSub = document.getElementById('panel-kpi-40h-sub');
+    if(kpiNum){
+        if(!historial.length){
+            kpiNum.textContent = '—';
+            kpiSub.textContent = 'Sin periodos guardados todavía';
+        } else {
+            const u = historial[historial.length - 1];
+            kpiNum.textContent = u.global.pct_cumplimiento_semanal.toFixed(1) + '%';
+            kpiSub.textContent = `${u.global.colaboradores_marcaje_completo} de ${u.global.colaboradores} colaboradores · ${u.periodo_label}`;
+        }
+    }
+
+    const cont = document.getElementById('panel-40h-barras');
+    const notaEl = document.getElementById('panel-40h-nota');
+    if(!cont) return;
+
+    if(!historial.length){
+        cont.innerHTML = '<p class="text-sm text-on-surface-variant w-full text-center">Aún no hay periodos guardados. Ve a "Semana Laboral 40h", carga tus archivos de reloj checador y guarda el snapshot del mes.</p>';
+        if(notaEl) notaEl.textContent = '';
+        return;
+    }
+
+    const ultimos = historial.slice(-8);
+    cont.innerHTML = ultimos.map((h, i) => {
+        const pct = h.global.pct_cumplimiento_semanal;
+        const esUltimo = i === ultimos.length - 1;
+        return `<div class="flex-1 flex flex-col items-center gap-1 ${esUltimo ? 'relative' : ''}">
+${esUltimo ? `<span class="absolute -top-6 text-xs font-bold text-primary">${pct.toFixed(1)}%</span>` : ''}
+<div class="w-full ${esUltimo ? 'bg-tertiary-fixed-dim' : 'bg-primary-container'} rounded-t" style="height:${Math.max(pct, 2)}%;"></div>
+<span class="text-xs ${esUltimo ? 'font-bold text-primary' : 'text-on-surface-variant'}">${h.periodo_label}</span>
+</div>`;
+    }).join('');
+
+    if(notaEl){
+        if(ultimos.length >= 2){
+            const diff = ultimos[ultimos.length - 1].global.pct_cumplimiento_semanal - ultimos[0].global.pct_cumplimiento_semanal;
+            const verbo = diff >= 0 ? 'mejoró' : 'bajó';
+            notaEl.innerHTML = `El cumplimiento ${verbo} <span class="font-bold text-on-tertiary-container">${Math.abs(diff).toFixed(1)} punto(s)</span> entre ${ultimos[0].periodo_label} y ${ultimos[ultimos.length - 1].periodo_label}.`;
+        } else {
+            notaEl.textContent = 'Guarda más periodos en "Semana Laboral 40h" para ver la tendencia.';
+        }
+    }
+}
+
 async function renderPanelControl(){
     const hoy = new Date();
     const mes = hoy.getMonth() + 1, anio = hoy.getFullYear();
     document.getElementById('panel-kpi-actividades-label').textContent = `ACTIVIDADES NORMATIVAS (${NOMBRES_MES[mes - 1].toUpperCase().slice(0,3)})`;
 
     cargarResumenDictamenesPanel();
+    renderJornada40hPanel();
     cargarTarjetaDictamenesDetalle();
     cargarAlertasCriticas();
 
