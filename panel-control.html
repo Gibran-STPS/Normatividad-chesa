@@ -367,27 +367,27 @@
 <div class="grid grid-cols-2 gap-sm mb-md">
 <div class="bg-surface-container-low rounded p-sm">
 <p class="font-label-caps text-label-caps text-on-surface-variant">TANQUES GAS LP</p>
-<p class="font-display-lg text-display-lg text-primary">128</p>
-<p class="text-xs text-on-tertiary-container font-semibold">↑ 4% este mes</p>
+<p class="font-display-lg text-display-lg text-primary" id="panel-certs-tanques-num">—</p>
+<p class="text-xs text-on-surface-variant font-semibold" id="panel-certs-tanques-sub">Cargando…</p>
 </div>
 <div class="bg-surface-container-low rounded p-sm">
 <p class="font-label-caps text-label-caps text-on-surface-variant">COMPRESORES</p>
-<p class="font-display-lg text-display-lg text-primary">64</p>
-<p class="text-xs text-on-surface-variant font-semibold">Estable</p>
+<p class="font-display-lg text-display-lg text-primary" id="panel-certs-compresores-num">—</p>
+<p class="text-xs text-on-surface-variant font-semibold" id="panel-certs-compresores-sub">Cargando…</p>
 </div>
 </div>
-<div class="bg-error-container/40 border border-error/20 rounded p-sm mb-md">
-<p class="font-bold text-sm text-on-error-container flex items-center gap-1"><span class="material-symbols-outlined text-sm" data-icon="error">error</span> 12 certificados vencidos</p>
+<div class="bg-error-container/40 border border-error/20 rounded p-sm mb-md hidden" id="panel-certs-vencidos-box">
+<p class="font-bold text-sm text-on-error-container flex items-center gap-1"><span class="material-symbols-outlined text-sm" data-icon="error">error</span> <span id="panel-certs-vencidos-num">0</span> certificado(s) vencido(s)</p>
 <p class="text-xs text-on-error-container/80 mt-1">Requieren renovación inmediata para no detener operación.</p>
 </div>
 <div class="flex-1 space-y-2">
 <div class="flex justify-between items-center text-sm">
-<span>Próxima auditoría</span>
-<span class="font-bold">24 Oct · Monterrey Norte</span>
+<span>Total de registros</span>
+<span class="font-bold" id="panel-certs-total">—</span>
 </div>
 <div class="flex justify-between items-center text-sm">
-<span>Salud agregada de flota</span>
-<span class="font-bold text-on-tertiary-container">88%</span>
+<span>% de certificados vigentes</span>
+<span class="font-bold text-on-tertiary-container" id="panel-certs-pct-vigente">—</span>
 </div>
 </div>
 <button class="mt-md w-full border border-primary text-primary font-bold py-sm hover:bg-surface-container-high transition-colors text-sm" onclick="showSection('sec-certs')">Ir a Certificados Técnicos</button>
@@ -2206,6 +2206,7 @@ async function renderPanelControl(){
     document.getElementById('panel-kpi-actividades-label').textContent = `ACTIVIDADES NORMATIVAS (${NOMBRES_MES[mes - 1].toUpperCase().slice(0,3)})`;
 
     cargarResumenDictamenesPanel();
+    cargarTarjetaDictamenesDetalle();
     cargarAlertasCriticas();
 
     const { data, error } = await supabaseClient.from('calendario_normativo').select('centro_id, estado').eq('mes', mes).eq('anio', anio);
@@ -4230,6 +4231,38 @@ async function cargarResumenDictamenesPanel(){
     } else {
         subTxt.textContent = 'Todos los dictámenes vigentes';
         sub.className = 'text-xs text-on-tertiary-container flex items-center gap-1 font-semibold mt-1 cursor-pointer hover:underline';
+    }
+}
+
+async function cargarTarjetaDictamenesDetalle(){
+    const elTanques = document.getElementById('panel-certs-tanques-num');
+    if(!elTanques) return; // la tarjeta no está en esta vista
+
+    const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0,0,0,0);
+    const contarNuevos = arr => (arr || []).filter(r => new Date(r.creado_en) >= inicioMes).length;
+
+    const { data: tanques } = await supabaseClient.from('tanques_gas').select('creado_en');
+    const { data: compresores } = await supabaseClient.from('compresores').select('creado_en');
+
+    document.getElementById('panel-certs-tanques-num').textContent = (tanques || []).length;
+    const nT = contarNuevos(tanques);
+    document.getElementById('panel-certs-tanques-sub').textContent = nT ? `+${nT} este mes` : 'Sin registros nuevos este mes';
+
+    document.getElementById('panel-certs-compresores-num').textContent = (compresores || []).length;
+    const nC = contarNuevos(compresores);
+    document.getElementById('panel-certs-compresores-sub').textContent = nC ? `+${nC} este mes` : 'Sin registros nuevos este mes';
+
+    const r = await obtenerResumenCertsTecnicos();
+    document.getElementById('panel-certs-total').textContent = r.total.toLocaleString('es-MX');
+    const totalVigencias = r.vigentes + r.porVencer + r.vencidos;
+    document.getElementById('panel-certs-pct-vigente').textContent = totalVigencias ? Math.round((r.vigentes / totalVigencias) * 100) + '%' : '—';
+
+    const boxVencidos = document.getElementById('panel-certs-vencidos-box');
+    if(r.vencidos){
+        boxVencidos.classList.remove('hidden');
+        document.getElementById('panel-certs-vencidos-num').textContent = r.vencidos;
+    } else {
+        boxVencidos.classList.add('hidden');
     }
 }
 
