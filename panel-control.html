@@ -310,27 +310,8 @@
 </div>
 <div class="bg-primary text-on-primary rounded p-md flex flex-col">
 <h3 class="font-title-sm text-title-sm flex items-center gap-2 mb-md"><span class="material-symbols-outlined" data-icon="warning" style="font-variation-settings: 'FILL' 1;">warning</span> Alertas Críticas</h3>
-<div class="space-y-sm flex-1 overflow-y-auto custom-scrollbar pr-1">
-<div class="bg-white/10 rounded p-sm border-l-4 border-error">
-<p class="font-bold text-sm">Centro Bajío Norte</p>
-<p class="text-xs opacity-80 mt-1">Evaluación NOM-035 vencida hace 14 días. Riesgo alto.</p>
-<button class="text-xs font-bold text-tertiary-fixed-dim mt-2 hover:underline" onclick="showSection('sec-nom')">Asignar Inspector →</button>
-</div>
-<div class="bg-white/10 rounded p-sm border-l-4 border-error">
-<p class="font-bold text-sm">Tanque TK-GAS-0059 · Anexo Saltillo</p>
-<p class="text-xs opacity-80 mt-1">Dictamen vence en 6 días, sin renovación agendada.</p>
-<button class="text-xs font-bold text-tertiary-fixed-dim mt-2 hover:underline" onclick="showSection('sec-certs')">Ver Dictamen →</button>
-</div>
-<div class="bg-white/10 rounded p-sm border-l-4 border-orange-400">
-<p class="font-bold text-sm">Hub Puebla</p>
-<p class="text-xs opacity-80 mt-1">Turnos extra no registrados en Línea de Ensamblaje B, afecta meta 40h.</p>
-<button class="text-xs font-bold text-tertiary-fixed-dim mt-2 hover:underline" onclick="showSection('sec-40h')">Revisar Bitácoras →</button>
-</div>
-<div class="bg-white/10 rounded p-sm border-l-4 border-orange-400">
-<p class="font-bold text-sm">Compresor CP-AIR-0881 · Monterrey Norte</p>
-<p class="text-xs opacity-80 mt-1">Certificado vencido desde 30 Sep. Requiere renovación urgente.</p>
-<button class="text-xs font-bold text-tertiary-fixed-dim mt-2 hover:underline" onclick="showSection('sec-certs')">Renovar →</button>
-</div>
+<div class="space-y-sm flex-1 overflow-y-auto custom-scrollbar pr-1" id="panel-alertas-criticas">
+<p class="text-sm opacity-70">Cargando...</p>
 </div>
 </div>
 </div>
@@ -2225,6 +2206,7 @@ async function renderPanelControl(){
     document.getElementById('panel-kpi-actividades-label').textContent = `ACTIVIDADES NORMATIVAS (${NOMBRES_MES[mes - 1].toUpperCase().slice(0,3)})`;
 
     cargarResumenDictamenesPanel();
+    cargarAlertasCriticas();
 
     const { data, error } = await supabaseClient.from('calendario_normativo').select('centro_id, estado').eq('mes', mes).eq('anio', anio);
     const tbody = document.getElementById('panel-actividades-tbody');
@@ -4117,6 +4099,97 @@ async function cargarPipc(){
 }
 
 // ---- KPIs consolidados ----
+// Etiquetas legibles para cada campo de vigencia de Certificados Técnicos,
+// reutilizadas tanto en las alertas críticas del Panel como en futuros usos.
+const CERTS_ETIQUETAS = {
+    compresores: {
+        vigencia_dictamen: { label: 'Dictamen de compresor', detalle: r => r.numero_control_stps ? `No. control STPS ${r.numero_control_stps}` : (r.tipo_compresor || '') }
+    },
+    tanques_gas: {
+        vigencia_nom004: { label: 'Tanque de gas · NOM-004-SEDG', detalle: r => r.capacidad || '' },
+        vigencia_nom013: { label: 'Tanque de gas · NOM-013-SEDG', detalle: r => r.capacidad || '' }
+    },
+    estudios_ruido_iluminacion: {
+        vigencia_nom011: { label: 'Estudio de ruido · NOM-011-STPS', detalle: () => '' },
+        vigencia_nom025: { label: 'Estudio de iluminación · NOM-025-STPS', detalle: () => '' }
+    },
+    programas_proteccion_civil: {
+        vigencia_pipc: { label: 'Programa Interno de Protección Civil', detalle: () => '' }
+    }
+};
+
+async function cargarAlertasCriticas(){
+    const cont = document.getElementById('panel-alertas-criticas');
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const alertas = [];
+
+    // 1) NOM-035: riesgo Alto o Muy alto — solo la más reciente por centro
+    const { data: respNom035 } = await supabaseClient.from('nom035_respuestas')
+        .select('centro_id, nivel_riesgo, created_at')
+        .in('nivel_riesgo', ['Alto', 'Muy alto'])
+        .order('created_at', { ascending: false });
+    const centrosYaAlertados = new Set();
+    (respNom035 || []).forEach(r => {
+        if(centrosYaAlertados.has(r.centro_id)) return;
+        centrosYaAlertados.add(r.centro_id);
+        const c = centrosData.find(x => x.id === r.centro_id);
+        const dias = Math.round((hoy - new Date(r.created_at)) / 86400000);
+        alertas.push({
+            urgencia: r.nivel_riesgo === 'Muy alto' ? 0 : 1,
+            dias,
+            titulo: c ? c.nombre : r.centro_id,
+            detalle: `Riesgo ${r.nivel_riesgo} en NOM-035 (detectado hace ${dias} día(s)).`,
+            accionTxt: 'Ver resultados →',
+            accionCall: "showSection('sec-nom035')"
+        });
+    });
+
+    // 2) Certificados Técnicos: vencidos, o por vencer en 7 días o menos
+    //    (umbral más estricto que el general de 30 días, para que aquí solo
+    //    aparezca lo verdaderamente urgente y no sature la lista).
+    for(const tabla of Object.keys(CERTS_ETIQUETAS)){
+        const { data } = await supabaseClient.from(tabla).select('*');
+        (data || []).forEach(r => {
+            const c = centrosData.find(x => x.id === r.centro_id);
+            Object.keys(CERTS_ETIQUETAS[tabla]).forEach(campo => {
+                const val = r[campo];
+                if(!val) return;
+                const dias = Math.round((new Date(val + 'T00:00:00') - hoy) / 86400000);
+                if(dias > 7) return;
+                const info = CERTS_ETIQUETAS[tabla][campo];
+                const detalleExtra = info.detalle(r);
+                alertas.push({
+                    urgencia: dias < 0 ? 0 : 1,
+                    dias,
+                    titulo: `${info.label}${c ? ' · ' + c.nombre : ''}`,
+                    detalle: (dias < 0 ? `Vencido hace ${Math.abs(dias)} día(s).` : `Vence en ${dias} día(s).`) + (detalleExtra ? ' ' + detalleExtra : ''),
+                    accionTxt: 'Ver en Certificados Técnicos →',
+                    accionCall: "showSection('sec-certs')"
+                });
+            });
+        });
+    }
+
+    // ---- Punto de extensión para futuras alertas (ej. Jornada 40H) ----
+    // cuando esa tabla exista, agregar aquí su propia consulta y "alertas.push(...)"
+    // con la misma forma: { urgencia, dias, titulo, detalle, accionTxt, accionCall }.
+
+    if(!alertas.length){
+        cont.innerHTML = '<p class="text-sm opacity-80">Sin alertas críticas por ahora. 🎉</p>';
+        return;
+    }
+
+    alertas.sort((a, b) => a.urgencia - b.urgencia || a.dias - b.dias);
+    cont.innerHTML = alertas.slice(0, 8).map(a => {
+        const borde = a.urgencia === 0 ? 'border-error' : 'border-orange-400';
+        return `<div class="bg-white/10 rounded p-sm border-l-4 ${borde}">
+<p class="font-bold text-sm">${a.titulo}</p>
+<p class="text-xs opacity-80 mt-1">${a.detalle}</p>
+<button class="text-xs font-bold text-tertiary-fixed-dim mt-2 hover:underline" onclick="${a.accionCall}" type="button">${a.accionTxt}</button>
+</div>`;
+    }).join('');
+}
+
 async function obtenerResumenCertsTecnicos(){
     let total = 0, vigentes = 0, porVencer = 0, vencidos = 0;
     const hoy = new Date(); hoy.setHours(0,0,0,0);
