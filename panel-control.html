@@ -220,16 +220,6 @@
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">Panel de Control</h2>
 <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Vista consolidada de cumplimiento para los 22 centros de trabajo de Grupo Chesa: actividades normativas, transición a la jornada de 40 horas y vigencia de dictámenes técnicos.</p>
 </div>
-<div class="flex gap-sm">
-<button class="border border-primary text-primary px-md py-sm font-bold flex items-center gap-sm hover:bg-surface-container-high transition-colors" onclick="toggleModal('modal-circular')">
-<span class="material-symbols-outlined text-lg" data-icon="mail">mail</span>
-                Nueva Circular
-            </button>
-<button class="bg-primary text-on-primary px-lg py-sm font-bold flex items-center gap-sm hover:opacity-90 active:scale-95 transition-all" onclick="generarReporte()">
-<span class="material-symbols-outlined" data-icon="file_download">file_download</span>
-                Exportar Reporte Mensual
-            </button>
-</div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-lg">
@@ -1387,34 +1377,6 @@
 <div class="fixed bottom-6 right-6 z-[100] space-y-2" id="toast-container"></div>
 
 <!-- Modal: Nueva Circular -->
-<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-circular">
-<div class="bg-white rounded max-w-lg w-full p-lg">
-<div class="flex justify-between items-center mb-md">
-<h3 class="font-title-sm text-title-sm">Nueva Circular Normativa</h3>
-<button onclick="toggleModal('modal-circular')" class="material-symbols-outlined text-on-surface-variant" data-icon="close">close</button>
-</div>
-<form class="space-y-sm" onsubmit="event.preventDefault(); toggleModal('modal-circular'); mostrarToast('Circular enviada a los 22 centros.');">
-<div>
-<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Título de la circular</label>
-<input class="w-full border border-outline-variant rounded p-sm text-body-md" placeholder="Ej. Actualización NOM-030 Iluminación" required type="text"/>
-</div>
-<div>
-<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Centros destino</label>
-<select class="w-full border border-outline-variant rounded p-sm text-body-md">
-<option>Todos los centros (22)</option>
-<option>Solo centros críticos</option>
-<option>Selección manual</option>
-</select>
-</div>
-<div>
-<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Mensaje</label>
-<textarea class="w-full border border-outline-variant rounded p-sm text-body-md" rows="3"></textarea>
-</div>
-<button class="w-full bg-primary text-on-primary font-bold py-sm mt-sm" type="submit">Enviar por correo</button>
-</form>
-</div>
-</div>
-
 <script>
 // =====================================================================
 // CONFIGURACIÓN DE SUPABASE — reemplaza estos dos valores con los de
