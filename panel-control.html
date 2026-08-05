@@ -1127,11 +1127,13 @@
 <thead class="bg-surface-container border-b border-outline-variant">
 <tr>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Agencia</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">m²</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Nivel de riesgo</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vigencia PIPC</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
 </tr>
 </thead>
-<tbody id="pipc-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="3">Cargando...</td></tr></tbody>
+<tbody id="pipc-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Cargando...</td></tr></tbody>
 </table>
 </div>
 </div>
@@ -1239,6 +1241,19 @@
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vigencia del PIPC</label>
 <input class="w-full border border-outline-variant rounded p-sm" id="pipc-vigencia" type="date"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Metros cuadrados del inmueble</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="pipc-m2" min="0" placeholder="Ej. 850" step="0.01" type="number"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Nivel de riesgo</label>
+<select class="w-full border border-outline-variant rounded p-sm" id="pipc-nivel-riesgo">
+<option value="">Selecciona…</option>
+<option value="Bajo">Bajo</option>
+<option value="Mediano">Mediano</option>
+<option value="Alto">Alto</option>
+</select>
 </div>
 <button class="w-full bg-primary text-on-primary py-sm font-bold hover:opacity-90 transition-all" onclick="guardarPipc()" type="button">Guardar</button>
 </div>
@@ -4072,27 +4087,38 @@ async function cargarRuido(){
 function abrirModalPipc(){
     poblarSelectCentrosCerts('pipc-centro');
     document.getElementById('pipc-vigencia').value = '';
+    document.getElementById('pipc-m2').value = '';
+    document.getElementById('pipc-nivel-riesgo').value = '';
     toggleModal('modal-pipc');
 }
 async function guardarPipc(){
     const { error } = await supabaseClient.from('programas_proteccion_civil').insert({
         centro_id: document.getElementById('pipc-centro').value,
-        vigencia_pipc: document.getElementById('pipc-vigencia').value || null
+        vigencia_pipc: document.getElementById('pipc-vigencia').value || null,
+        metros_cuadrados: document.getElementById('pipc-m2').value ? Number(document.getElementById('pipc-m2').value) : null,
+        nivel_riesgo: document.getElementById('pipc-nivel-riesgo').value || null
     });
     if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
     toggleModal('modal-pipc');
     mostrarToast('PIPC agregado.');
     cargarTodoCerts();
 }
+function badgeNivelRiesgoPipc(nivel){
+    if(!nivel) return '<span class="text-on-surface-variant text-xs">—</span>';
+    const clases = { 'Bajo': 'bg-tertiary-fixed-dim text-on-tertiary-fixed', 'Mediano': 'bg-orange-500 text-white', 'Alto': 'bg-error text-on-error' };
+    return `<span class="${clases[nivel] || 'bg-surface-container-high'} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${nivel}</span>`;
+}
 async function cargarPipc(){
     const tbody = document.getElementById('pipc-tbody');
     const { data, error } = await supabaseClient.from('programas_proteccion_civil').select('*').order('vigencia_pipc');
-    if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="3">${error.message}</td></tr>`; return; }
-    if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="3">Sin PIPC registrados.</td></tr>'; return; }
+    if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="5">${error.message}</td></tr>`; return; }
+    if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Sin PIPC registrados.</td></tr>'; return; }
     tbody.innerHTML = data.map(r => {
         const c = centrosData.find(x => x.id === r.centro_id);
         return `<tr class="hover:bg-surface-container transition-colors">
 <td class="px-md py-sm font-bold text-sm">${c ? c.nombre : r.centro_id}</td>
+<td class="px-md py-sm text-sm font-data-mono text-data-mono">${r.metros_cuadrados != null ? r.metros_cuadrados.toLocaleString('es-MX') + ' m²' : '—'}</td>
+<td class="px-md py-sm">${badgeNivelRiesgoPipc(r.nivel_riesgo)}</td>
 <td class="px-md py-sm">${badgeVigencia(r.vigencia_pipc)}</td>
 <td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('programas_proteccion_civil','${r.id}')" type="button">Eliminar</button></td>
 </tr>`;
