@@ -1044,73 +1044,223 @@
 
 <!-- ============ SEC: CERTIFICADOS TÉCNICOS ============ -->
 <div class="page-section" id="sec-certs">
-<h2 class="font-display-lg text-display-lg text-primary mb-xs">Cumplimiento Técnico</h2>
-<p class="font-body-md text-body-md text-on-surface-variant mb-lg">Dictámenes vigentes de tanques de gas LP y compresores en los 22 centros de Grupo Chesa.</p>
-<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-lg">
+<h2 class="font-display-lg text-display-lg text-primary mb-xs">Certificados Técnicos</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-lg">Dictámenes y estudios vigentes por centro de trabajo: compresores, tanques de gas, ruido/iluminación y protección civil.</p>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-lg" id="certs-kpi-cards">
 <div class="bg-white border border-outline-variant p-md">
-<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">TANQUES DE GAS</p>
-<h3 class="font-display-lg text-display-lg text-primary">128</h3>
-</div>
-<div class="bg-white border border-outline-variant p-md">
-<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">COMPRESORES</p>
-<h3 class="font-display-lg text-display-lg text-primary">64</h3>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">TOTAL REGISTROS</p>
+<h3 class="font-display-lg text-display-lg text-primary" id="certs-kpi-total">—</h3>
 </div>
 <div class="bg-white border border-outline-variant p-md">
-<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">CERTS. VENCIDOS</p>
-<h3 class="font-display-lg text-display-lg text-error">12</h3>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">VIGENTES</p>
+<h3 class="font-display-lg text-display-lg text-on-tertiary-container" id="certs-kpi-vigentes">—</h3>
 </div>
 <div class="bg-white border border-outline-variant p-md">
-<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">PRÓXIMA AUDITORÍA</p>
-<h3 class="font-title-sm text-title-sm text-primary mt-2">24 Oct · Monterrey Norte</h3>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">POR VENCER (≤30 DÍAS)</p>
+<h3 class="font-display-lg text-display-lg text-orange-600" id="certs-kpi-por-vencer">—</h3>
+</div>
+<div class="bg-white border border-outline-variant p-md">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">VENCIDOS</p>
+<h3 class="font-display-lg text-display-lg text-error" id="certs-kpi-vencidos">—</h3>
 </div>
 </div>
+
+<div class="border-b border-outline-variant mb-lg flex gap-lg overflow-x-auto" id="certs-tabs">
+<button class="tab-btn certs-tab-active pb-sm px-1 font-bold text-sm border-b-2 border-primary text-primary whitespace-nowrap" data-tab="compresores" onclick="mostrarTabCerts('compresores')" type="button">Compresores</button>
+<button class="tab-btn pb-sm px-1 font-bold text-sm border-b-2 border-transparent text-on-surface-variant whitespace-nowrap" data-tab="tanques" onclick="mostrarTabCerts('tanques')" type="button">Tanques de Gas</button>
+<button class="tab-btn pb-sm px-1 font-bold text-sm border-b-2 border-transparent text-on-surface-variant whitespace-nowrap" data-tab="ruido" onclick="mostrarTabCerts('ruido')" type="button">Ruido e Iluminación</button>
+<button class="tab-btn pb-sm px-1 font-bold text-sm border-b-2 border-transparent text-on-surface-variant whitespace-nowrap" data-tab="pipc" onclick="mostrarTabCerts('pipc')" type="button">Protección Civil</button>
+</div>
+
+<div class="certs-tab-panel" id="certs-panel-compresores">
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
+<div class="flex justify-between items-center p-md border-b border-outline-variant">
+<p class="text-sm text-on-surface-variant">Dictamen de compresores por centro de trabajo.</p>
+<button class="bg-primary text-on-primary px-md py-sm font-bold text-sm hover:opacity-90 transition-all" onclick="abrirModalCompresor()" type="button">+ Agregar compresor</button>
+</div>
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
 <tr>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Estado</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">ID Equipo</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Ubicación</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Agencia</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Tipo</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vencimiento</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Grado</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">No. control STPS</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vigencia</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
 </tr>
 </thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Válido</span></td>
-<td class="px-md py-sm font-data-mono text-data-mono">TK-GAS-0042</td>
-<td class="px-md py-sm text-sm">Planta Puebla Principal</td>
-<td class="px-md py-sm text-sm">Tanque Gas LP (5k L)</td>
-<td class="px-md py-sm text-sm">15 Dic, 2026</td>
-<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="visibility" onclick="mostrarToast('Abriendo dictamen TK-GAS-0042...')">visibility</button></td>
-</tr>
-<tr class="hover:bg-error-container/5 transition-colors">
-<td class="px-md py-sm"><span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase">Vencido</span></td>
-<td class="px-md py-sm font-data-mono text-data-mono">CP-AIR-0881</td>
-<td class="px-md py-sm text-sm">Monterrey Norte</td>
-<td class="px-md py-sm text-sm">Compresor Recip.</td>
-<td class="px-md py-sm text-sm text-error font-bold">30 Sep, 2026</td>
-<td class="px-md py-sm text-right"><button class="bg-primary text-on-primary text-xs font-bold px-2 py-1 rounded" onclick="mostrarToast('Iniciando renovación CP-AIR-0881...')">Renovar</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">Pendiente</span></td>
-<td class="px-md py-sm font-data-mono text-data-mono">TK-GAS-0059</td>
-<td class="px-md py-sm text-sm">Anexo Saltillo</td>
-<td class="px-md py-sm text-sm">Tanque Gas LP (2k L)</td>
-<td class="px-md py-sm text-sm">24 Jul, 2026</td>
-<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="edit" onclick="mostrarToast('Editando TK-GAS-0059...')">edit</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Válido</span></td>
-<td class="px-md py-sm font-data-mono text-data-mono">CP-AIR-0902</td>
-<td class="px-md py-sm text-sm">Almacén Toluca</td>
-<td class="px-md py-sm text-sm">Compresor Tornillo</td>
-<td class="px-md py-sm text-sm">12 Mar, 2027</td>
-<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="visibility" onclick="mostrarToast('Abriendo dictamen CP-AIR-0902...')">visibility</button></td>
-</tr>
-</tbody>
+<tbody id="compresores-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">Cargando...</td></tr></tbody>
 </table>
+</div>
+</div>
+
+<div class="certs-tab-panel hidden" id="certs-panel-tanques">
+<div class="bg-white border border-outline-variant rounded overflow-hidden">
+<div class="flex justify-between items-center p-md border-b border-outline-variant">
+<p class="text-sm text-on-surface-variant">Dictamen de tanques de gas LP (NOM-004 y NOM-013-SEDG) por centro de trabajo.</p>
+<button class="bg-primary text-on-primary px-md py-sm font-bold text-sm hover:opacity-90 transition-all" onclick="abrirModalTanque()" type="button">+ Agregar tanque</button>
+</div>
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Agencia</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Capacidad</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vigencia NOM-004-SEDG</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vigencia NOM-013-SEDG</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
+</tr>
+</thead>
+<tbody id="tanques-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Cargando...</td></tr></tbody>
+</table>
+</div>
+</div>
+
+<div class="certs-tab-panel hidden" id="certs-panel-ruido">
+<div class="bg-white border border-outline-variant rounded overflow-hidden">
+<div class="flex justify-between items-center p-md border-b border-outline-variant">
+<p class="text-sm text-on-surface-variant">Estudios de ruido (NOM-011-STPS) e iluminación (NOM-025-STPS) por centro de trabajo.</p>
+<button class="bg-primary text-on-primary px-md py-sm font-bold text-sm hover:opacity-90 transition-all" onclick="abrirModalRuido()" type="button">+ Agregar estudio</button>
+</div>
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Agencia</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vigencia NOM-011 (ruido)</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vigencia NOM-025 (iluminación)</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
+</tr>
+</thead>
+<tbody id="ruido-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Cargando...</td></tr></tbody>
+</table>
+</div>
+</div>
+
+<div class="certs-tab-panel hidden" id="certs-panel-pipc">
+<div class="bg-white border border-outline-variant rounded overflow-hidden">
+<div class="flex justify-between items-center p-md border-b border-outline-variant">
+<p class="text-sm text-on-surface-variant">Vigencia del Programa Interno de Protección Civil (PIPC) por centro de trabajo.</p>
+<button class="bg-primary text-on-primary px-md py-sm font-bold text-sm hover:opacity-90 transition-all" onclick="abrirModalPipc()" type="button">+ Agregar PIPC</button>
+</div>
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Agencia</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Vigencia PIPC</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
+</tr>
+</thead>
+<tbody id="pipc-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="3">Cargando...</td></tr></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<!-- Modal: Compresor -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-compresor">
+<div class="bg-white rounded max-w-md w-full p-lg">
+<div class="flex justify-between items-center mb-lg">
+<h3 class="font-title-sm text-title-sm">Agregar compresor</h3>
+<button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-compresor')" type="button">close</button>
+</div>
+<div class="space-y-md">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Agencia</label>
+<select class="w-full border border-outline-variant rounded p-sm" id="compresor-centro"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Tipo de compresor</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="compresor-tipo" placeholder="Ej. Reciprocante, Tornillo, Centrífugo" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Grado de compresor</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="compresor-grado" placeholder="Ej. Grado 2" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Número de control asignado por STPS</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="compresor-numero-control" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vigencia del dictamen</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="compresor-vigencia" type="date"/>
+</div>
+<button class="w-full bg-primary text-on-primary py-sm font-bold hover:opacity-90 transition-all" onclick="guardarCompresor()" type="button">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- Modal: Tanque de gas -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-tanque">
+<div class="bg-white rounded max-w-md w-full p-lg">
+<div class="flex justify-between items-center mb-lg">
+<h3 class="font-title-sm text-title-sm">Agregar tanque de gas</h3>
+<button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-tanque')" type="button">close</button>
+</div>
+<div class="space-y-md">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Agencia</label>
+<select class="w-full border border-outline-variant rounded p-sm" id="tanque-centro"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Capacidad del tanque</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="tanque-capacidad" placeholder="Ej. 5,000 L" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vigencia dictamen NOM-004-SEDG-2004</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="tanque-nom004" type="date"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vigencia dictamen NOM-013-SEDG-2002</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="tanque-nom013" type="date"/>
+</div>
+<button class="w-full bg-primary text-on-primary py-sm font-bold hover:opacity-90 transition-all" onclick="guardarTanque()" type="button">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- Modal: Ruido / Iluminación -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-ruido">
+<div class="bg-white rounded max-w-md w-full p-lg">
+<div class="flex justify-between items-center mb-lg">
+<h3 class="font-title-sm text-title-sm">Agregar estudio de ruido/iluminación</h3>
+<button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-ruido')" type="button">close</button>
+</div>
+<div class="space-y-md">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Agencia</label>
+<select class="w-full border border-outline-variant rounded p-sm" id="ruido-centro"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vigencia estudio de ruido (NOM-011-STPS)</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="ruido-nom011" type="date"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vigencia estudio de iluminación (NOM-025-STPS)</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="ruido-nom025" type="date"/>
+</div>
+<button class="w-full bg-primary text-on-primary py-sm font-bold hover:opacity-90 transition-all" onclick="guardarRuido()" type="button">Guardar</button>
+</div>
+</div>
+</div>
+
+<!-- Modal: PIPC -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-pipc">
+<div class="bg-white rounded max-w-md w-full p-lg">
+<div class="flex justify-between items-center mb-lg">
+<h3 class="font-title-sm text-title-sm">Agregar PIPC</h3>
+<button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-pipc')" type="button">close</button>
+</div>
+<div class="space-y-md">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Agencia</label>
+<select class="w-full border border-outline-variant rounded p-sm" id="pipc-centro"></select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Vigencia del PIPC</label>
+<input class="w-full border border-outline-variant rounded p-sm" id="pipc-vigencia" type="date"/>
+</div>
+<button class="w-full bg-primary text-on-primary py-sm font-bold hover:opacity-90 transition-all" onclick="guardarPipc()" type="button">Guardar</button>
+</div>
 </div>
 </div>
 
@@ -2990,6 +3140,7 @@ function showSection(id){
     if(id === 'sec-nom035' && currentUser) renderNom035();
     if(id === 'sec-panel' && currentUser) renderPanelControl();
     if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); }
+    if(id === 'sec-certs' && currentUser) cargarTodoCerts();
 }
 function abrirNavGroup(id){
     const el = document.getElementById(id);
@@ -3766,6 +3917,212 @@ async function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
     const blob = resultado instanceof Blob ? resultado : new Blob([resultado], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     descargarBlob(blob, `${nombreArchivo}.xlsx`);
     mostrarToast('Excel exportado con formato ejecutivo: tablas con borde, encabezado gris, color real por riesgo y gráficas nativas de Excel.');
+}
+
+// ==================== CERTIFICADOS TÉCNICOS ====================
+
+const CERTS_CAMPOS_VIGENCIA = {
+    compresores: ['vigencia_dictamen'],
+    tanques_gas: ['vigencia_nom004', 'vigencia_nom013'],
+    estudios_ruido_iluminacion: ['vigencia_nom011', 'vigencia_nom025'],
+    programas_proteccion_civil: ['vigencia_pipc']
+};
+
+function mostrarTabCerts(tab){
+    document.querySelectorAll('#certs-tabs .tab-btn').forEach(b => {
+        const activo = b.dataset.tab === tab;
+        b.classList.toggle('border-primary', activo);
+        b.classList.toggle('text-primary', activo);
+        b.classList.toggle('border-transparent', !activo);
+        b.classList.toggle('text-on-surface-variant', !activo);
+    });
+    document.querySelectorAll('.certs-tab-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('certs-panel-' + tab).classList.remove('hidden');
+}
+
+function badgeVigencia(fechaStr){
+    if(!fechaStr) return '<span class="text-on-surface-variant text-xs">Sin fecha</span>';
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const fecha = new Date(fechaStr + 'T00:00:00');
+    const dias = Math.round((fecha - hoy) / 86400000);
+    const fechaTxt = fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+    if(dias < 0) return `<span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase whitespace-nowrap">Vencido · ${fechaTxt}</span>`;
+    if(dias <= 30) return `<span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase whitespace-nowrap">Vence en ${dias}d · ${fechaTxt}</span>`;
+    return `<span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase whitespace-nowrap">${fechaTxt}</span>`;
+}
+
+function poblarSelectCentrosCerts(selectId){
+    document.getElementById(selectId).innerHTML = centrosData.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+}
+
+async function eliminarRegistroCerts(tabla, id){
+    if(!confirm('¿Eliminar este registro? No se puede deshacer.')) return;
+    const { error } = await supabaseClient.from(tabla).delete().eq('id', id);
+    if(error){ mostrarToast('No se pudo eliminar: ' + error.message, 'error'); return; }
+    mostrarToast('Registro eliminado.');
+    cargarTodoCerts();
+}
+
+// ---- Compresores ----
+function abrirModalCompresor(){
+    poblarSelectCentrosCerts('compresor-centro');
+    ['compresor-tipo','compresor-grado','compresor-numero-control','compresor-vigencia'].forEach(id => document.getElementById(id).value = '');
+    toggleModal('modal-compresor');
+}
+async function guardarCompresor(){
+    const { error } = await supabaseClient.from('compresores').insert({
+        centro_id: document.getElementById('compresor-centro').value,
+        tipo_compresor: document.getElementById('compresor-tipo').value.trim() || null,
+        grado_compresor: document.getElementById('compresor-grado').value.trim() || null,
+        numero_control_stps: document.getElementById('compresor-numero-control').value.trim() || null,
+        vigencia_dictamen: document.getElementById('compresor-vigencia').value || null
+    });
+    if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
+    toggleModal('modal-compresor');
+    mostrarToast('Compresor agregado.');
+    cargarTodoCerts();
+}
+async function cargarCompresores(){
+    const tbody = document.getElementById('compresores-tbody');
+    const { data, error } = await supabaseClient.from('compresores').select('*').order('vigencia_dictamen');
+    if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="6">${error.message}</td></tr>`; return; }
+    if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">Sin compresores registrados.</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => {
+        const c = centrosData.find(x => x.id === r.centro_id);
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm font-bold text-sm">${c ? c.nombre : r.centro_id}</td>
+<td class="px-md py-sm text-sm">${r.tipo_compresor || '—'}</td>
+<td class="px-md py-sm text-sm">${r.grado_compresor || '—'}</td>
+<td class="px-md py-sm text-sm font-data-mono text-data-mono">${r.numero_control_stps || '—'}</td>
+<td class="px-md py-sm">${badgeVigencia(r.vigencia_dictamen)}</td>
+<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('compresores','${r.id}')" type="button">Eliminar</button></td>
+</tr>`;
+    }).join('');
+}
+
+// ---- Tanques de gas ----
+function abrirModalTanque(){
+    poblarSelectCentrosCerts('tanque-centro');
+    ['tanque-capacidad','tanque-nom004','tanque-nom013'].forEach(id => document.getElementById(id).value = '');
+    toggleModal('modal-tanque');
+}
+async function guardarTanque(){
+    const { error } = await supabaseClient.from('tanques_gas').insert({
+        centro_id: document.getElementById('tanque-centro').value,
+        capacidad: document.getElementById('tanque-capacidad').value.trim() || null,
+        vigencia_nom004: document.getElementById('tanque-nom004').value || null,
+        vigencia_nom013: document.getElementById('tanque-nom013').value || null
+    });
+    if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
+    toggleModal('modal-tanque');
+    mostrarToast('Tanque agregado.');
+    cargarTodoCerts();
+}
+async function cargarTanques(){
+    const tbody = document.getElementById('tanques-tbody');
+    const { data, error } = await supabaseClient.from('tanques_gas').select('*').order('vigencia_nom004');
+    if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="5">${error.message}</td></tr>`; return; }
+    if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Sin tanques registrados.</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => {
+        const c = centrosData.find(x => x.id === r.centro_id);
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm font-bold text-sm">${c ? c.nombre : r.centro_id}</td>
+<td class="px-md py-sm text-sm">${r.capacidad || '—'}</td>
+<td class="px-md py-sm">${badgeVigencia(r.vigencia_nom004)}</td>
+<td class="px-md py-sm">${badgeVigencia(r.vigencia_nom013)}</td>
+<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('tanques_gas','${r.id}')" type="button">Eliminar</button></td>
+</tr>`;
+    }).join('');
+}
+
+// ---- Ruido / Iluminación ----
+function abrirModalRuido(){
+    poblarSelectCentrosCerts('ruido-centro');
+    ['ruido-nom011','ruido-nom025'].forEach(id => document.getElementById(id).value = '');
+    toggleModal('modal-ruido');
+}
+async function guardarRuido(){
+    const { error } = await supabaseClient.from('estudios_ruido_iluminacion').insert({
+        centro_id: document.getElementById('ruido-centro').value,
+        vigencia_nom011: document.getElementById('ruido-nom011').value || null,
+        vigencia_nom025: document.getElementById('ruido-nom025').value || null
+    });
+    if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
+    toggleModal('modal-ruido');
+    mostrarToast('Estudio agregado.');
+    cargarTodoCerts();
+}
+async function cargarRuido(){
+    const tbody = document.getElementById('ruido-tbody');
+    const { data, error } = await supabaseClient.from('estudios_ruido_iluminacion').select('*').order('vigencia_nom011');
+    if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="4">${error.message}</td></tr>`; return; }
+    if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Sin estudios registrados.</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => {
+        const c = centrosData.find(x => x.id === r.centro_id);
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm font-bold text-sm">${c ? c.nombre : r.centro_id}</td>
+<td class="px-md py-sm">${badgeVigencia(r.vigencia_nom011)}</td>
+<td class="px-md py-sm">${badgeVigencia(r.vigencia_nom025)}</td>
+<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('estudios_ruido_iluminacion','${r.id}')" type="button">Eliminar</button></td>
+</tr>`;
+    }).join('');
+}
+
+// ---- Protección Civil (PIPC) ----
+function abrirModalPipc(){
+    poblarSelectCentrosCerts('pipc-centro');
+    document.getElementById('pipc-vigencia').value = '';
+    toggleModal('modal-pipc');
+}
+async function guardarPipc(){
+    const { error } = await supabaseClient.from('programas_proteccion_civil').insert({
+        centro_id: document.getElementById('pipc-centro').value,
+        vigencia_pipc: document.getElementById('pipc-vigencia').value || null
+    });
+    if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
+    toggleModal('modal-pipc');
+    mostrarToast('PIPC agregado.');
+    cargarTodoCerts();
+}
+async function cargarPipc(){
+    const tbody = document.getElementById('pipc-tbody');
+    const { data, error } = await supabaseClient.from('programas_proteccion_civil').select('*').order('vigencia_pipc');
+    if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="3">${error.message}</td></tr>`; return; }
+    if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="3">Sin PIPC registrados.</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => {
+        const c = centrosData.find(x => x.id === r.centro_id);
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm font-bold text-sm">${c ? c.nombre : r.centro_id}</td>
+<td class="px-md py-sm">${badgeVigencia(r.vigencia_pipc)}</td>
+<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('programas_proteccion_civil','${r.id}')" type="button">Eliminar</button></td>
+</tr>`;
+    }).join('');
+}
+
+// ---- KPIs consolidados ----
+async function cargarCertsKpis(){
+    let total = 0, vigentes = 0, porVencer = 0, vencidos = 0;
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    for(const tabla of Object.keys(CERTS_CAMPOS_VIGENCIA)){
+        const { data } = await supabaseClient.from(tabla).select('*');
+        (data || []).forEach(r => {
+            total++;
+            CERTS_CAMPOS_VIGENCIA[tabla].forEach(campo => {
+                const val = r[campo];
+                if(!val) return;
+                const dias = Math.round((new Date(val + 'T00:00:00') - hoy) / 86400000);
+                if(dias < 0) vencidos++; else if(dias <= 30) porVencer++; else vigentes++;
+            });
+        });
+    }
+    document.getElementById('certs-kpi-total').textContent = total;
+    document.getElementById('certs-kpi-vigentes').textContent = vigentes;
+    document.getElementById('certs-kpi-por-vencer').textContent = porVencer;
+    document.getElementById('certs-kpi-vencidos').textContent = vencidos;
+}
+
+async function cargarTodoCerts(){
+    await Promise.all([cargarCompresores(), cargarTanques(), cargarRuido(), cargarPipc(), cargarCertsKpis()]);
 }
 
 console.log("Normatividad Grupo Automotriz Chesa — app inicializada.");
