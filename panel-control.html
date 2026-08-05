@@ -75,7 +75,7 @@
 </div>
 <div class="flex items-center justify-between text-sm">
 <label class="flex items-center gap-2 text-on-surface-variant">
-<input class="rounded border-outline-variant" id="login-remember" type="checkbox"/> Recordarme
+<input checked="" class="rounded border-outline-variant" id="login-remember" type="checkbox"/> Recordarme
             </label>
 <button class="text-primary font-bold hover:underline" onclick="mostrarToast('Contacta a tu administrador para restablecer tu contraseña.')" type="button">¿Olvidaste tu contraseña?</button>
 </div>
@@ -1480,6 +1480,19 @@ if(typeof window.supabase === 'undefined'){
 } else if(SUPABASE_URL.includes('TU-PROYECTO')){
     console.warn('Supabase no está configurado todavía. Sigue GUIA_SUPABASE.md para conectar tu base de datos real.');
 } else {
+    // "Recordarme" (checkbox del login) decide en qué guardamos la sesión:
+    // - Marcado (por defecto): localStorage -> sobrevive a cerrar el navegador
+    //   por completo (aparece el botón "Continuar como..." la próxima vez).
+    // - Desmarcado: sessionStorage -> se borra en cuanto se cierra el
+    //   navegador, así que la próxima vez pide iniciar sesión de nuevo.
+    const storageRecordarme = {
+        getItem: (key) => localStorage.getItem(key) ?? sessionStorage.getItem(key),
+        setItem: (key, value) => {
+            if(localStorage.getItem('chesa_recordarme') === 'false'){ sessionStorage.setItem(key, value); localStorage.removeItem(key); }
+            else { localStorage.setItem(key, value); sessionStorage.removeItem(key); }
+        },
+        removeItem: (key) => { localStorage.removeItem(key); sessionStorage.removeItem(key); }
+    };
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
             // La sesión se guarda en el navegador para no tener que iniciar
@@ -1487,7 +1500,8 @@ if(typeof window.supabase === 'undefined'){
             // "Cerrar sesión", o si la sesión expira por seguridad.
             persistSession: true,
             autoRefreshToken: true,
-            detectSessionInUrl: false
+            detectSessionInUrl: false,
+            storage: storageRecordarme
         }
     });
     supabaseListo = true;
@@ -1553,6 +1567,7 @@ async function handleLogin(event){
 
     const email = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
+    localStorage.setItem('chesa_recordarme', document.getElementById('login-remember').checked ? 'true' : 'false');
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const textoOriginal = submitBtn.textContent;
     submitBtn.disabled = true;
