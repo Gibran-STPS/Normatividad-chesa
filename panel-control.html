@@ -1143,7 +1143,7 @@
 <div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-compresor">
 <div class="bg-white rounded max-w-md w-full p-lg">
 <div class="flex justify-between items-center mb-lg">
-<h3 class="font-title-sm text-title-sm">Agregar compresor</h3>
+<h3 class="font-title-sm text-title-sm" id="modal-compresor-titulo">Agregar compresor</h3>
 <button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-compresor')" type="button">close</button>
 </div>
 <div class="space-y-md">
@@ -1176,7 +1176,7 @@
 <div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-tanque">
 <div class="bg-white rounded max-w-md w-full p-lg">
 <div class="flex justify-between items-center mb-lg">
-<h3 class="font-title-sm text-title-sm">Agregar tanque de gas</h3>
+<h3 class="font-title-sm text-title-sm" id="modal-tanque-titulo">Agregar tanque de gas</h3>
 <button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-tanque')" type="button">close</button>
 </div>
 <div class="space-y-md">
@@ -1205,7 +1205,7 @@
 <div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-ruido">
 <div class="bg-white rounded max-w-md w-full p-lg">
 <div class="flex justify-between items-center mb-lg">
-<h3 class="font-title-sm text-title-sm">Agregar estudio de ruido/iluminación</h3>
+<h3 class="font-title-sm text-title-sm" id="modal-ruido-titulo">Agregar estudio de ruido/iluminación</h3>
 <button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-ruido')" type="button">close</button>
 </div>
 <div class="space-y-md">
@@ -1230,7 +1230,7 @@
 <div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-pipc">
 <div class="bg-white rounded max-w-md w-full p-lg">
 <div class="flex justify-between items-center mb-lg">
-<h3 class="font-title-sm text-title-sm">Agregar PIPC</h3>
+<h3 class="font-title-sm text-title-sm" id="modal-pipc-titulo">Agregar PIPC</h3>
 <button class="material-symbols-outlined" data-icon="close" onclick="toggleModal('modal-pipc')" type="button">close</button>
 </div>
 <div class="space-y-md">
@@ -3977,29 +3977,48 @@ async function eliminarRegistroCerts(tabla, id){
     cargarTodoCerts();
 }
 
+// Caché del último listado cargado por categoría, para poder precargar
+// el formulario al editar sin tener que volver a consultar Supabase.
+const CERTS_CACHE = { compresores: [], tanques: [], ruido: [], pipc: [] };
+// Id del registro que se está editando por categoría (null = alta nueva).
+const CERTS_EDITANDO = { compresores: null, tanques: null, ruido: null, pipc: null };
+
 // ---- Compresores ----
-function abrirModalCompresor(){
+function abrirModalCompresor(id){
     poblarSelectCentrosCerts('compresor-centro');
-    ['compresor-tipo','compresor-grado','compresor-numero-control','compresor-vigencia'].forEach(id => document.getElementById(id).value = '');
+    CERTS_EDITANDO.compresores = id || null;
+    const r = id ? CERTS_CACHE.compresores.find(x => x.id === id) : null;
+    document.getElementById('compresor-tipo').value = r ? (r.tipo_compresor || '') : '';
+    document.getElementById('compresor-grado').value = r ? (r.grado_compresor || '') : '';
+    document.getElementById('compresor-numero-control').value = r ? (r.numero_control_stps || '') : '';
+    document.getElementById('compresor-vigencia').value = r ? (r.vigencia_dictamen || '') : '';
+    if(r) document.getElementById('compresor-centro').value = r.centro_id;
+    document.getElementById('modal-compresor-titulo').textContent = id ? 'Editar compresor' : 'Agregar compresor';
     toggleModal('modal-compresor');
 }
 async function guardarCompresor(){
-    const { error } = await supabaseClient.from('compresores').insert({
+    const payload = {
         centro_id: document.getElementById('compresor-centro').value,
         tipo_compresor: document.getElementById('compresor-tipo').value.trim() || null,
         grado_compresor: document.getElementById('compresor-grado').value.trim() || null,
         numero_control_stps: document.getElementById('compresor-numero-control').value.trim() || null,
         vigencia_dictamen: document.getElementById('compresor-vigencia').value || null
-    });
+    };
+    const idEditando = CERTS_EDITANDO.compresores;
+    const { error } = idEditando
+        ? await supabaseClient.from('compresores').update(payload).eq('id', idEditando)
+        : await supabaseClient.from('compresores').insert(payload);
     if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
     toggleModal('modal-compresor');
-    mostrarToast('Compresor agregado.');
+    mostrarToast(idEditando ? 'Compresor actualizado.' : 'Compresor agregado.');
+    CERTS_EDITANDO.compresores = null;
     cargarTodoCerts();
 }
 async function cargarCompresores(){
     const tbody = document.getElementById('compresores-tbody');
     const { data, error } = await supabaseClient.from('compresores').select('*').order('vigencia_dictamen');
     if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="6">${error.message}</td></tr>`; return; }
+    CERTS_CACHE.compresores = data || [];
     if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">Sin compresores registrados.</td></tr>'; return; }
     tbody.innerHTML = data.map(r => {
         const c = centrosData.find(x => x.id === r.centro_id);
@@ -4009,33 +4028,45 @@ async function cargarCompresores(){
 <td class="px-md py-sm text-sm">${r.grado_compresor || '—'}</td>
 <td class="px-md py-sm text-sm font-data-mono text-data-mono">${r.numero_control_stps || '—'}</td>
 <td class="px-md py-sm">${badgeVigencia(r.vigencia_dictamen)}</td>
-<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('compresores','${r.id}')" type="button">Eliminar</button></td>
+<td class="px-md py-sm text-right whitespace-nowrap"><button class="text-primary hover:underline font-bold text-xs mr-sm" onclick="abrirModalCompresor('${r.id}')" type="button">Editar</button><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('compresores','${r.id}')" type="button">Eliminar</button></td>
 </tr>`;
     }).join('');
 }
 
 // ---- Tanques de gas ----
-function abrirModalTanque(){
+function abrirModalTanque(id){
     poblarSelectCentrosCerts('tanque-centro');
-    ['tanque-capacidad','tanque-nom004','tanque-nom013'].forEach(id => document.getElementById(id).value = '');
+    CERTS_EDITANDO.tanques = id || null;
+    const r = id ? CERTS_CACHE.tanques.find(x => x.id === id) : null;
+    document.getElementById('tanque-capacidad').value = r ? (r.capacidad || '') : '';
+    document.getElementById('tanque-nom004').value = r ? (r.vigencia_nom004 || '') : '';
+    document.getElementById('tanque-nom013').value = r ? (r.vigencia_nom013 || '') : '';
+    if(r) document.getElementById('tanque-centro').value = r.centro_id;
+    document.getElementById('modal-tanque-titulo').textContent = id ? 'Editar tanque de gas' : 'Agregar tanque de gas';
     toggleModal('modal-tanque');
 }
 async function guardarTanque(){
-    const { error } = await supabaseClient.from('tanques_gas').insert({
+    const payload = {
         centro_id: document.getElementById('tanque-centro').value,
         capacidad: document.getElementById('tanque-capacidad').value.trim() || null,
         vigencia_nom004: document.getElementById('tanque-nom004').value || null,
         vigencia_nom013: document.getElementById('tanque-nom013').value || null
-    });
+    };
+    const idEditando = CERTS_EDITANDO.tanques;
+    const { error } = idEditando
+        ? await supabaseClient.from('tanques_gas').update(payload).eq('id', idEditando)
+        : await supabaseClient.from('tanques_gas').insert(payload);
     if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
     toggleModal('modal-tanque');
-    mostrarToast('Tanque agregado.');
+    mostrarToast(idEditando ? 'Tanque actualizado.' : 'Tanque agregado.');
+    CERTS_EDITANDO.tanques = null;
     cargarTodoCerts();
 }
 async function cargarTanques(){
     const tbody = document.getElementById('tanques-tbody');
     const { data, error } = await supabaseClient.from('tanques_gas').select('*').order('vigencia_nom004');
     if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="5">${error.message}</td></tr>`; return; }
+    CERTS_CACHE.tanques = data || [];
     if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Sin tanques registrados.</td></tr>'; return; }
     tbody.innerHTML = data.map(r => {
         const c = centrosData.find(x => x.id === r.centro_id);
@@ -4044,32 +4075,43 @@ async function cargarTanques(){
 <td class="px-md py-sm text-sm">${r.capacidad || '—'}</td>
 <td class="px-md py-sm">${badgeVigencia(r.vigencia_nom004)}</td>
 <td class="px-md py-sm">${badgeVigencia(r.vigencia_nom013)}</td>
-<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('tanques_gas','${r.id}')" type="button">Eliminar</button></td>
+<td class="px-md py-sm text-right whitespace-nowrap"><button class="text-primary hover:underline font-bold text-xs mr-sm" onclick="abrirModalTanque('${r.id}')" type="button">Editar</button><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('tanques_gas','${r.id}')" type="button">Eliminar</button></td>
 </tr>`;
     }).join('');
 }
 
 // ---- Ruido / Iluminación ----
-function abrirModalRuido(){
+function abrirModalRuido(id){
     poblarSelectCentrosCerts('ruido-centro');
-    ['ruido-nom011','ruido-nom025'].forEach(id => document.getElementById(id).value = '');
+    CERTS_EDITANDO.ruido = id || null;
+    const r = id ? CERTS_CACHE.ruido.find(x => x.id === id) : null;
+    document.getElementById('ruido-nom011').value = r ? (r.vigencia_nom011 || '') : '';
+    document.getElementById('ruido-nom025').value = r ? (r.vigencia_nom025 || '') : '';
+    if(r) document.getElementById('ruido-centro').value = r.centro_id;
+    document.getElementById('modal-ruido-titulo').textContent = id ? 'Editar estudio de ruido/iluminación' : 'Agregar estudio de ruido/iluminación';
     toggleModal('modal-ruido');
 }
 async function guardarRuido(){
-    const { error } = await supabaseClient.from('estudios_ruido_iluminacion').insert({
+    const payload = {
         centro_id: document.getElementById('ruido-centro').value,
         vigencia_nom011: document.getElementById('ruido-nom011').value || null,
         vigencia_nom025: document.getElementById('ruido-nom025').value || null
-    });
+    };
+    const idEditando = CERTS_EDITANDO.ruido;
+    const { error } = idEditando
+        ? await supabaseClient.from('estudios_ruido_iluminacion').update(payload).eq('id', idEditando)
+        : await supabaseClient.from('estudios_ruido_iluminacion').insert(payload);
     if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
     toggleModal('modal-ruido');
-    mostrarToast('Estudio agregado.');
+    mostrarToast(idEditando ? 'Estudio actualizado.' : 'Estudio agregado.');
+    CERTS_EDITANDO.ruido = null;
     cargarTodoCerts();
 }
 async function cargarRuido(){
     const tbody = document.getElementById('ruido-tbody');
     const { data, error } = await supabaseClient.from('estudios_ruido_iluminacion').select('*').order('vigencia_nom011');
     if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="4">${error.message}</td></tr>`; return; }
+    CERTS_CACHE.ruido = data || [];
     if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Sin estudios registrados.</td></tr>'; return; }
     tbody.innerHTML = data.map(r => {
         const c = centrosData.find(x => x.id === r.centro_id);
@@ -4077,29 +4119,38 @@ async function cargarRuido(){
 <td class="px-md py-sm font-bold text-sm">${c ? c.nombre : r.centro_id}</td>
 <td class="px-md py-sm">${badgeVigencia(r.vigencia_nom011)}</td>
 <td class="px-md py-sm">${badgeVigencia(r.vigencia_nom025)}</td>
-<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('estudios_ruido_iluminacion','${r.id}')" type="button">Eliminar</button></td>
+<td class="px-md py-sm text-right whitespace-nowrap"><button class="text-primary hover:underline font-bold text-xs mr-sm" onclick="abrirModalRuido('${r.id}')" type="button">Editar</button><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('estudios_ruido_iluminacion','${r.id}')" type="button">Eliminar</button></td>
 </tr>`;
     }).join('');
 }
 
 // ---- Protección Civil (PIPC) ----
-function abrirModalPipc(){
+function abrirModalPipc(id){
     poblarSelectCentrosCerts('pipc-centro');
-    document.getElementById('pipc-vigencia').value = '';
-    document.getElementById('pipc-m2').value = '';
-    document.getElementById('pipc-nivel-riesgo').value = '';
+    CERTS_EDITANDO.pipc = id || null;
+    const r = id ? CERTS_CACHE.pipc.find(x => x.id === id) : null;
+    document.getElementById('pipc-vigencia').value = r ? (r.vigencia_pipc || '') : '';
+    document.getElementById('pipc-m2').value = r && r.metros_cuadrados != null ? r.metros_cuadrados : '';
+    document.getElementById('pipc-nivel-riesgo').value = r ? (r.nivel_riesgo || '') : '';
+    if(r) document.getElementById('pipc-centro').value = r.centro_id;
+    document.getElementById('modal-pipc-titulo').textContent = id ? 'Editar PIPC' : 'Agregar PIPC';
     toggleModal('modal-pipc');
 }
 async function guardarPipc(){
-    const { error } = await supabaseClient.from('programas_proteccion_civil').insert({
+    const payload = {
         centro_id: document.getElementById('pipc-centro').value,
         vigencia_pipc: document.getElementById('pipc-vigencia').value || null,
         metros_cuadrados: document.getElementById('pipc-m2').value ? Number(document.getElementById('pipc-m2').value) : null,
         nivel_riesgo: document.getElementById('pipc-nivel-riesgo').value || null
-    });
+    };
+    const idEditando = CERTS_EDITANDO.pipc;
+    const { error } = idEditando
+        ? await supabaseClient.from('programas_proteccion_civil').update(payload).eq('id', idEditando)
+        : await supabaseClient.from('programas_proteccion_civil').insert(payload);
     if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
     toggleModal('modal-pipc');
-    mostrarToast('PIPC agregado.');
+    mostrarToast(idEditando ? 'PIPC actualizado.' : 'PIPC agregado.');
+    CERTS_EDITANDO.pipc = null;
     cargarTodoCerts();
 }
 function badgeNivelRiesgoPipc(nivel){
@@ -4112,6 +4163,7 @@ async function cargarPipc(){
     const tbody = document.getElementById('pipc-tbody');
     const { data, error } = await supabaseClient.from('programas_proteccion_civil').select('*').order('vigencia_pipc');
     if(error){ tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="5">${error.message}</td></tr>`; return; }
+    CERTS_CACHE.pipc = data || [];
     if(!data || !data.length){ tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Sin PIPC registrados.</td></tr>'; return; }
     tbody.innerHTML = data.map(r => {
         const c = centrosData.find(x => x.id === r.centro_id);
@@ -4120,7 +4172,7 @@ async function cargarPipc(){
 <td class="px-md py-sm text-sm font-data-mono text-data-mono">${r.metros_cuadrados != null ? r.metros_cuadrados.toLocaleString('es-MX') + ' m²' : '—'}</td>
 <td class="px-md py-sm">${badgeNivelRiesgoPipc(r.nivel_riesgo)}</td>
 <td class="px-md py-sm">${badgeVigencia(r.vigencia_pipc)}</td>
-<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('programas_proteccion_civil','${r.id}')" type="button">Eliminar</button></td>
+<td class="px-md py-sm text-right whitespace-nowrap"><button class="text-primary hover:underline font-bold text-xs mr-sm" onclick="abrirModalPipc('${r.id}')" type="button">Editar</button><button class="text-error hover:underline font-bold text-xs" onclick="eliminarRegistroCerts('programas_proteccion_civil','${r.id}')" type="button">Eliminar</button></td>
 </tr>`;
     }).join('');
 }
