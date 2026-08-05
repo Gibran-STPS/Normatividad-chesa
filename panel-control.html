@@ -227,14 +227,14 @@
 </div>
 <div class="bg-white border border-outline-variant p-md">
 <div class="flex items-center justify-between mb-sm">
-<p class="font-label-caps text-label-caps text-on-surface-variant">ACTIVIDADES NORMATIVAS (JUL)</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant" id="panel-kpi-actividades-label">ACTIVIDADES NORMATIVAS</p>
 <div class="w-9 h-9 rounded bg-secondary-container flex items-center justify-center shrink-0">
 <span class="material-symbols-outlined text-on-secondary-container text-lg" data-icon="mail">mail</span>
 </div>
 </div>
-<h3 class="font-display-lg text-display-lg text-on-surface">4 <span class="text-title-sm text-on-surface-variant font-normal">enviadas</span></h3>
-<p class="text-xs text-error flex items-center gap-1 font-semibold mt-1">
-<span class="material-symbols-outlined text-xs" data-icon="error">error</span> 7 centros sin confirmar
+<h3 class="font-display-lg text-display-lg text-on-surface" id="panel-kpi-actividades-num">—</h3>
+<p class="text-xs text-error flex items-center gap-1 font-semibold mt-1" id="panel-kpi-actividades-sub">
+<span class="material-symbols-outlined text-xs" data-icon="error">error</span> <span id="panel-kpi-actividades-sub-txt">Cargando…</span>
                 </p>
 </div>
 <div class="bg-white border border-outline-variant p-md">
@@ -267,8 +267,8 @@
 <div class="lg:col-span-2 bg-white border border-outline-variant rounded overflow-hidden">
 <div class="p-md border-b border-outline-variant flex justify-between items-center">
 <div>
-<h3 class="font-title-sm text-title-sm flex items-center gap-2"><span class="material-symbols-outlined text-primary" data-icon="mail">mail</span> Actividades Normativas Enviadas por Correo</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Circulares y requerimientos turnados a los centros de trabajo, con seguimiento de confirmación.</p>
+<h3 class="font-title-sm text-title-sm flex items-center gap-2"><span class="material-symbols-outlined text-primary" data-icon="mail">mail</span> Actividades Normativas del Mes</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1" id="panel-actividades-subtitulo">Actividades programadas este mes en el calendario STPS, por centro de trabajo.</p>
 </div>
 <button class="text-primary font-bold text-sm hover:underline" onclick="showSection('sec-actividades')">Ver todas</button>
 </div>
@@ -276,74 +276,14 @@
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
 <tr>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Actividad / Circular</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Enviado</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-center">Confirmados</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Centro de Trabajo</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-center">Completadas</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Estado</th>
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
 </tr>
 </thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm">
-<div class="font-body-md text-body-md font-bold">Cuestionario NOM-035 · Factores de Riesgo Psicosocial</div>
-<div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-041</div>
-</td>
-<td class="px-md py-sm font-body-sm text-body-sm text-on-surface-variant">10 Jul, 2026</td>
-<td class="px-md py-sm text-center">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1">
-<div class="bg-on-tertiary-container h-full" style="width: 92%;"></div>
-</div>
-<span class="text-xs font-bold text-on-tertiary-container">20/22</span>
-</td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Casi Completo</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Recordatorio reenviado a 2 centros pendientes.')">Reenviar</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm">
-<div class="font-body-md text-body-md font-bold">Programa Anual de Seguridad e Higiene 2026</div>
-<div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-038</div>
-</td>
-<td class="px-md py-sm font-body-sm text-body-sm text-on-surface-variant">05 Jul, 2026</td>
-<td class="px-md py-sm text-center">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1">
-<div class="bg-on-tertiary-container h-full" style="width: 100%;"></div>
-</div>
-<span class="text-xs font-bold text-on-tertiary-container">22/22</span>
-</td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Completo</span></td>
-<td class="px-md py-sm text-right"><button class="text-on-surface-variant text-xs" onclick="mostrarToast('Circular archivada.')">Archivar</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm">
-<div class="font-body-md text-body-md font-bold">Actualización Protocolo NOM-002 · Incendios</div>
-<div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-044</div>
-</td>
-<td class="px-md py-sm font-body-sm text-body-sm text-on-surface-variant">15 Jul, 2026</td>
-<td class="px-md py-sm text-center">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1">
-<div class="bg-orange-500 h-full" style="width: 59%;"></div>
-</div>
-<span class="text-xs font-bold text-orange-600">13/22</span>
-</td>
-<td class="px-md py-sm"><span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">En Proceso</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Recordatorio reenviado a 9 centros pendientes.')">Reenviar</button></td>
-</tr>
-<tr class="hover:bg-error-container/5 transition-colors">
-<td class="px-md py-sm">
-<div class="font-body-md text-body-md font-bold">Evidencia Fotográfica EPP · NOM-017</div>
-<div class="font-data-mono text-data-mono text-on-surface-variant">CIRC-2026-036</div>
-</td>
-<td class="px-md py-sm font-body-sm text-body-sm text-on-surface-variant">01 Jul, 2026</td>
-<td class="px-md py-sm text-center">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1">
-<div class="bg-error h-full" style="width: 41%;"></div>
-</div>
-<span class="text-xs font-bold text-error">9/22</span>
-</td>
-<td class="px-md py-sm"><span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Vencido</span></td>
-<td class="px-md py-sm text-right"><button class="text-error hover:underline font-bold text-xs" onclick="mostrarToast('Caso escalado a Dirección de Planta.')">Escalar</button></td>
-</tr>
+<tbody class="divide-y divide-outline-variant" id="panel-actividades-tbody">
+<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Cargando...</td></tr>
 </tbody>
 </table>
 </div>
@@ -1405,8 +1345,8 @@ async function entrarConSesion(user){
     document.getElementById('header-user-name').textContent = nombre;
     document.getElementById('header-user-role').textContent = puesto;
     document.getElementById('header-user-initials').textContent = iniciales;
+    await cargarCentros();
     showSection('sec-panel');
-    cargarCentros();
     return nombre;
 }
 
@@ -2092,6 +2032,69 @@ async function importarCalendarioExcel(event){
         mostrarToast('Se importaron como "Planeada" algunos valores de estado que no reconocimos (revísalos): ' + Array.from(valoresNoReconocidos).join(' | '), 'error');
     }
     cargarCalendarioMes();
+}
+
+async function renderPanelControl(){
+    const hoy = new Date();
+    const mes = hoy.getMonth() + 1, anio = hoy.getFullYear();
+    document.getElementById('panel-kpi-actividades-label').textContent = `ACTIVIDADES NORMATIVAS (${NOMBRES_MES[mes - 1].toUpperCase().slice(0,3)})`;
+
+    const { data, error } = await supabaseClient.from('calendario_normativo').select('centro_id, estado').eq('mes', mes).eq('anio', anio);
+    const tbody = document.getElementById('panel-actividades-tbody');
+    if(error){
+        document.getElementById('panel-kpi-actividades-num').textContent = '—';
+        document.getElementById('panel-kpi-actividades-sub-txt').textContent = 'Error: ' + error.message;
+        tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="4">No se pudo cargar: ${error.message}</td></tr>`;
+        return;
+    }
+
+    if(!data || !data.length){
+        document.getElementById('panel-kpi-actividades-num').textContent = '0';
+        document.getElementById('panel-kpi-actividades-sub-txt').textContent = `Sin calendario importado para ${NOMBRES_MES[mes-1]} ${anio}`;
+        tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay actividades de ${NOMBRES_MES[mes-1]} ${anio} importadas todavía. Ve a "Actividades Normativas" para importar el calendario.</td></tr>`;
+        return;
+    }
+
+    const porCentro = {};
+    data.forEach(a => {
+        if(!porCentro[a.centro_id]) porCentro[a.centro_id] = { total: 0, realizadas: 0 };
+        porCentro[a.centro_id].total++;
+        if(a.estado === 'Realizada') porCentro[a.centro_id].realizadas++;
+    });
+
+    const totalActividades = data.length;
+    const totalRealizadas = data.filter(a => a.estado === 'Realizada').length;
+    const centrosConPendientes = Object.values(porCentro).filter(c => c.realizadas < c.total).length;
+
+    document.getElementById('panel-kpi-actividades-num').innerHTML = `${totalRealizadas}<span class="text-title-sm text-on-surface-variant font-normal"> / ${totalActividades} completadas</span>`;
+    const subTxt = document.getElementById('panel-kpi-actividades-sub-txt');
+    subTxt.textContent = centrosConPendientes ? `${centrosConPendientes} centro(s) con pendientes` : 'Todos los centros al día';
+    document.getElementById('panel-kpi-actividades-sub').className = centrosConPendientes
+        ? 'text-xs text-error flex items-center gap-1 font-semibold mt-1'
+        : 'text-xs text-on-tertiary-container flex items-center gap-1 font-semibold mt-1';
+
+    const filas = Object.keys(porCentro).map(centroId => {
+        const c = centrosData.find(x => x.id === centroId);
+        const info = porCentro[centroId];
+        const pct = info.total ? Math.round((info.realizadas / info.total) * 100) : 0;
+        return { centroId, nombre: c ? c.nombre : centroId, ...info, pct };
+    }).sort((a, b) => a.pct - b.pct); // los con más pendientes primero
+
+    tbody.innerHTML = filas.slice(0, 8).map(f => {
+        let colorBarra, colorTexto, etiqueta;
+        if(f.pct === 100){ colorBarra = 'bg-tertiary-fixed-dim'; colorTexto = 'text-on-tertiary-container'; etiqueta = { clase: 'bg-tertiary-fixed-dim text-on-tertiary-fixed', texto: 'Completo' }; }
+        else if(f.pct >= 50){ colorBarra = 'bg-orange-500'; colorTexto = 'text-orange-600'; etiqueta = { clase: 'bg-orange-500 text-white', texto: 'En Proceso' }; }
+        else { colorBarra = 'bg-error'; colorTexto = 'text-error'; etiqueta = { clase: 'bg-error text-on-error', texto: 'Atrasado' }; }
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm"><div class="font-body-md text-body-md font-bold">${f.nombre}</div></td>
+<td class="px-md py-sm text-center">
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1"><div class="${colorBarra} h-full" style="width:${f.pct}%;"></div></div>
+<span class="text-xs font-bold ${colorTexto}">${f.realizadas}/${f.total}</span>
+</td>
+<td class="px-md py-sm"><span class="${etiqueta.clase} px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">${etiqueta.texto}</span></td>
+<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-actividades')" type="button">Ver</button></td>
+</tr>`;
+    }).join('');
 }
 
 async function cargarCalendarioMes(){
@@ -2963,6 +2966,7 @@ function showSection(id){
     if(id === 'sec-centros' && currentUser) cargarCentros();
     if(id === 'sec-actividades' && currentUser) poblarSelectoresMensual();
     if(id === 'sec-nom035' && currentUser) renderNom035();
+    if(id === 'sec-panel' && currentUser) renderPanelControl();
     if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); }
 }
 function toggleDropdown(id){
