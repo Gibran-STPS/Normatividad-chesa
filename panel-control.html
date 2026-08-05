@@ -1250,9 +1250,8 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Nivel de riesgo</label>
 <select class="w-full border border-outline-variant rounded p-sm" id="pipc-nivel-riesgo">
 <option value="">Selecciona…</option>
-<option value="Bajo">Bajo</option>
-<option value="Mediano">Mediano</option>
-<option value="Alto">Alto</option>
+<option value="Ordinario">Riesgo Ordinario</option>
+<option value="Alto">Riesgo Alto</option>
 </select>
 </div>
 <button class="w-full bg-primary text-on-primary py-sm font-bold hover:opacity-90 transition-all" onclick="guardarPipc()" type="button">Guardar</button>
@@ -4105,8 +4104,9 @@ async function guardarPipc(){
 }
 function badgeNivelRiesgoPipc(nivel){
     if(!nivel) return '<span class="text-on-surface-variant text-xs">—</span>';
-    const clases = { 'Bajo': 'bg-tertiary-fixed-dim text-on-tertiary-fixed', 'Mediano': 'bg-orange-500 text-white', 'Alto': 'bg-error text-on-error' };
-    return `<span class="${clases[nivel] || 'bg-surface-container-high'} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${nivel}</span>`;
+    const clases = { 'Ordinario': 'bg-tertiary-fixed-dim text-on-tertiary-fixed', 'Alto': 'bg-error text-on-error' };
+    const etiqueta = { 'Ordinario': 'Riesgo Ordinario', 'Alto': 'Riesgo Alto' };
+    return `<span class="${clases[nivel] || 'bg-surface-container-high'} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${etiqueta[nivel] || nivel}</span>`;
 }
 async function cargarPipc(){
     const tbody = document.getElementById('pipc-tbody');
