@@ -2179,7 +2179,7 @@ function renderJornada40hPanel(){
     cont.innerHTML = ultimos.map((h, i) => {
         const pct = h.global.pct_cumplimiento_semanal;
         const esUltimo = i === ultimos.length - 1;
-        return `<div class="flex-1 flex flex-col items-center gap-1 ${esUltimo ? 'relative' : ''}">
+        return `<div class="flex-1 flex flex-col items-center justify-end gap-1 h-full ${esUltimo ? 'relative' : ''}">
 ${esUltimo ? `<span class="absolute -top-6 text-xs font-bold text-primary">${pct.toFixed(1)}%</span>` : ''}
 <div class="w-full ${esUltimo ? 'bg-tertiary-fixed-dim' : 'bg-primary-container'} rounded-t" style="height:${Math.max(pct, 2)}%;"></div>
 <span class="text-xs ${esUltimo ? 'font-bold text-primary' : 'text-on-surface-variant'}">${h.periodo_label}</span>
