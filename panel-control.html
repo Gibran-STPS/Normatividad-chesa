@@ -694,7 +694,7 @@
 <input accept=".xlsx" class="hidden" id="input-importar-colaboradores" onchange="importarColaboradoresExcel(event)" type="file"/>
 </label>
 </div>
-<p class="text-xs text-on-surface-variant mt-sm">Se importa la hoja "CONCENTRADO" de tu Cuadro General de Antigüedades. Los días de vacaciones se calculan con la tabla legal vigente (editable en Supabase, tabla <span class="font-data-mono">tabla_vacaciones_dias</span>).</p>
+<p class="text-xs text-on-surface-variant mt-sm">Se importa la hoja "CONCENTRADO" de tu Cuadro General de Antigüedades. Los días de vacaciones se calculan con la tabla legal vigente (editable en Supabase, tabla <span class="font-data-mono">tabla_vacaciones_dias</span>). Si tu hoja incluye una columna "PUESTO", se agregará automáticamente a las constancias generadas.</p>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <div class="flex justify-between items-center p-md border-b border-outline-variant">
@@ -2387,6 +2387,7 @@ async function importarColaboradoresExcel(event){
     const iNombre = encabezados.indexOf('NOMBRE');
     const iContrato = encabezados.indexOf(normalizarClave('TIPO DE CONTRATO'));
     const iIngreso = encabezados.indexOf(normalizarClave('FECHA DE INGRESO'));
+    const iPuesto = encabezados.indexOf('PUESTO');
 
     if(iClave === -1 || iNombre === -1 || iIngreso === -1){
         mostrarToast('Faltan columnas obligatorias (CLAVE, NOMBRE, FECHA DE INGRESO) en la hoja.');
@@ -2433,6 +2434,7 @@ async function importarColaboradoresExcel(event){
             sucursal_nombre: sucursalTxt,
             centro_id: centroId,
             tipo_contrato: iContrato > -1 ? (fila[iContrato] || '').toString().trim() : null,
+            puesto: iPuesto > -1 ? (fila[iPuesto] || '').toString().trim() : null,
             fecha_ingreso: fechaISO,
             activo: true
         });
@@ -2475,7 +2477,7 @@ async function cargarVacacionesMes(){
     await asegurarTablaVacaciones();
 
     const { data, error } = await supabaseClient.from('colaboradores')
-        .select('clave, nombre, fecha_ingreso')
+        .select('clave, nombre, puesto, fecha_ingreso')
         .eq('centro_id', centroId).eq('activo', true);
 
     if(error){ mostrarToast('Error: ' + error.message); return; }
@@ -2487,9 +2489,8 @@ async function cargarVacacionesMes(){
         const dias = diasPorAntiguedad(anios);
         if(anios < 1 || !dias) return acc;
         const inicio = new Date(anio, mes - 1, ingreso.getDate());
-        const fin = new Date(inicio);
-        fin.setDate(fin.getDate() + dias);
-        acc.push({ clave: c.clave, nombre: c.nombre, ingreso, anios, dias, inicio, fin });
+        const fin = calcularFinPeriodoHabil(inicio, dias);
+        acc.push({ clave: c.clave, nombre: c.nombre, puesto: c.puesto || null, ingreso, anios, dias, inicio, fin });
         return acc;
     }, []);
 
@@ -2576,34 +2577,219 @@ function exportarVacacionesExcel(){
     mostrarToast('Excel exportado.');
 }
 
-function construirConstanciaPDF(c, centro){
+// ---- Días feriados oficiales de México (Art. 74 LFT) y cálculo de periodo vacacional hábil ----
+// El periodo de vacaciones no cuenta domingos ni los días feriados obligatorios;
+// el "fin" del periodo se recorre hacia adelante hasta cubrir el total de días que
+// le corresponden al colaborador según la tabla vigente.
+
+function nEsimoDiaSemanaDelMes(anio, mesIdx, diaSemana, n){
+    // mesIdx: 0=enero...11=diciembre. diaSemana: 0=domingo...1=lunes...
+    let d = new Date(anio, mesIdx, 1);
+    let contador = 0;
+    while(d.getMonth() === mesIdx){
+        if(d.getDay() === diaSemana){
+            contador++;
+            if(contador === n) return new Date(d);
+        }
+        d.setDate(d.getDate() + 1);
+    }
+    return null;
+}
+
+function feriadosMexico(anio){
+    return [
+        new Date(anio, 0, 1),                              // 1 de enero
+        nEsimoDiaSemanaDelMes(anio, 1, 1, 1),               // 1er lunes de febrero (Día de la Constitución)
+        nEsimoDiaSemanaDelMes(anio, 2, 1, 3),               // 3er lunes de marzo (Natalicio de Benito Juárez)
+        new Date(anio, 4, 1),                               // 1 de mayo
+        new Date(anio, 8, 16),                              // 16 de septiembre
+        nEsimoDiaSemanaDelMes(anio, 10, 1, 3),              // 3er lunes de noviembre (Revolución Mexicana)
+        new Date(anio, 11, 25)                              // 25 de diciembre
+    ].filter(Boolean);
+}
+
+function obtenerFeriadosComoSet(anioIni, anioFin){
+    const set = new Set();
+    for(let y = anioIni; y <= anioFin; y++){
+        feriadosMexico(y).forEach(d => set.add(d.toISOString().slice(0,10)));
+    }
+    return set;
+}
+
+function esDiaHabilVacacional(fecha, feriadosSet){
+    return fecha.getDay() !== 0 && !feriadosSet.has(fecha.toISOString().slice(0,10));
+}
+
+function calcularFinPeriodoHabil(inicio, diasRequeridos){
+    const feriados = obtenerFeriadosComoSet(inicio.getFullYear(), inicio.getFullYear() + 1);
+    let actual = new Date(inicio);
+    let fin = new Date(inicio);
+    let contados = 0;
+    let tope = 0;
+    while(contados < diasRequeridos && tope < 400){
+        if(esDiaHabilVacacional(actual, feriados)){
+            contados++;
+            fin = new Date(actual);
+        }
+        if(contados < diasRequeridos) actual.setDate(actual.getDate() + 1);
+        tope++;
+    }
+    return fin;
+}
+
+// ---- Datos fijos de la firma patronal (Dirección de Talento Humano, aplica a todas las marcas) ----
+const FIRMA_TALENTO_HUMANO = { nombre: 'OVALLE ISLAS MARIA ELIZABETH', puesto: 'Dirección de Talento Humano' };
+
+// ---- Carga de logos (marca / Chesa) como dataURL para insertarlos en el PDF ----
+const CACHE_IMAGENES_PDF = {};
+
+function cargarImagenParaPDF(url){
+    if(!url) return Promise.resolve(null);
+    if(CACHE_IMAGENES_PDF[url]) return CACHE_IMAGENES_PDF[url];
+    const promesa = new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            try{
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                resolve({ dataUrl: canvas.toDataURL('image/png'), width: img.naturalWidth, height: img.naturalHeight });
+            } catch(e){ resolve(null); }
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+    CACHE_IMAGENES_PDF[url] = promesa;
+    return promesa;
+}
+
+function logoParaCentro(centro){
+    return (centro && centro.marca && LOGOS_MARCA[centro.marca]) ? LOGOS_MARCA[centro.marca] : LOGO_CHESA;
+}
+
+// ---- Escritura de párrafos con segmentos en negrita dentro de jsPDF ----
+// segmentos: [{ text: '...', bold: true|false }, ...]. Hace su propio ajuste de línea
+// respetando el ancho máximo, y regresa la coordenada Y final tras escribir el párrafo.
+function escribirParrafoConNegritas(doc, segmentos, x, yInicial, maxWidth, tamanoFuente, interlineado){
+    tamanoFuente = tamanoFuente || 10;
+    interlineado = interlineado || 5;
+    doc.setFontSize(tamanoFuente);
+
+    const palabras = [];
+    segmentos.forEach(seg => {
+        seg.text.split(/(\s+)/).forEach(tok => {
+            if(tok === '') return;
+            palabras.push({ text: tok, bold: !!seg.bold });
+        });
+    });
+
+    let y = yInicial;
+    let cursorX = x;
+    const espacioAncho = (() => { doc.setFont('helvetica', 'normal'); return doc.getTextWidth(' '); })();
+
+    palabras.forEach(p => {
+        if(/^\s+$/.test(p.text)){
+            cursorX += espacioAncho;
+            return;
+        }
+        doc.setFont('helvetica', p.bold ? 'bold' : 'normal');
+        const ancho = doc.getTextWidth(p.text);
+        if(cursorX + ancho > x + maxWidth){
+            y += interlineado;
+            cursorX = x;
+        }
+        doc.text(p.text, cursorX, y);
+        cursorX += ancho;
+    });
+
+    doc.setFont('helvetica', 'normal');
+    return y + interlineado;
+}
+
+async function construirConstanciaPDF(c, centro){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'letter' });
     const fmt = d => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+    const centerX = 107.95;
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
-    doc.text('GRUPO AUTOMOTRIZ CHESA', 107.95, 25, { align: 'center' });
+    // ---- Encabezado: logo de marca + razón social + RFC ----
+    const logoUrl = logoParaCentro(centro);
+    const logoInfo = await cargarImagenParaPDF(logoUrl);
+    let y = 18;
+    if(logoInfo && logoInfo.dataUrl){
+        const alturaLogo = 12;
+        const anchoLogo = Math.min(55, alturaLogo * (logoInfo.width / logoInfo.height));
+        doc.addImage(logoInfo.dataUrl, 'PNG', centerX - anchoLogo / 2, y - 6, anchoLogo, alturaLogo);
+        y += alturaLogo + 4;
+    } else {
+        y += 4;
+    }
+
+    const razonSocial = (centro && centro.razonSocial) ? centro.razonSocial : (centro && centro.nombre ? centro.nombre : 'CENTRO DE TRABAJO');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text(razonSocial.toUpperCase(), centerX, y, { align: 'center' });
+    y += 6;
+
+    if(centro && centro.rfc){
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+        doc.text(`RFC: ${centro.rfc}`, centerX, y, { align: 'center' });
+        y += 6;
+    }
+
     doc.setFont('helvetica', 'normal'); doc.setFontSize(12);
-    doc.text('Constancia de Vacaciones', 107.95, 34, { align: 'center' });
+    doc.text('Constancia de Vacaciones', centerX, y, { align: 'center' });
+    y += 14;
 
-    doc.setFontSize(10);
-    const parrafo = `Por medio de la presente se hace constar que el(la) colaborador(a) ${c.nombre}, con número de empleado ${c.clave}${centro ? (', adscrito(a) al centro de trabajo "' + centro.nombre + '"') : ''}, con fecha de ingreso el ${fmt(c.ingreso)} y una antigüedad de ${c.anios} año${c.anios === 1 ? '' : 's'} de servicio, cuenta con ${c.dias} días de vacaciones conforme a la tabla vigente de la Ley Federal del Trabajo.`;
-    const lineas = doc.splitTextToSize(parrafo, 170);
-    doc.text(lineas, 20, 55);
+    // ---- Párrafo con los datos del colaborador en negritas ----
+    const puestoTxt = c.puesto ? ` con puesto de ${c.puesto}` : '';
+    const segmentos = [
+        { text: 'Por medio de la presente se hace constar que el(la) colaborador(a) ', bold: false },
+        { text: `${c.nombre}${puestoTxt}`, bold: true },
+        { text: ', con número de empleado ', bold: false },
+        { text: `${c.clave}`, bold: true },
+        { text: centro ? `, adscrito(a) al centro de trabajo "${centro.nombre}"` : '', bold: false },
+        { text: ', con fecha de ingreso el ', bold: false },
+        { text: `${fmt(c.ingreso)}`, bold: true },
+        { text: ' y una antigüedad de ', bold: false },
+        { text: `${c.anios} año${c.anios === 1 ? '' : 's'}`, bold: true },
+        { text: ' de servicio, cuenta con ', bold: false },
+        { text: `${c.dias} días`, bold: true },
+        { text: ' de vacaciones conforme a la tabla vigente de la Ley Federal del Trabajo.', bold: false }
+    ];
+    y = escribirParrafoConNegritas(doc, segmentos, 20, y, 170, 10, 5.5);
 
-    let y = 55 + lineas.length * 5 + 12;
-    doc.setFont('helvetica', 'bold'); doc.text('Periodo de vacaciones autorizado:', 20, y);
+    y += 8;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text('Periodo de vacaciones autorizado:', 20, y);
     y += 7;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Del ${fmt(c.inicio)} al ${fmt(c.fin)} (${c.dias} días).`, 20, y);
+    y = escribirParrafoConNegritas(doc, [
+        { text: 'Del ', bold: false },
+        { text: `${fmt(c.inicio)}`, bold: true },
+        { text: ' al ', bold: false },
+        { text: `${fmt(c.fin)}`, bold: true },
+        { text: ` (${c.dias} días, sin contar domingos ni días feriados de ley).`, bold: false }
+    ], 20, y, 170, 10, 5.5);
 
-    y += 35;
+    // ---- Ciudad y fecha de elaboración (con la fecha del primer día del goce de vacaciones) ----
+    y += 12;
+    const ciudadTxt = (centro && centro.ciudad) ? centro.ciudad : '';
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.text(`${ciudadTxt}${ciudadTxt ? ', a ' : 'A '}${fmt(c.inicio)}.`, 20, y);
+
+    // ---- Firmas ----
+    y += 30;
     doc.text('_____________________________', 20, y);
     doc.text('_____________________________', 120, y);
     y += 5;
-    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text(c.nombre, 20, y);
+    doc.text(FIRMA_TALENTO_HUMANO.nombre, 120, y);
+    y += 4.5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
     doc.text('Firma del colaborador', 20, y);
-    doc.text('Responsable de Auditoría STPS', 120, y);
+    doc.text(FIRMA_TALENTO_HUMANO.puesto, 120, y);
 
     return doc;
 }
@@ -2625,7 +2811,7 @@ async function generarConstanciaIndividual(clave){
     const c = COLABORADORES_CENTRO_CACHE.data.find(x => x.clave === clave);
     if(!c) return;
     const centro = centrosData.find(x => x.id === COLABORADORES_CENTRO_CACHE.centroId);
-    const doc = construirConstanciaPDF(c, centro);
+    const doc = await construirConstanciaPDF(c, centro);
     doc.save(`Constancia_Vacaciones_${c.clave}.pdf`);
     await registrarConstanciaGenerada(c, COLABORADORES_CENTRO_CACHE.centroId);
 }
@@ -2637,7 +2823,7 @@ async function generarTodasConstancias(){
     const zip = new JSZip();
     const centro = centrosData.find(x => x.id === COLABORADORES_CENTRO_CACHE.centroId);
     for(const c of lista){
-        const doc = construirConstanciaPDF(c, centro);
+        const doc = await construirConstanciaPDF(c, centro);
         const nombreSeguro = c.nombre.replace(/[^a-zA-Z0-9]+/g, '_');
         zip.file(`Constancia_Vacaciones_${c.clave}_${nombreSeguro}.pdf`, doc.output('blob'));
         await registrarConstanciaGenerada(c, COLABORADORES_CENTRO_CACHE.centroId);
@@ -3120,10 +3306,10 @@ async function descargarAdjuntosCorreo(){
         const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro, { normaCode: p.norma_code, mes: CORREO_CONTEXTO.mes, anio: CORREO_CONTEXTO.anio });
         zip.file(p.nombre_archivo, personalizado);
     }
-    CORREO_CONTEXTO.colaboradores.forEach(c => {
-        const doc = construirConstanciaPDF(c, CORREO_CONTEXTO.centro);
+    for(const c of CORREO_CONTEXTO.colaboradores){
+        const doc = await construirConstanciaPDF(c, CORREO_CONTEXTO.centro);
         zip.file(`Constancia_Vacaciones_${c.clave}.pdf`, doc.output('blob'));
-    });
+    }
 
     const nombreZip = `Adjuntos_${CORREO_CONTEXTO.centro.id}_${CORREO_CONTEXTO.mes}_${CORREO_CONTEXTO.anio}.zip`;
     const blob = await zip.generateAsync({ type: 'blob' });
