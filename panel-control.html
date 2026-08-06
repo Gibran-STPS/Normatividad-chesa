@@ -303,7 +303,7 @@
 </div>
 <button class="text-primary font-bold text-sm hover:underline" onclick="showSection('sec-40h')">Ver detalle</button>
 </div>
-<div class="flex items-end gap-md h-48 border-b border-outline-variant pb-2" id="panel-40h-barras">
+<div class="pt-8 pb-2 border-b border-outline-variant" id="panel-40h-barras">
 <p class="text-sm text-on-surface-variant w-full text-center">Cargando...</p>
 </div>
 <p class="text-xs text-on-surface-variant mt-3" id="panel-40h-nota"></p>
@@ -2176,21 +2176,49 @@ function renderJornada40hPanel(){
     }
 
     const ultimos = historial.slice(-8);
-    cont.innerHTML = ultimos.map((h, i) => {
+    const n = ultimos.length;
+    // Lienzo SVG con coordenadas fijas — evita depender de porcentajes CSS
+    // en flexbox (eso fue justo lo que causaba las barras invisibles antes).
+    const W = 800, H = 200, PAD_TOP = 34, PAD_BOTTOM = 28, PAD_SIDE = 40;
+    const areaH = H - PAD_TOP - PAD_BOTTOM;
+    const slot = (W - PAD_SIDE * 2) / n;
+    const barW = Math.min(slot * 0.55, 70);
+
+    const puntos = ultimos.map((h, i) => {
         const pct = h.global.pct_cumplimiento_semanal;
-        const esUltimo = i === ultimos.length - 1;
-        return `<div class="flex-1 flex flex-col items-center justify-end gap-1 h-full ${esUltimo ? 'relative' : ''}">
-${esUltimo ? `<span class="absolute -top-6 text-xs font-bold text-primary">${pct.toFixed(1)}%</span>` : ''}
-<div class="w-full ${esUltimo ? 'bg-tertiary-fixed-dim' : 'bg-primary-container'} rounded-t" style="height:${Math.max(pct, 2)}%;"></div>
-<span class="text-xs ${esUltimo ? 'font-bold text-primary' : 'text-on-surface-variant'}">${h.periodo_label}</span>
-</div>`;
+        const cx = PAD_SIDE + slot * i + slot / 2;
+        const barH = Math.max((pct / 100) * areaH, 3);
+        const y = PAD_TOP + areaH - barH;
+        return { pct, cx, y, barH, label: h.periodo_label };
+    });
+
+    const barras = puntos.map((p, i) => {
+        const esUltimo = i === n - 1;
+        const anterior = i > 0 ? puntos[i - 1].pct : null;
+        const delta = anterior !== null ? Math.round((p.pct - anterior) * 10) / 10 : null;
+        const colorBarra = esUltimo ? 'var(--color-tertiary-fixed-dim, #22c58b)' : 'var(--color-primary-container, #c9dcff)';
+        const deltaTxt = delta === null ? '' : (delta >= 0 ? `▲ +${delta}` : `▼ ${delta}`);
+        const deltaColor = delta === null ? '' : (delta >= 0 ? '#0f9d58' : '#d93025');
+        return `
+<rect x="${(p.cx - barW/2).toFixed(1)}" y="${p.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${p.barH.toFixed(1)}" rx="4" fill="${colorBarra}"></rect>
+<text x="${p.cx.toFixed(1)}" y="${(p.y - 18).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="700" fill="${esUltimo ? '#1b3a8c' : '#3a4863'}">${p.pct.toFixed(1)}%</text>
+${deltaTxt ? `<text x="${p.cx.toFixed(1)}" y="${(p.y - 4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="${deltaColor}">${deltaTxt}</text>` : ''}
+<text x="${p.cx.toFixed(1)}" y="${(H - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="${esUltimo ? '700' : '400'}" fill="${esUltimo ? '#1b3a8c' : '#6b7688'}">${p.label}</text>`;
     }).join('');
 
+    const lineaTendencia = puntos.map(p => `${p.cx.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+    cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:${H}px; display:block;">
+<polyline points="${lineaTendencia}" fill="none" stroke="#8aa0c9" stroke-width="2" stroke-dasharray="5,4"></polyline>
+${puntos.map(p => `<circle cx="${p.cx.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="#5b7bd6"></circle>`).join('')}
+${barras}
+</svg>`;
+
     if(notaEl){
-        if(ultimos.length >= 2){
-            const diff = ultimos[ultimos.length - 1].global.pct_cumplimiento_semanal - ultimos[0].global.pct_cumplimiento_semanal;
+        if(n >= 2){
+            const diff = puntos[n - 1].pct - puntos[0].pct;
             const verbo = diff >= 0 ? 'mejoró' : 'bajó';
-            notaEl.innerHTML = `El cumplimiento ${verbo} <span class="font-bold text-on-tertiary-container">${Math.abs(diff).toFixed(1)} punto(s)</span> entre ${ultimos[0].periodo_label} y ${ultimos[ultimos.length - 1].periodo_label}.`;
+            notaEl.innerHTML = `El cumplimiento ${verbo} <span class="font-bold text-on-tertiary-container">${Math.abs(Math.round(diff*10)/10)} punto(s)</span> entre ${puntos[0].label} y ${puntos[n - 1].label}. La línea punteada muestra la tendencia entre periodos; el "▲/▼" bajo cada porcentaje es el cambio contra el periodo inmediato anterior.`;
         } else {
             notaEl.textContent = 'Guarda más periodos en "Semana Laboral 40h" para ver la tendencia.';
         }
