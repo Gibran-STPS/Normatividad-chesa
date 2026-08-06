@@ -348,7 +348,7 @@
 </div>
 <div class="flex gap-sm">
 <button class="flex items-center gap-1 border border-outline-variant px-md py-sm text-sm font-semibold hover:bg-surface-container-high" onclick="showSection('sec-centros')"><span class="material-symbols-outlined text-lg" data-icon="open_in_new">open_in_new</span> Ver todos</button>
-<button class="flex items-center gap-1 border border-outline-variant px-md py-sm text-sm font-semibold hover:bg-surface-container-high" onclick="mostrarToast('Exportando estatus a CSV...')"><span class="material-symbols-outlined text-lg" data-icon="file_download">file_download</span> Exportar CSV</button>
+<button class="flex items-center gap-1 border border-outline-variant px-md py-sm text-sm font-semibold hover:bg-surface-container-high" onclick="exportarEstatusCentrosCSV()"><span class="material-symbols-outlined text-lg" data-icon="file_download">file_download</span> Exportar CSV</button>
 </div>
 </div>
 <div class="overflow-x-auto">
@@ -363,55 +363,8 @@
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
 </tr>
 </thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Cumple</span></td>
-<td class="px-md py-sm font-body-md text-body-md font-bold">Saltillo Stamping</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right text-on-tertiary-container">98.5%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">100%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">18/18</td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-centros')">Ver Detalle</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Cumple</span></td>
-<td class="px-md py-sm font-body-md text-body-md font-bold">Logística Querétaro</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right text-on-tertiary-container">95.0%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">85%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">9/10</td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-centros')">Ver Detalle</button></td>
-</tr>
-<tr class="hover:bg-error-container/5 transition-colors">
-<td class="px-md py-sm"><span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Crítico</span></td>
-<td class="px-md py-sm font-body-md text-body-md font-bold">Ensamblaje Bajío Norte</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right text-error font-bold">74.2%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">40%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right text-error font-bold">6/11</td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-centros')">Ver Detalle</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Auditando</span></td>
-<td class="px-md py-sm font-body-md text-body-md font-bold">Fundición Monterrey</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">88.9%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">92%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">14/16</td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-centros')">Ver Detalle</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Cumple</span></td>
-<td class="px-md py-sm font-body-md text-body-md font-bold">Tren Motriz Chihuahua</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right text-on-tertiary-container">99.1%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">100%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">12/12</td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-centros')">Ver Detalle</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm"><span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Pendiente</span></td>
-<td class="px-md py-sm font-body-md text-body-md font-bold">Hub Puebla</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">90.3%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right text-orange-600 font-bold">62%</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">8/9</td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-centros')">Ver Detalle</button></td>
-</tr>
+<tbody class="divide-y divide-outline-variant" id="panel-centros-estatus-tbody">
+<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">Cargando...</td></tr>
 </tbody>
 </table>
 </div>
@@ -2241,6 +2194,7 @@ async function renderPanelControl(){
         document.getElementById('panel-kpi-actividades-num').textContent = '—';
         document.getElementById('panel-kpi-actividades-sub-txt').textContent = 'Error: ' + error.message;
         tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="4">No se pudo cargar: ${error.message}</td></tr>`;
+        renderTablaEstatusCentros({});
         return;
     }
 
@@ -2248,6 +2202,7 @@ async function renderPanelControl(){
         document.getElementById('panel-kpi-actividades-num').textContent = '0';
         document.getElementById('panel-kpi-actividades-sub-txt').textContent = `Sin calendario importado para ${NOMBRES_MES[mes-1]} ${anio}`;
         tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay actividades de ${NOMBRES_MES[mes-1]} ${anio} importadas todavía. Ve a "Actividades Normativas" para importar el calendario.</td></tr>`;
+        renderTablaEstatusCentros({});
         return;
     }
 
@@ -2257,6 +2212,7 @@ async function renderPanelControl(){
         porCentro[a.centro_id].total++;
         if(a.estado === 'Realizada') porCentro[a.centro_id].realizadas++;
     });
+    renderTablaEstatusCentros(porCentro);
 
     const totalActividades = data.length;
     const totalRealizadas = data.filter(a => a.estado === 'Realizada').length;
@@ -2291,6 +2247,135 @@ async function renderPanelControl(){
 <td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-actividades')" type="button">Ver</button></td>
 </tr>`;
     }).join('');
+}
+
+// ---- Estatus Detallado por Centro de Trabajo (Panel de Control) ----
+// Combina 3 fuentes reales: % de actividades normativas del mes (calendario_normativo),
+// progreso de Jornada 40h del último snapshot guardado (localStorage, por unidad de negocio),
+// y vigencia de dictámenes técnicos (compresores, tanques, ruido/iluminación, PIPC).
+
+async function obtenerDictamenesPorCentro(){
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const resultado = {};
+    for(const tabla of Object.keys(CERTS_CAMPOS_VIGENCIA)){
+        const campos = CERTS_CAMPOS_VIGENCIA[tabla];
+        const { data } = await supabaseClient.from(tabla).select(['centro_id', ...campos].join(','));
+        (data || []).forEach(r => {
+            if(!resultado[r.centro_id]) resultado[r.centro_id] = { total: 0, vigentes: 0, porVencer: 0, vencidos: 0 };
+            campos.forEach(campo => {
+                const val = r[campo];
+                if(!val) return;
+                resultado[r.centro_id].total++;
+                const dias = Math.round((new Date(val + 'T00:00:00') - hoy) / 86400000);
+                if(dias < 0) resultado[r.centro_id].vencidos++;
+                else if(dias <= 30) resultado[r.centro_id].porVencer++;
+                else resultado[r.centro_id].vigentes++;
+            });
+        });
+    }
+    return resultado;
+}
+
+// Empareja un centro con su "unidad de negocio" del Tablero de Jornada 40h
+// (esa herramienta no usa centro_id, guarda unidad_negocio/marca en texto libre).
+function unidadJornada40hParaCentro(centro, unidades){
+    if(!unidades || !unidades.length) return null;
+    const nombreCentro = normalizarClave(centro.nombre || '');
+    const codigo = centro.codigoAgencia ? normalizarClave(centro.codigoAgencia) : null;
+    return unidades.find(u => {
+        const un = normalizarClave(u.unidad_negocio || '');
+        if(!un) return false;
+        if(un === nombreCentro || nombreCentro.includes(un) || un.includes(nombreCentro)) return true;
+        if(codigo && (un.includes(codigo) || codigo.includes(un))) return true;
+        return false;
+    }) || null;
+}
+
+function estatusCompuestoCentro(centro, pctAct, dInfo){
+    // Si el estado del centro se marcó manualmente como Auditando o Crítico
+    // en "Centros de Trabajo", se respeta tal cual (es una decisión del auditor).
+    if(centro.estado === 'Auditando') return 'Auditando';
+    if(centro.estado === 'Crítico') return 'Crítico';
+    if(pctAct === null && dInfo.total === 0) return 'Pendiente';
+    if(dInfo.vencidos > 0 || (pctAct !== null && pctAct < 70)) return 'Crítico';
+    if((pctAct === null || pctAct >= 90) && dInfo.vencidos === 0 && dInfo.porVencer === 0) return 'Cumple';
+    return 'Pendiente';
+}
+
+const ESTATUS_CENTRO_BADGE = {
+    'Cumple': 'bg-tertiary-fixed-dim text-on-tertiary-fixed',
+    'Crítico': 'bg-error text-on-error',
+    'Auditando': 'bg-secondary-container text-on-secondary-container',
+    'Pendiente': 'bg-orange-500 text-white'
+};
+
+let ESTATUS_CENTROS_CACHE = [];
+
+async function renderTablaEstatusCentros(porCentroActividades){
+    const tbody = document.getElementById('panel-centros-estatus-tbody');
+    const contador = document.getElementById('dashboard-centros-count');
+    if(!tbody) return;
+
+    if(!centrosData.length){
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">Sin centros de trabajo registrados todavía.</td></tr>';
+        if(contador) contador.textContent = 'Sin centros registrados — captúralos en "Centros de Trabajo".';
+        return;
+    }
+
+    const dictPorCentro = await obtenerDictamenesPorCentro();
+    const historial40h = leerHistorialJornada40h();
+    const unidades40h = historial40h.length ? historial40h[historial40h.length - 1].unidades : [];
+
+    const filas = centrosData.map(c => {
+        const actInfo = porCentroActividades[c.id] || null;
+        const pctAct = actInfo && actInfo.total ? Math.round((actInfo.realizadas / actInfo.total) * 100) : null;
+        const dInfo = dictPorCentro[c.id] || { total: 0, vigentes: 0, porVencer: 0, vencidos: 0 };
+        const unidad = unidadJornada40hParaCentro(c, unidades40h);
+        const pct40h = unidad ? Math.round(unidad.pct_cumplimiento_semanal) : null;
+        const estatus = estatusCompuestoCentro(c, pctAct, dInfo);
+        return { centro: c, pctAct, dInfo, pct40h, estatus };
+    });
+
+    ESTATUS_CENTROS_CACHE = filas;
+
+    tbody.innerHTML = filas.map(f => {
+        const pctActTxt = f.pctAct === null ? '<span class="text-on-surface-variant text-xs">Sin datos</span>' : `${f.pctAct}%`;
+        const pctActClase = f.pctAct === null ? '' : (f.pctAct >= 90 ? 'text-on-tertiary-container' : (f.pctAct < 70 ? 'text-error font-bold' : ''));
+        const pct40hTxt = f.pct40h === null ? '<span class="text-on-surface-variant text-xs">Sin dato</span>' : `${f.pct40h}%`;
+        const pct40hClase = f.pct40h === null ? '' : (f.pct40h < 70 ? 'text-orange-600 font-bold' : '');
+        const dTxt = f.dInfo.total ? `${f.dInfo.vigentes + f.dInfo.porVencer}/${f.dInfo.total}` : '<span class="text-on-surface-variant text-xs">Sin registros</span>';
+        const dClase = f.dInfo.vencidos ? 'text-error font-bold' : '';
+        const rowClase = f.estatus === 'Crítico' ? 'hover:bg-error-container/5' : 'hover:bg-surface-container';
+        return `<tr class="${rowClase} transition-colors">
+<td class="px-md py-sm"><span class="${ESTATUS_CENTRO_BADGE[f.estatus]} px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">${f.estatus}</span></td>
+<td class="px-md py-sm font-body-md text-body-md font-bold">${f.centro.nombre}</td>
+<td class="px-md py-sm font-data-mono text-data-mono text-right ${pctActClase}">${pctActTxt}</td>
+<td class="px-md py-sm font-data-mono text-data-mono text-right ${pct40hClase}">${pct40hTxt}</td>
+<td class="px-md py-sm font-data-mono text-data-mono text-right ${dClase}">${dTxt}</td>
+<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="showSection('sec-centros')" type="button">Ver Detalle</button></td>
+</tr>`;
+    }).join('');
+
+    if(contador){
+        contador.textContent = `Mostrando tus ${filas.length} centros registrados. "% NOM-STPS" son las actividades del mes en curso; "Progreso 40h" toma el último snapshot guardado en "Semana Laboral 40h" (emparejado por nombre de unidad de negocio — revisa los que digan "Sin dato").`;
+    }
+}
+
+function exportarEstatusCentrosCSV(){
+    if(!ESTATUS_CENTROS_CACHE.length){ mostrarToast('Todavía no hay datos cargados en la tabla.'); return; }
+    const encabezado = ['Estatus', 'Centro de Trabajo', '% NOM-STPS', 'Progreso 40h', 'Dictámenes vigentes', 'Dictámenes totales'];
+    const filasCsv = ESTATUS_CENTROS_CACHE.map(f => [
+        f.estatus,
+        f.centro.nombre,
+        f.pctAct === null ? '' : f.pctAct,
+        f.pct40h === null ? '' : f.pct40h,
+        f.dInfo.vigentes + f.dInfo.porVencer,
+        f.dInfo.total
+    ]);
+    const csv = [encabezado, ...filasCsv].map(fila => fila.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    descargarBlob(blob, `Estatus_Centros_${new Date().toISOString().slice(0,10)}.csv`);
+    mostrarToast('CSV exportado.');
 }
 
 async function cargarCalendarioMes(){
@@ -4554,7 +4639,7 @@ async function cargarTodoCerts(){
     await Promise.all([cargarCompresores(), cargarTanques(), cargarRuido(), cargarPipc(), cargarCertsKpis()]);
 }
 
-console.log("Normatividad Grupo Automotriz Chesa — app inicializada. Build " + "2026-08-06-2");
+console.log("Normatividad Grupo Automotriz Chesa — app inicializada.");
 </script>
 </body>
 </html>
