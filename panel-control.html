@@ -193,9 +193,10 @@
 <button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-high rounded-full transition-colors" data-icon="help_outline" onclick="showSection('sec-soporte')">help_outline</button>
 <div class="relative">
 <button class="flex items-center gap-sm pl-md border-l border-outline-variant" onclick="toggleDropdown('profile-dropdown')">
-<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant bg-secondary-container flex items-center justify-center font-bold text-secondary" id="header-user-initials">
-                    GG
-                </div>
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant bg-secondary-container flex items-center justify-center font-bold text-secondary" id="header-user-avatar">
+<span id="header-user-initials">GG</span>
+<img alt="" class="hidden w-full h-full object-cover" id="header-user-foto" src=""/>
+</div>
 <div class="text-left">
 <p class="font-body-sm text-body-sm font-bold leading-tight" id="header-user-name">Gibran Hashmed García Cruz</p>
 <p class="text-xs text-on-surface-variant leading-tight" id="header-user-role">Responsable de Auditoría STPS</p>
@@ -1275,6 +1276,25 @@
 </div>
 
 <div class="bg-white border border-outline-variant rounded p-lg max-w-xl mt-lg">
+<h3 class="font-display-md text-display-md text-primary mb-xs">Foto de perfil</h3>
+<p class="text-xs text-on-surface-variant mb-md">Se muestra en la esquina superior del panel. Se recorta automáticamente al centro en formato cuadrado.</p>
+<div class="flex items-center gap-lg">
+<div class="w-24 h-24 rounded-full overflow-hidden border border-outline-variant bg-secondary-container flex items-center justify-center font-bold text-2xl text-secondary shrink-0" id="config-avatar-preview">
+<span id="config-avatar-iniciales">GG</span>
+<img alt="" class="hidden w-full h-full object-cover" id="config-avatar-img" src=""/>
+</div>
+<div class="space-y-sm flex-1">
+<input accept="image/*" class="text-sm block" id="config-avatar-input" type="file"/>
+<div class="flex gap-sm">
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all text-sm" onclick="subirFotoPerfil()" type="button">Subir foto</button>
+<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-all text-sm" onclick="quitarFotoPerfil()" type="button">Quitar foto</button>
+</div>
+<p class="text-xs text-on-surface-variant" id="config-avatar-status"></p>
+</div>
+</div>
+</div>
+
+<div class="bg-white border border-outline-variant rounded p-lg max-w-xl mt-lg">
 <h3 class="font-display-md text-display-md text-primary mb-xs">Firma de correo</h3>
 <p class="text-xs text-on-surface-variant mb-md">Se usa al final del cuerpo del correo mensual de Actividades Normativas (nombre y puesto vienen de tu cuenta; agrega tu celular aquí).</p>
 <div class="space-y-sm">
@@ -1375,26 +1395,118 @@ if(typeof window.supabase === 'undefined'){
 
 let currentUser = null;
 
+function inicialesDeNombre(nombre){
+    return (nombre || '').split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+}
+
+function actualizarAvatarHeader(fotoUrl, iniciales){
+    const img = document.getElementById('header-user-foto');
+    const ini = document.getElementById('header-user-initials');
+    if(fotoUrl){
+        img.src = fotoUrl; img.classList.remove('hidden'); ini.classList.add('hidden');
+    } else {
+        img.classList.add('hidden'); img.src = ''; ini.classList.remove('hidden');
+    }
+    if(iniciales !== undefined) ini.textContent = iniciales;
+}
+
+function actualizarAvatarConfig(fotoUrl, iniciales){
+    const img = document.getElementById('config-avatar-img');
+    const ini = document.getElementById('config-avatar-iniciales');
+    if(!img || !ini) return;
+    if(fotoUrl){
+        img.src = fotoUrl; img.classList.remove('hidden'); ini.classList.add('hidden');
+    } else {
+        img.classList.add('hidden'); img.src = ''; ini.classList.remove('hidden');
+    }
+    if(iniciales !== undefined) ini.textContent = iniciales;
+}
+
+// Recorta la imagen elegida a un cuadrado centrado y la reduce de tamaño antes de subirla.
+function redimensionarImagenCuadrada(file, tam){
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            const lado = Math.min(img.width, img.height);
+            const sx = (img.width - lado) / 2;
+            const sy = (img.height - lado) / 2;
+            const canvas = document.createElement('canvas');
+            canvas.width = tam; canvas.height = tam;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, sx, sy, lado, lado, 0, 0, tam, tam);
+            canvas.toBlob(blob => {
+                URL.revokeObjectURL(url);
+                if(blob) resolve(blob); else reject(new Error('No se pudo procesar la imagen.'));
+            }, 'image/jpeg', 0.9);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Archivo de imagen inválido.')); };
+        img.src = url;
+    });
+}
+
+async function subirFotoPerfil(){
+    const input = document.getElementById('config-avatar-input');
+    const file = input.files[0];
+    if(!file){ mostrarToast('Selecciona una imagen primero.', 'error'); return; }
+    if(!file.type.startsWith('image/')){ mostrarToast('El archivo debe ser una imagen.', 'error'); return; }
+    const status = document.getElementById('config-avatar-status');
+    status.textContent = 'Subiendo...';
+    try{
+        const blob = await redimensionarImagenCuadrada(file, 256);
+        const path = `${currentUser.id}.jpg`;
+        const { error: errUpload } = await supabaseClient.storage.from('avatares').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+        if(errUpload) throw errUpload;
+        const { data: pub } = supabaseClient.storage.from('avatares').getPublicUrl(path);
+        const fotoUrl = pub.publicUrl + '?v=' + Date.now();
+        const { error: errPerfil } = await supabaseClient.from('perfiles').update({ foto_url: fotoUrl }).eq('id', currentUser.id);
+        if(errPerfil) throw errPerfil;
+        currentUser.fotoUrl = fotoUrl;
+        actualizarAvatarHeader(fotoUrl);
+        actualizarAvatarConfig(fotoUrl);
+        status.textContent = 'Foto actualizada.';
+        input.value = '';
+        mostrarToast('Foto de perfil actualizada.');
+    } catch(e){
+        status.textContent = '';
+        mostrarToast('No se pudo subir la foto: ' + e.message, 'error');
+    }
+}
+
+async function quitarFotoPerfil(){
+    if(!currentUser.fotoUrl){ mostrarToast('No tienes foto configurada.'); return; }
+    const path = `${currentUser.id}.jpg`;
+    await supabaseClient.storage.from('avatares').remove([path]);
+    const { error } = await supabaseClient.from('perfiles').update({ foto_url: null }).eq('id', currentUser.id);
+    if(error){ mostrarToast('No se pudo quitar: ' + error.message, 'error'); return; }
+    currentUser.fotoUrl = null;
+    const iniciales = inicialesDeNombre(currentUser.nombre);
+    actualizarAvatarHeader(null, iniciales);
+    actualizarAvatarConfig(null, iniciales);
+    document.getElementById('config-avatar-status').textContent = '';
+    mostrarToast('Foto de perfil eliminada.');
+}
+
 async function entrarConSesion(user){
     // Carga nombre y puesto desde la tabla "perfiles" y muestra el panel.
     // Se usa tanto al hacer login manual como al restaurar una sesión guardada.
     const { data: perfil } = await supabaseClient
         .from('perfiles')
-        .select('nombre, puesto, telefono')
+        .select('nombre, puesto, telefono, foto_url')
         .eq('id', user.id)
         .maybeSingle();
 
     const nombre = perfil ? perfil.nombre : user.email;
     const puesto = perfil ? perfil.puesto : 'Sin perfil asignado';
-    const iniciales = nombre.split(' ').filter(Boolean).slice(0,2).map(p => p[0]).join('').toUpperCase();
+    const iniciales = inicialesDeNombre(nombre);
 
-    currentUser = { id: user.id, email: user.email, nombre, puesto, telefono: perfil ? perfil.telefono : null };
+    currentUser = { id: user.id, email: user.email, nombre, puesto, telefono: perfil ? perfil.telefono : null, fotoUrl: perfil ? perfil.foto_url : null };
     document.getElementById('login-error').classList.add('hidden');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-shell').classList.remove('hidden');
     document.getElementById('header-user-name').textContent = nombre;
     document.getElementById('header-user-role').textContent = puesto;
-    document.getElementById('header-user-initials').textContent = iniciales;
+    actualizarAvatarHeader(currentUser.fotoUrl, iniciales);
     await cargarCentros();
     showSection('sec-panel');
     return nombre;
@@ -2982,6 +3094,8 @@ function cargarFirmaCorreo(){
     document.getElementById('firma-nombre').value = currentUser.nombre || '';
     document.getElementById('firma-puesto').value = currentUser.puesto || '';
     document.getElementById('firma-telefono').value = currentUser.telefono || '';
+    actualizarAvatarConfig(currentUser.fotoUrl, inicialesDeNombre(currentUser.nombre));
+    document.getElementById('config-avatar-status').textContent = '';
 }
 
 async function guardarFirmaCorreo(){
@@ -2996,10 +3110,11 @@ async function guardarFirmaCorreo(){
     currentUser.nombre = nombre;
     currentUser.puesto = puesto;
     currentUser.telefono = telefono;
-    const iniciales = nombre.split(' ').filter(Boolean).slice(0,2).map(p => p[0]).join('').toUpperCase();
+    const iniciales = inicialesDeNombre(nombre);
     document.getElementById('header-user-name').textContent = nombre;
     document.getElementById('header-user-role').textContent = puesto;
-    document.getElementById('header-user-initials').textContent = iniciales;
+    actualizarAvatarHeader(currentUser.fotoUrl, iniciales);
+    actualizarAvatarConfig(currentUser.fotoUrl, iniciales);
     mostrarToast('Firma de correo guardada.');
 }
 
