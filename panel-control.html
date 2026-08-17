@@ -5,6 +5,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Panel de Control | Normatividad Grupo Automotriz Chesa</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="vendor/xlsx.mini.min.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
@@ -1205,27 +1206,23 @@
 
 <!-- ============ SEC: NUBE DE ARCHIVOS ============ -->
 <div class="page-section" id="sec-nube">
+<div class="flex justify-between items-start mb-lg">
+<div>
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">Nube de Archivos</h2>
-<p class="font-body-md text-body-md text-on-surface-variant mb-lg">Evidencia, dictámenes y auditorías compartidas entre los 22 centros de Grupo Chesa.</p>
-<div class="bg-white border-2 border-dashed border-outline-variant rounded p-xl text-center mb-lg">
+<p class="font-body-md text-body-md text-on-surface-variant mb-xs">Evidencia, dictámenes y auditorías, conectado directo a tu carpeta de Google Drive.</p>
+<p class="text-xs text-on-surface-variant" id="nube-drive-status">Verificando conexión con Google Drive…</p>
+</div>
+<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-all hidden" id="btn-conectar-drive" onclick="conectarGoogleDrive()" type="button">Conectar con Google Drive</button>
+</div>
+<div class="bg-white border-2 border-dashed border-outline-variant rounded p-xl text-center mb-lg" id="nube-dropzone" ondragover="event.preventDefault(); this.classList.add('bg-surface-container-high')" ondragleave="this.classList.remove('bg-surface-container-high')" ondrop="event.preventDefault(); this.classList.remove('bg-surface-container-high'); subirArchivosADrive(event.dataTransfer.files)">
 <span class="material-symbols-outlined text-5xl text-primary" data-icon="cloud_upload">cloud_upload</span>
 <p class="font-bold mt-2">Arrastra tus archivos aquí</p>
-<p class="text-xs text-on-surface-variant mb-md">Formatos soportados: PDF, XLSX, CSV, JPG (máx. 25MB)</p>
-<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="subirArchivo()">Elegir Archivos</button>
+<p class="text-xs text-on-surface-variant mb-md">Se suben directo a tu carpeta de Drive. Cualquier formato, máx. 25MB.</p>
+<input class="hidden" id="nube-file-input" multiple onchange="subirArchivosADrive(this.files)" type="file"/>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="document.getElementById('nube-file-input').click()" type="button">Elegir Archivos</button>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden" id="lista-archivos">
-<div class="flex items-center justify-between p-sm border-b border-outline-variant">
-<div class="flex items-center gap-sm"><span class="material-symbols-outlined text-primary" data-icon="picture_as_pdf">picture_as_pdf</span><span class="text-sm">Auditoria_PlantaNorte_Q3.pdf</span></div>
-<span class="text-xs text-on-surface-variant">Subido hace 2h</span>
-</div>
-<div class="flex items-center justify-between p-sm border-b border-outline-variant">
-<div class="flex items-center gap-sm"><span class="material-symbols-outlined text-primary" data-icon="table_chart">table_chart</span><span class="text-sm">Matriz_Cumplimiento_V2.xlsx</span></div>
-<span class="text-xs text-on-surface-variant">Subido hace 5h</span>
-</div>
-<div class="flex items-center justify-between p-sm">
-<div class="flex items-center gap-sm"><span class="material-symbols-outlined text-primary" data-icon="image">image</span><span class="text-sm">Inspeccion_EPP_01.jpg</span></div>
-<span class="text-xs text-on-surface-variant">Subido ayer</span>
-</div>
+<div class="p-lg text-center text-on-surface-variant text-sm">Cargando…</div>
 </div>
 </div>
 
@@ -1250,6 +1247,26 @@
 <input checked class="w-5 h-5" type="checkbox"/>
 </div>
 <button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="mostrarToast('Preferencias guardadas.')">Guardar Cambios</button>
+</div>
+
+<div class="bg-white border border-outline-variant rounded p-lg max-w-xl mt-lg">
+<h3 class="font-display-md text-display-md text-primary mb-xs">Integración con Google Drive</h3>
+<p class="text-xs text-on-surface-variant mb-md">Conecta la carpeta de Drive donde ya guardas tus evidencias. Se usa en "Nube de Archivos" para ver y subir archivos reales. <a class="text-primary hover:underline" href="#" onclick="mostrarToast('Pide a Claude las instrucciones para crear tu Client ID de Google Cloud.'); return false;">¿Cómo obtengo estos datos?</a></p>
+<div class="space-y-md">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Client ID de OAuth (Google Cloud)</label>
+<input class="w-full border border-outline-variant rounded p-sm font-data-mono text-sm" id="drive-client-id" placeholder="123456789-abc.apps.googleusercontent.com" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">ID de la carpeta de Drive</label>
+<input class="w-full border border-outline-variant rounded p-sm font-data-mono text-sm" id="drive-folder-id" placeholder="El ID que aparece en la URL de la carpeta" type="text"/>
+</div>
+<div class="flex gap-sm">
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="guardarIntegracionDrive()" type="button">Guardar</button>
+<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-all" onclick="probarConexionDrive()" type="button">Probar conexión</button>
+</div>
+<p class="text-xs text-on-surface-variant" id="drive-config-status"></p>
+</div>
 </div>
 
 <div class="bg-white border border-outline-variant rounded p-lg max-w-xl mt-lg">
@@ -1462,6 +1479,212 @@ async function quitarFotoPerfil(){
     actualizarAvatarConfig(null, iniciales);
     document.getElementById('config-avatar-status').textContent = '';
     mostrarToast('Foto de perfil eliminada.');
+}
+
+// ==========================================================================
+// Integración con Google Drive (Configuración + Nube de Archivos)
+// ==========================================================================
+// Usa Google Identity Services (OAuth2 token client, sin backend) + la API
+// REST de Google Drive v3 directo desde el navegador. El Client ID de OAuth
+// no es secreto (es un identificador público, diseñado para vivir en
+// frontend); el folder_id y el client_id se guardan en Supabase para que
+// cualquiera del equipo con sesión vea la misma configuración.
+
+let DRIVE_CONFIG = null; // { client_id, folder_id }
+let DRIVE_TOKEN_CLIENT = null;
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+
+async function cargarIntegracionDrive(){
+    const { data } = await supabaseClient.from('integracion_drive').select('client_id, folder_id').eq('id', 1).maybeSingle();
+    document.getElementById('drive-client-id').value = data ? (data.client_id || '') : '';
+    document.getElementById('drive-folder-id').value = data ? (data.folder_id || '') : '';
+    document.getElementById('drive-config-status').textContent = '';
+}
+
+async function guardarIntegracionDrive(){
+    const client_id = document.getElementById('drive-client-id').value.trim();
+    const folder_id = document.getElementById('drive-folder-id').value.trim();
+    if(!client_id || !folder_id){ mostrarToast('Completa el Client ID y el ID de la carpeta.', 'error'); return; }
+    const { error } = await supabaseClient.from('integracion_drive').upsert({ id: 1, client_id, folder_id, actualizado_en: new Date().toISOString() });
+    if(error){ mostrarToast('No se pudo guardar: ' + error.message, 'error'); return; }
+    DRIVE_CONFIG = { client_id, folder_id };
+    sessionStorage.removeItem('drive_token_info'); // cambió la config, pide reconectar
+    document.getElementById('drive-config-status').textContent = 'Guardado. La próxima vez que entres a "Nube de Archivos" te pedirá conectar con Google.';
+    mostrarToast('Integración con Google Drive guardada.');
+}
+
+async function probarConexionDrive(){
+    const client_id = document.getElementById('drive-client-id').value.trim();
+    const folder_id = document.getElementById('drive-folder-id').value.trim();
+    if(!client_id || !folder_id){ mostrarToast('Completa el Client ID y el ID de la carpeta primero.', 'error'); return; }
+    const status = document.getElementById('drive-config-status');
+    status.textContent = 'Probando…';
+    try{
+        DRIVE_CONFIG = { client_id, folder_id };
+        const token = await obtenerTokenDrive(true);
+        const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folder_id)}?fields=id,name`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if(!resp.ok) throw new Error(`Google respondió ${resp.status}. Revisa que el ID de la carpeta sea correcto y que tu cuenta tenga acceso.`);
+        const info = await resp.json();
+        status.textContent = `Conexión exitosa: la carpeta se llama "${info.name}".`;
+        mostrarToast('Conexión con Google Drive exitosa.');
+    } catch(e){
+        status.textContent = 'Error: ' + e.message;
+        mostrarToast('No se pudo conectar: ' + e.message, 'error');
+    }
+}
+
+function obtenerTokenDrive(forzarPopup){
+    return new Promise((resolve, reject) => {
+        const cache = sessionStorage.getItem('drive_token_info');
+        if(!forzarPopup && cache){
+            try{
+                const info = JSON.parse(cache);
+                if(info.expira > Date.now() + 30000) { resolve(info.token); return; }
+            } catch(e){ /* cache corrupto, sigue abajo */ }
+        }
+        if(typeof google === 'undefined' || !google.accounts){
+            reject(new Error('No se pudo cargar la librería de Google. Revisa tu conexión a internet.'));
+            return;
+        }
+        DRIVE_TOKEN_CLIENT = google.accounts.oauth2.initTokenClient({
+            client_id: DRIVE_CONFIG.client_id,
+            scope: DRIVE_SCOPE,
+            callback: (resp) => {
+                if(resp.error){ reject(new Error(resp.error)); return; }
+                const expira = Date.now() + (resp.expires_in * 1000);
+                sessionStorage.setItem('drive_token_info', JSON.stringify({ token: resp.access_token, expira }));
+                resolve(resp.access_token);
+            },
+            error_callback: (err) => reject(new Error(err.type || 'No se pudo autorizar con Google.'))
+        });
+        DRIVE_TOKEN_CLIENT.requestAccessToken({ prompt: cache ? '' : 'consent' });
+    });
+}
+
+async function initNubeArchivos(){
+    const statusEl = document.getElementById('nube-drive-status');
+    const btnConectar = document.getElementById('btn-conectar-drive');
+    const { data, error } = await supabaseClient.from('integracion_drive').select('client_id, folder_id').eq('id', 1).maybeSingle();
+    if(error || !data || !data.client_id || !data.folder_id){
+        statusEl.textContent = 'Todavía no está configurada la integración con Google Drive. Ve a Configuración → Integración con Google Drive.';
+        btnConectar.classList.add('hidden');
+        document.getElementById('lista-archivos').innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Sin conexión configurada todavía.</div>';
+        return;
+    }
+    DRIVE_CONFIG = { client_id: data.client_id, folder_id: data.folder_id };
+
+    const cache = sessionStorage.getItem('drive_token_info');
+    let tokenValido = false;
+    if(cache){
+        try{ tokenValido = JSON.parse(cache).expira > Date.now() + 30000; } catch(e){ tokenValido = false; }
+    }
+
+    if(tokenValido){
+        statusEl.textContent = 'Conectado a Google Drive.';
+        btnConectar.classList.add('hidden');
+        listarArchivosDrive();
+    } else {
+        statusEl.textContent = 'Conecta tu cuenta de Google para ver y subir archivos reales.';
+        btnConectar.classList.remove('hidden');
+        document.getElementById('lista-archivos').innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Dale clic a "Conectar con Google Drive" arriba.</div>';
+    }
+}
+
+async function conectarGoogleDrive(){
+    const statusEl = document.getElementById('nube-drive-status');
+    statusEl.textContent = 'Abriendo ventana de autorización de Google…';
+    try{
+        await obtenerTokenDrive(true);
+        statusEl.textContent = 'Conectado a Google Drive.';
+        document.getElementById('btn-conectar-drive').classList.add('hidden');
+        listarArchivosDrive();
+    } catch(e){
+        statusEl.textContent = 'No se pudo conectar: ' + e.message;
+        mostrarToast('No se pudo conectar con Google Drive: ' + e.message, 'error');
+    }
+}
+
+const ICONO_POR_MIME = {
+    'application/pdf': 'picture_as_pdf',
+    'application/vnd.google-apps.spreadsheet': 'table_chart',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'table_chart',
+    'application/vnd.google-apps.document': 'description',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'description',
+    'application/vnd.google-apps.folder': 'folder'
+};
+function iconoParaArchivo(mimeType){
+    if(ICONO_POR_MIME[mimeType]) return ICONO_POR_MIME[mimeType];
+    if((mimeType || '').startsWith('image/')) return 'image';
+    return 'draft';
+}
+function tiempoRelativo(fechaISO){
+    const diffMs = Date.now() - new Date(fechaISO).getTime();
+    const horas = Math.floor(diffMs / 3600000);
+    if(horas < 1) return 'Hace unos minutos';
+    if(horas < 24) return `Subido hace ${horas}h`;
+    const dias = Math.floor(horas / 24);
+    if(dias === 1) return 'Subido ayer';
+    if(dias < 30) return `Subido hace ${dias}d`;
+    return new Date(fechaISO).toLocaleDateString('es-MX');
+}
+
+async function listarArchivosDrive(){
+    const lista = document.getElementById('lista-archivos');
+    lista.innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Cargando archivos de Drive…</div>';
+    try{
+        const token = await obtenerTokenDrive(false);
+        const q = encodeURIComponent(`'${DRIVE_CONFIG.folder_id}' in parents and trashed = false`);
+        const fields = encodeURIComponent('files(id,name,mimeType,modifiedTime,webViewLink,iconLink)');
+        const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=modifiedTime desc&pageSize=100`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if(!resp.ok) throw new Error(`Google respondió ${resp.status}`);
+        const data = await resp.json();
+        const archivos = data.files || [];
+        if(!archivos.length){
+            lista.innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Esta carpeta de Drive todavía no tiene archivos.</div>';
+            return;
+        }
+        lista.innerHTML = archivos.map((f, i) => `
+<div class="flex items-center justify-between p-sm ${i < archivos.length - 1 ? 'border-b border-outline-variant' : ''}">
+<a class="flex items-center gap-sm hover:underline" href="${f.webViewLink}" rel="noopener" target="_blank">
+<span class="material-symbols-outlined text-primary" data-icon="${iconoParaArchivo(f.mimeType)}">${iconoParaArchivo(f.mimeType)}</span>
+<span class="text-sm">${f.name}</span>
+</a>
+<span class="text-xs text-on-surface-variant">${tiempoRelativo(f.modifiedTime)}</span>
+</div>`).join('');
+    } catch(e){
+        lista.innerHTML = `<div class="p-lg text-center text-error text-sm">No se pudo cargar Drive: ${e.message}</div>`;
+    }
+}
+
+async function subirArchivosADrive(fileList){
+    if(!fileList || !fileList.length) return;
+    const lista = document.getElementById('lista-archivos');
+    try{
+        const token = await obtenerTokenDrive(false);
+        for(const file of Array.from(fileList)){
+            if(file.size > 25 * 1024 * 1024){ mostrarToast(`"${file.name}" pesa más de 25MB, sáltala.`, 'error'); continue; }
+            const metadata = { name: file.name, parents: [DRIVE_CONFIG.folder_id] };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', file);
+            const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: form
+            });
+            if(!resp.ok) throw new Error(`Google respondió ${resp.status} al subir "${file.name}"`);
+        }
+        mostrarToast('Archivo(s) subido(s) a Google Drive.');
+        listarArchivosDrive();
+    } catch(e){
+        mostrarToast('No se pudo subir: ' + e.message, 'error');
+    } finally {
+        document.getElementById('nube-file-input').value = '';
+    }
 }
 
 async function entrarConSesion(user){
@@ -3678,9 +3901,10 @@ function showSection(id){
     if(id === 'sec-actividades' && currentUser) poblarSelectoresMensual();
     if(id === 'sec-nom035' && currentUser) renderNom035();
     if(id === 'sec-panel' && currentUser) renderPanelControl();
-    if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); }
+    if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); cargarIntegracionDrive(); }
     if(id === 'sec-certs' && currentUser) cargarTodoCerts();
     if(id === 'sec-reportes' && currentUser) renderReportesHorasExtra();
+    if(id === 'sec-nube' && currentUser) initNubeArchivos();
 }
 function abrirNavGroup(id){
     const el = document.getElementById(id);
