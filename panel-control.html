@@ -2408,16 +2408,26 @@ function renderReportesHorasExtra(){
     const ultimo = historial.length ? historial[historial.length - 1] : null;
     const subtitulo = document.getElementById('reportes-subtitulo');
     const tbody = document.getElementById('reportes-tbody');
+    const esFormatoViejo = ultimo && ultimo.incumplimientos === undefined;
 
-    if(!ultimo || !ultimo.incumplimientos || !ultimo.incumplimientos.length){
+    if(!ultimo || esFormatoViejo || !ultimo.incumplimientos.length){
         REPORTES_CACHE = { periodo_label: ultimo ? ultimo.periodo_label : null, filas: [] };
-        subtitulo.textContent = ultimo
-            ? `${ultimo.periodo_label}: ningún colaborador excedió el límite legal de jornada según el último snapshot de Jornada 40h.`
-            : 'Todavía no hay ningún snapshot guardado en "Semana Laboral 40h". Carga y guarda un mes ahí para ver el cumplimiento real aquí.';
-        document.getElementById('reportes-kpi-criticas').textContent = ultimo ? '0' : '—';
-        document.getElementById('reportes-kpi-promedio').textContent = ultimo ? '0%' : '—';
-        document.getElementById('reportes-kpi-pendientes').textContent = ultimo ? '0' : '—';
-        tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">${ultimo ? 'Sin incumplimientos que reportar.' : 'Sin datos de Jornada 40h todavía.'}</td></tr>`;
+        if(!ultimo){
+            subtitulo.textContent = 'Todavía no hay ningún snapshot guardado en "Semana Laboral 40h". Carga y guarda un mes ahí para ver el cumplimiento real aquí.';
+        } else if(esFormatoViejo){
+            subtitulo.innerHTML = `El snapshot de <strong>${ultimo.periodo_label}</strong> se guardó antes de esta actualización y no tiene el detalle por colaborador. ` +
+                `Ve a "Semana Laboral 40h", vuelve a cargar el checador de ${ultimo.periodo_label} y dale "Guardar snapshot del mes actual" de nuevo (reemplaza el snapshot viejo, no duplica).`;
+        } else {
+            subtitulo.textContent = `${ultimo.periodo_label}: ningún colaborador excedió el límite legal de jornada según el último snapshot de Jornada 40h.`;
+        }
+        document.getElementById('reportes-kpi-criticas').textContent = (ultimo && !esFormatoViejo) ? '0' : '—';
+        document.getElementById('reportes-kpi-promedio').textContent = (ultimo && !esFormatoViejo) ? '0%' : '—';
+        document.getElementById('reportes-kpi-pendientes').textContent = (ultimo && !esFormatoViejo) ? '0' : '—';
+        tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">${
+            !ultimo ? 'Sin datos de Jornada 40h todavía.'
+            : esFormatoViejo ? 'Este snapshot no tiene detalle por colaborador — vuelve a guardarlo desde "Semana Laboral 40h".'
+            : 'Sin incumplimientos que reportar.'
+        }</td></tr>`;
         return;
     }
 
