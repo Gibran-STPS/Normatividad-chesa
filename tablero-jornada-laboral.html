@@ -2479,6 +2479,25 @@ function guardarSnapshotMesActual(){
       horas_promedio_colaborador: u.horas_promedio_colaborador, exceso_diario: u.exceso_diario,
       checadas_incompletas: u.checadas_incompletas, faltas_total: u.faltas_total, retardo_dias: u.retardo_dias,
     })),
+    // Detalle real por colaborador de las semanas que NO cumplieron el límite legal aplicable.
+    // Se queda solo con la semana de mayor exceso por colaborador para no duplicar filas.
+    // Esto es lo que consume el Panel de Control (sec-reportes) para dejar de usar datos de ejemplo.
+    incumplimientos: (() => {
+      const porEmpleado = new Map();
+      KPI.incidencias.exceso_semanal.forEach(w => {
+        const key = w.unidad_negocio + '|||' + w.id_empleado;
+        const actual = porEmpleado.get(key);
+        if(!actual || w.exceso > actual.exceso) porEmpleado.set(key, w);
+      });
+      return [...porEmpleado.values()]
+        .map(w => ({
+          unidad_negocio: w.unidad_negocio, area: w.area, id_empleado: w.id_empleado, nombre: w.nombre,
+          semana_iso: w.semana_iso, horas_semana: w.horas_semana, limite_aplicable: w.limite_aplicable,
+          exceso: w.exceso, excede_tope_horas_extra: w.excede_tope_horas_extra
+        }))
+        .sort((a, b) => b.exceso - a.exceso)
+        .slice(0, 500); // tope de seguridad para no inflar el localStorage
+    })(),
   };
   const nuevo = historial.filter(h=>h.periodo_key!==periodo.key).concat(snapshot).sort((a,b)=>a.periodo_key.localeCompare(b.periodo_key));
   if(guardarHistorialArray(nuevo)){ toast(`Snapshot de ${periodo.label} guardado en el historial`); renderHistorial(); }

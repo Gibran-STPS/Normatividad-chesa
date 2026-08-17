@@ -1164,24 +1164,24 @@
 <div class="flex justify-between items-end mb-lg">
 <div>
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">Horas Extra y Cumplimiento Legal</h2>
-<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Supervise las horas de trabajo para verificar alineación con NOM-035 y STPS en los 22 centros de Grupo Chesa.</p>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl" id="reportes-subtitulo">Supervise las horas de trabajo para verificar alineación con NOM-035 y STPS en los centros de Grupo Chesa.</p>
 </div>
-<button class="bg-primary text-on-primary px-lg py-sm font-bold flex items-center gap-sm hover:opacity-90 transition-all" onclick="mostrarToast('Generando reporte PDF masivo...')">
+<button class="bg-primary text-on-primary px-lg py-sm font-bold flex items-center gap-sm hover:opacity-90 transition-all" onclick="generarReportePDFMasivo()">
 <span class="material-symbols-outlined" data-icon="picture_as_pdf">picture_as_pdf</span> Generar Reporte PDF Masivo
         </button>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-lg">
 <div class="bg-white border border-outline-variant p-md">
 <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">VIOLACIONES CRÍTICAS</p>
-<h3 class="font-display-lg text-display-lg text-error">24</h3>
+<h3 class="font-display-lg text-display-lg text-error" id="reportes-kpi-criticas">—</h3>
 </div>
 <div class="bg-white border border-outline-variant p-md">
 <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">PROMEDIO % HORAS EXTRA</p>
-<h3 class="font-display-lg text-display-lg text-on-surface">18.4%</h3>
+<h3 class="font-display-lg text-display-lg text-on-surface" id="reportes-kpi-promedio">—</h3>
 </div>
 <div class="bg-white border border-outline-variant p-md">
 <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">AUDITORÍAS PDF PENDIENTES</p>
-<h3 class="font-display-lg text-display-lg text-on-surface">12</h3>
+<h3 class="font-display-lg text-display-lg text-on-surface" id="reportes-kpi-pendientes">—</h3>
 </div>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
@@ -1196,31 +1196,8 @@
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acciones</th>
 </tr>
 </thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-error-container/5 transition-colors">
-<td class="px-md py-sm font-bold">Alejandro Mendoza</td>
-<td class="px-md py-sm text-sm">Ensamblaje de Chasis</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">40.0</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right font-bold text-error">58.5</td>
-<td class="px-md py-sm"><span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase">Alta</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Descargando PDF de Alejandro Mendoza...')">PDF</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-bold">Elena Rodriguez</td>
-<td class="px-md py-sm text-sm">División de Tren Motriz</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">40.0</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right font-bold text-orange-600">51.2</td>
-<td class="px-md py-sm"><span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">Media</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Descargando PDF de Elena Rodriguez...')">PDF</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-bold">Marcus Thorne</td>
-<td class="px-md py-sm text-sm">Centro Logístico</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">40.0</td>
-<td class="px-md py-sm font-data-mono text-data-mono text-right">43.5</td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Baja</span></td>
-<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="mostrarToast('Descargando PDF de Marcus Thorne...')">PDF</button></td>
-</tr>
+<tbody class="divide-y divide-outline-variant" id="reportes-tbody">
+<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">Cargando...</td></tr>
 </tbody>
 </table>
 </div>
@@ -2403,6 +2380,146 @@ function unidadJornada40hParaCentro(centro, unidades){
     }) || null;
 }
 
+// ---- Horas Extra y Cumplimiento Legal (sec-reportes) ----
+// Consume el detalle real de incumplimientos que guarda el Tablero de Jornada 40h
+// (misma llave de localStorage, chesa_jornada_historial_v1, mismo origen).
+// Ya no usa nombres de ejemplo: si no hay snapshots todavía, se muestra vacío.
+
+function formatearUnidadNegocio(texto){
+    return (texto || '').toString().replace(/_/g, ' ').trim() || 'Sin unidad';
+}
+
+function severidadIncumplimiento(fila){
+    if(fila.excede_tope_horas_extra || fila.exceso >= 10) return 'Alta';
+    if(fila.exceso >= 4) return 'Media';
+    return 'Baja';
+}
+
+const SEVERIDAD_BADGE = {
+    'Alta': 'bg-error text-on-error',
+    'Media': 'bg-orange-500 text-white',
+    'Baja': 'bg-tertiary-fixed text-on-tertiary-fixed'
+};
+
+let REPORTES_CACHE = { periodo_label: null, filas: [] };
+
+function renderReportesHorasExtra(){
+    const historial = leerHistorialJornada40h();
+    const ultimo = historial.length ? historial[historial.length - 1] : null;
+    const subtitulo = document.getElementById('reportes-subtitulo');
+    const tbody = document.getElementById('reportes-tbody');
+
+    if(!ultimo || !ultimo.incumplimientos || !ultimo.incumplimientos.length){
+        REPORTES_CACHE = { periodo_label: ultimo ? ultimo.periodo_label : null, filas: [] };
+        subtitulo.textContent = ultimo
+            ? `${ultimo.periodo_label}: ningún colaborador excedió el límite legal de jornada según el último snapshot de Jornada 40h.`
+            : 'Todavía no hay ningún snapshot guardado en "Semana Laboral 40h". Carga y guarda un mes ahí para ver el cumplimiento real aquí.';
+        document.getElementById('reportes-kpi-criticas').textContent = ultimo ? '0' : '—';
+        document.getElementById('reportes-kpi-promedio').textContent = ultimo ? '0%' : '—';
+        document.getElementById('reportes-kpi-pendientes').textContent = ultimo ? '0' : '—';
+        tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="6">${ultimo ? 'Sin incumplimientos que reportar.' : 'Sin datos de Jornada 40h todavía.'}</td></tr>`;
+        return;
+    }
+
+    const filas = ultimo.incumplimientos.map(f => ({ ...f, severidad: severidadIncumplimiento(f) }))
+        .sort((a, b) => b.exceso - a.exceso);
+    REPORTES_CACHE = { periodo_label: ultimo.periodo_label, filas };
+
+    subtitulo.textContent = `Periodo: ${ultimo.periodo_label}. Datos tomados del último snapshot guardado en "Semana Laboral 40h" (checador real, no ejemplos).`;
+
+    const criticas = filas.filter(f => f.severidad === 'Alta').length;
+    const promedio = filas.reduce((acc, f) => acc + (f.limite_aplicable ? (f.exceso / f.limite_aplicable) * 100 : 0), 0) / filas.length;
+
+    document.getElementById('reportes-kpi-criticas').textContent = criticas;
+    document.getElementById('reportes-kpi-promedio').textContent = Math.round(promedio * 10) / 10 + '%';
+    document.getElementById('reportes-kpi-pendientes').textContent = filas.length;
+
+    tbody.innerHTML = filas.map((f, i) => {
+        const rowClase = f.severidad === 'Alta' ? 'hover:bg-error-container/5' : 'hover:bg-surface-container';
+        const horasClase = f.severidad === 'Alta' ? 'font-bold text-error' : (f.severidad === 'Media' ? 'font-bold text-orange-600' : '');
+        return `<tr class="${rowClase} transition-colors">
+<td class="px-md py-sm font-bold">${f.nombre || '(sin nombre)'}</td>
+<td class="px-md py-sm text-sm">${formatearUnidadNegocio(f.unidad_negocio)}${f.area ? ' · ' + f.area : ''}</td>
+<td class="px-md py-sm font-data-mono text-data-mono text-right">${f.limite_aplicable != null ? f.limite_aplicable.toFixed(1) : '—'}</td>
+<td class="px-md py-sm font-data-mono text-data-mono text-right ${horasClase}">${f.horas_semana != null ? f.horas_semana.toFixed(1) : '—'}</td>
+<td class="px-md py-sm"><span class="${SEVERIDAD_BADGE[f.severidad]} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f.severidad}</span></td>
+<td class="px-md py-sm text-right"><button class="text-primary hover:underline font-bold text-xs" onclick="descargarPDFIncumplimiento(${i})" type="button">PDF</button></td>
+</tr>`;
+    }).join('');
+}
+
+function descargarPDFIncumplimiento(indice){
+    const f = REPORTES_CACHE.filas[indice];
+    if(!f){ mostrarToast('No se encontró el registro.', 'error'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+    const centerX = 107.95;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.text('GRUPO AUTOMOTRIZ CHESA', centerX, 22, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(12);
+    doc.text('Reporte de Horas Extra y Cumplimiento Legal (NOM-035 / STPS)', centerX, 30, { align: 'center' });
+
+    let y = 48;
+    doc.setFontSize(11);
+    const campos = [
+        ['Colaborador', f.nombre || '(sin nombre)'],
+        ['Centro / Unidad de negocio', formatearUnidadNegocio(f.unidad_negocio)],
+        ['Área', f.area || '—'],
+        ['Semana ISO', f.semana_iso || '—'],
+        ['Horas contratadas (límite aplicable)', f.limite_aplicable != null ? f.limite_aplicable.toFixed(1) : '—'],
+        ['Horas reales trabajadas', f.horas_semana != null ? f.horas_semana.toFixed(1) : '—'],
+        ['Exceso sobre el límite', f.exceso != null ? f.exceso.toFixed(1) + ' h' : '—'],
+        ['¿Excede el tope legal de horas extra?', f.excede_tope_horas_extra ? 'Sí' : 'No'],
+        ['Severidad', f.severidad],
+        ['Periodo del reporte', REPORTES_CACHE.periodo_label || '—']
+    ];
+    campos.forEach(([label, valor]) => {
+        doc.setFont('helvetica', 'bold'); doc.text(`${label}:`, 20, y);
+        doc.setFont('helvetica', 'normal'); doc.text(String(valor), 130, y);
+        y += 8;
+    });
+
+    y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text('Generado automáticamente por la Plataforma de Cumplimiento Normativo NOM-STPS a partir de los', 20, y);
+    y += 5;
+    doc.text('registros del reloj checador procesados en el Tablero de Jornada 40h.', 20, y);
+
+    doc.save(`Horas_Extra_${(f.nombre || 'colaborador').replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`);
+}
+
+function generarReportePDFMasivo(){
+    if(!REPORTES_CACHE.filas.length){ mostrarToast('No hay incumplimientos que reportar en el periodo actual.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'landscape' });
+    const centerX = doc.internal.pageSize.getWidth() / 2;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.text('GRUPO AUTOMOTRIZ CHESA', centerX, 15, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+    doc.text(`Horas Extra y Cumplimiento Legal — ${REPORTES_CACHE.periodo_label || ''}`, centerX, 22, { align: 'center' });
+
+    doc.autoTable({
+        startY: 28,
+        head: [['Colaborador', 'Centro / Unidad', 'Área', 'Contratadas', 'Horas Reales', 'Exceso', 'Severidad']],
+        body: REPORTES_CACHE.filas.map(f => [
+            f.nombre || '(sin nombre)',
+            formatearUnidadNegocio(f.unidad_negocio),
+            f.area || '—',
+            f.limite_aplicable != null ? f.limite_aplicable.toFixed(1) : '—',
+            f.horas_semana != null ? f.horas_semana.toFixed(1) : '—',
+            f.exceso != null ? f.exceso.toFixed(1) : '—',
+            f.severidad
+        ]),
+        headStyles: { fillColor: [30, 39, 97] },
+        styles: { fontSize: 9 }
+    });
+
+    doc.save(`Reporte_Horas_Extra_${(REPORTES_CACHE.periodo_label || 'periodo').replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`);
+    mostrarToast('Reporte PDF masivo generado.');
+}
+
 function estatusCompuestoCentro(centro, pctAct, dInfo){
     // Si el estado del centro se marcó manualmente como Auditando o Crítico
     // en "Centros de Trabajo", se respeta tal cual (es una decisión del auditor).
@@ -3553,6 +3670,7 @@ function showSection(id){
     if(id === 'sec-panel' && currentUser) renderPanelControl();
     if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); }
     if(id === 'sec-certs' && currentUser) cargarTodoCerts();
+    if(id === 'sec-reportes' && currentUser) renderReportesHorasExtra();
 }
 function abrirNavGroup(id){
     const el = document.getElementById(id);
