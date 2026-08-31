@@ -743,6 +743,20 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Asunto</label>
 <input class="w-full border border-outline-variant rounded p-sm text-sm" id="correo-asunto" type="text"/>
 </div>
+<div class="hidden mb-md p-md rounded border border-outline-variant bg-surface-container-low" id="correo-cap-wrap">
+<p class="font-semibold text-sm mb-1">Capacitación detectada este mes</p>
+<p class="text-xs text-on-surface-variant mb-sm" id="correo-cap-detectadas"></p>
+<div class="mb-sm">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Liga de acceso al curso (Sabionet)</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm" id="correo-cap-link" placeholder="https://..." type="text"/>
+</div>
+<div class="mb-sm">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Colaboradores citados (uno por línea)</label>
+<textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar" id="correo-cap-colaboradores" rows="4"></textarea>
+</div>
+<button class="border border-outline-variant px-md py-sm rounded font-bold text-sm hover:bg-surface-container-high transition-colors" onclick="insertarCapacitacionEnCorreo()" type="button">Agregar al cuerpo del correo</button>
+<p class="text-xs text-on-surface-variant mt-sm">Nota: este botón vuelve a armar el cuerpo completo del correo, así que agrégalo antes de hacer otros cambios manuales al texto de abajo.</p>
+</div>
 <div class="mb-md">
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Cuerpo del correo</label>
 <textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar" id="correo-cuerpo" rows="16"></textarea>
@@ -4058,6 +4072,9 @@ async function quitarTodasPlantillasNorma(normaCode, cantidad){
 // ---- TAB 4: Correo Mensual ----
 
 let CORREO_CONTEXTO = null;
+let CORREO_BASE = '';       // cuerpo del correo sin el bloque de capacitación ni la firma
+let CORREO_FIRMA = '';      // firma, siempre al final
+let CORREO_CAP_BLOQUE = ''; // bloque de "CAPACITACIÓN" (liga + colaboradores citados), vacío si no aplica
 
 async function generarBorradorCorreo(){
     const centroId = document.getElementById('correo-centro').value;
@@ -4150,10 +4167,27 @@ async function generarBorradorCorreo(){
     if(colaboradoresMes.length){
         cuerpo += `También se anexan ${colaboradoresMes.length} constancia(s) de vacaciones de colaboradores que cumplen aniversario este mes.\n\n`;
     }
+    CORREO_BASE = cuerpo;
     const firmaPartes = [currentUser.nombre, currentUser.puesto, currentUser.telefono ? `Cel: ${currentUser.telefono}` : null, 'Grupo Automotriz Chesa'].filter(Boolean);
-    cuerpo += firmaPartes.join(' | ');
+    CORREO_FIRMA = firmaPartes.join(' | ');
 
-    document.getElementById('correo-cuerpo').value = cuerpo;
+    // Apartado de Capacitación (Sabionet): se muestra solo si el calendario de
+    // este mes trae alguna actividad de capacitación, para capturar la liga
+    // del curso y los colaboradores citados antes de enviar el correo.
+    const actsCapacitacion = (actividades || []).filter(a => /capacitac/i.test(a.actividad || ''));
+    const wrapCap = document.getElementById('correo-cap-wrap');
+    if(actsCapacitacion.length){
+        wrapCap.classList.remove('hidden');
+        document.getElementById('correo-cap-detectadas').innerHTML = actsCapacitacion
+            .map(a => `• [${a.norma_code || a.norma_titulo_original || 'Norma no identificada'}] ${a.actividad}`).join('<br>');
+    } else {
+        wrapCap.classList.add('hidden');
+    }
+    document.getElementById('correo-cap-link').value = '';
+    document.getElementById('correo-cap-colaboradores').value = '';
+    CORREO_CAP_BLOQUE = '';
+
+    reconstruirCuerpoCorreo();
 
     let htmlAdj = '<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Adjuntos que incluirá el ZIP</label><ul class="text-sm list-disc pl-lg">';
     plantillasAplicables.forEach(p => htmlAdj += `<li>${p.nombre_archivo}</li>`);
@@ -4163,6 +4197,30 @@ async function generarBorradorCorreo(){
     document.getElementById('correo-adjuntos-lista').innerHTML = htmlAdj;
 
     document.getElementById('correo-resultado').classList.remove('hidden');
+}
+
+function reconstruirCuerpoCorreo(){
+    const partes = [CORREO_BASE];
+    if(CORREO_CAP_BLOQUE) partes.push(CORREO_CAP_BLOQUE + '\n');
+    partes.push(CORREO_FIRMA);
+    document.getElementById('correo-cuerpo').value = partes.join('');
+}
+
+function insertarCapacitacionEnCorreo(){
+    const link = document.getElementById('correo-cap-link').value.trim();
+    const colaboradoresTxt = document.getElementById('correo-cap-colaboradores').value.trim();
+    if(!link && !colaboradoresTxt){ mostrarToast('Captura la liga del curso o la lista de colaboradores citados.', 'error'); return; }
+
+    const colaboradores = colaboradoresTxt.split('\n').map(s => s.trim()).filter(Boolean);
+    let bloque = 'CAPACITACIÓN\n';
+    if(link) bloque += `Liga de acceso al curso (Sabionet): ${link}\n`;
+    if(colaboradores.length){
+        bloque += 'Colaboradores citados:\n';
+        colaboradores.forEach((c, i) => { bloque += `${i + 1}. ${c}\n`; });
+    }
+    CORREO_CAP_BLOQUE = bloque;
+    reconstruirCuerpoCorreo();
+    mostrarToast('Se agregó la capacitación al cuerpo del correo.');
 }
 
 let ZIP_ADJUNTOS_DESCARGADO = false;
