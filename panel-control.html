@@ -873,6 +873,19 @@
 </div>
 </div>
 
+<!-- MODAL: Detalle de progreso por norma (sec-nom) -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-detalle-norma">
+<div class="bg-white rounded max-w-2xl w-full p-lg max-h-[90vh] overflow-y-auto">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-bold text-lg" id="detalle-norma-titulo">Detalle de la norma</h3>
+<button class="material-symbols-outlined text-on-surface-variant" data-icon="close" onclick="toggleModal('modal-detalle-norma')" type="button">close</button>
+</div>
+<div id="detalle-norma-contenido">
+<p class="text-sm text-on-surface-variant">Cargando…</p>
+</div>
+</div>
+</div>
+
 <!-- ============ SEC: SEMANA LABORAL 40H ============ -->
 <div class="page-section" id="sec-40h">
 <div class="flex items-center justify-between mb-md">
@@ -2471,7 +2484,7 @@ async function renderProgresoNomStps(){
     if(subtitulo) subtitulo.textContent = `Estatus por norma aplicable en ${NOMBRES_MES[mes-1]} ${anio}, según % de actividades del calendario completadas en el mes, agregado de los 22 centros de Grupo Chesa.`;
 
     const { data, error } = await supabaseClient.from('calendario_normativo')
-        .select('norma_code, estado')
+        .select('centro_id, norma_code, actividad, estado')
         .eq('mes', mes).eq('anio', anio);
 
     if(error){
@@ -2486,9 +2499,10 @@ async function renderProgresoNomStps(){
     const porNorma = {};
     data.forEach(a => {
         const code = a.norma_code || 'Sin clasificar';
-        if(!porNorma[code]) porNorma[code] = { total: 0, realizadas: 0 };
+        if(!porNorma[code]) porNorma[code] = { total: 0, realizadas: 0, actividades: [] };
         porNorma[code].total++;
         if(a.estado === 'Realizada') porNorma[code].realizadas++;
+        porNorma[code].actividades.push({ centro_id: a.centro_id, actividad: a.actividad, estado: a.estado });
     });
     NOM_PROGRESO_ULTIMO = { mes, anio, porNorma };
 
@@ -2526,12 +2540,37 @@ async function renderProgresoNomStps(){
 
 function verDetalleProgresoNorma(code){
     const info = NOM_PROGRESO_ULTIMO.porNorma[code];
-    if(!info) return;
-    const faltan = info.total - info.realizadas;
-    const msg = faltan === 0
-        ? `${code}: las ${info.total} actividad(es) de ${NOMBRES_MES[NOM_PROGRESO_ULTIMO.mes-1]} ${NOM_PROGRESO_ULTIMO.anio} están completadas (100%).`
-        : `${code}: ${info.realizadas}/${info.total} actividades completadas en ${NOMBRES_MES[NOM_PROGRESO_ULTIMO.mes-1]} ${NOM_PROGRESO_ULTIMO.anio}. Faltan ${faltan} para llegar a Cumple (100%).`;
-    mostrarToast(msg);
+    if(!info){
+        mostrarToast('No hay detalle disponible para ' + code + '.', 'error');
+        return;
+    }
+    const cat = CATALOGO_NOM.find(n => n.code === code);
+    const mesTxt = `${NOMBRES_MES[NOM_PROGRESO_ULTIMO.mes-1]} ${NOM_PROGRESO_ULTIMO.anio}`;
+    document.getElementById('detalle-norma-titulo').textContent = `${code} · ${mesTxt}`;
+
+    // Pendientes primero, para que lo que falta salte a la vista de inmediato.
+    const filas = info.actividades.slice().sort((a, b) => {
+        if(a.estado === b.estado) return 0;
+        return a.estado === 'Realizada' ? 1 : -1;
+    });
+
+    const filasHtml = filas.map(f => {
+        const c = centrosData.find(x => x.id === f.centro_id);
+        const ok = f.estado === 'Realizada';
+        return `<tr class="border-b border-outline-variant last:border-0">
+<td class="py-1.5 pr-md text-sm">${c ? c.nombre : f.centro_id}</td>
+<td class="py-1.5 pr-md text-sm text-on-surface-variant">${f.actividad || '—'}</td>
+<td class="py-1.5 text-right"><span class="${ok ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed' : 'bg-error text-on-error'} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${ok ? 'Realizada' : 'Pendiente'}</span></td>
+</tr>`;
+    }).join('');
+
+    document.getElementById('detalle-norma-contenido').innerHTML = `
+<p class="text-sm text-on-surface-variant mb-md">${cat ? cat.desc : 'Norma no encontrada en el catálogo'} — ${info.realizadas}/${info.total} actividades completadas en ${mesTxt}.</p>
+<table class="w-full text-left border-collapse">
+<thead><tr class="border-b-2 border-outline-variant"><th class="py-1.5 pr-md font-label-caps text-label-caps text-on-surface-variant">Centro</th><th class="py-1.5 pr-md font-label-caps text-label-caps text-on-surface-variant">Actividad</th><th class="py-1.5 font-label-caps text-label-caps text-on-surface-variant text-right">Estado</th></tr></thead>
+<tbody>${filasHtml || '<tr><td class="py-1.5 text-sm text-on-surface-variant" colspan="3">Sin actividades.</td></tr>'}</tbody>
+</table>`;
+    toggleModal('modal-detalle-norma');
 }
 
 async function renderPanelControl(){
