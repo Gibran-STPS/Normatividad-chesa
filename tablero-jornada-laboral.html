@@ -2767,12 +2767,12 @@ async function generateUnitPDF(unidadKey){
   doc.text(titleLines, tx, 1.7);
   let metaY = 1.7 + titleLines.length*0.52;
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(SOFT);
-  const metaText = `Periodo: ${periodo.label}  |  Generado: ${new Date().toLocaleDateString('es-MX')}  |  Fase ${anio}: límite ${limite} h/semana`;
+  const metaText = `Periodo: ${periodo.label}  |  Fase ${anio}: límite ${limite} h/semana`;
   const metaLines = doc.splitTextToSize(metaText, bx-tx-0.3);
   doc.text(metaLines, tx, metaY);
   let y = Math.max(metaY + metaLines.length*0.32 + 0.18, 2.85);
   doc.setFontSize(8);
-  doc.text(`Área responsable: ${AREA_RESPONSABLE} — Grupo Chesa (Nissan · Renault · Changan)`, M, y);
+  doc.text(`Área responsable: ${AREA_RESPONSABLE} — Grupo Chesa`, M, y);
   y += 0.28;
   doc.setDrawColor(GRAPH); doc.setLineWidth(0.035); doc.line(M, y, PW-M, y);
   y += 0.5;
@@ -2796,7 +2796,6 @@ async function generateUnitPDF(unidadKey){
     [unidad.checadas_incompletas, 'CHECADAS INCOMPLETAS', AMBERc],
     [calidad.length ? unidad.faltas_total+'*' : unidad.faltas_total, 'FALTAS REGISTRADAS', AMBERc],
     [unidad.retardo_dias, 'DÍAS-COLABORADOR CON RETARDO', AMBERc],
-    [fmt(unidad.horas_promedio_colaborador,1)+' h', 'PROM. HORAS / COLABORADOR', BLUEc],
     [`${fmt(unidad.colaboradores_marcaje_completo)}/${fmt(unidad.total_colaboradores)}`, 'MARCAJE COMPLETO (4 CHECADAS)', BLUEc],
   ];
   items.forEach((it, i)=>{
