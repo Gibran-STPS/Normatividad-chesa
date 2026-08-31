@@ -1696,11 +1696,11 @@ function renderShell(){
       <div id="bloqueFirmaManual">
         <div class="section-subhead" style="margin-top:26px;"><h3>Reportes de firma (PDF) por agencia</h3></div>
         <div class="section-desc" style="max-width:none; margin-bottom:16px;">Cada tarjeta de arriba ya trae su botón "⬇ Descargar PDF de firma". Usa esto solo si quieres
-        personalizar los nombres de firma o descargar todos los reportes de una sola vez (elabora ${esc(AREA_RESPONSABLE)}, recibe Gerente General, visto bueno Dirección de Talento Humano).</div>
+        personalizar los nombres de firma o descargar todos los reportes de una sola vez (elabora ${esc(AREA_RESPONSABLE)}, recibe Gerente General, visto bueno Responsable de seguridad de sucursal).</div>
         <div class="filterbar" style="margin-bottom:20px;">
           <div><label>Elabora (nombre, opcional)</label><input type="text" id="firmaElabora" placeholder="${esc(AREA_RESPONSABLE)}" value="${esc(state.firmantes.elabora)}"></div>
           <div><label>Recibe (nombre, opcional)</label><input type="text" id="firmaRecibe" placeholder="Gerente General" value="${esc(state.firmantes.recibe)}"></div>
-          <div><label>Visto bueno (nombre, opcional)</label><input type="text" id="firmaVobo" placeholder="Dirección de Talento Humano" value="${esc(state.firmantes.vobo)}"></div>
+          <div><label>Visto bueno (nombre, opcional)</label><input type="text" id="firmaVobo" placeholder="Responsable de seguridad de sucursal" value="${esc(state.firmantes.vobo)}"></div>
           <span class="pdf-note" style="max-width:220px;">Si los llenas, el PDF imprime el nombre y la fecha de hoy en la línea de firma; si no, deja el espacio en blanco para firmar a mano.</span>
         </div>
         <div class="pdf-toolbar">
@@ -2886,7 +2886,7 @@ async function generateUnitPDF(unidadKey){
   const roles = [
     ['ELABORA', AREA_RESPONSABLE],
     ['RECIBE', 'Gerente General'],
-    ['VISTO BUENO', 'Dirección de Talento Humano'],
+    ['VISTO BUENO', 'Responsable de seguridad de sucursal'],
   ];
   roles.forEach((r, i)=>{
     const cx = M + i*signW + signW/2;
