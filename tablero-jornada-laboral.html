@@ -2910,40 +2910,6 @@ async function generateUnitPDF(unidadKey){
     }
   });
 
-  // ---- anexo: detalle por colaborador (página aparte, después de las firmas) ----
-  doc.addPage();
-  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(AMBERc);
-  doc.text('CUMPLIMIENTO NORMATIVO · REDUCCIÓN DE JORNADA LABORAL (LFT)', M, 1.15);
-  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(INKc);
-  doc.text(`Anexo — Detalle por colaborador — ${unidadKey.replace(/_/g,' ')}`, M, 1.6);
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(SOFT);
-  const explicText = 'Situación individual del periodo: retardos, días sin checada (faltas), jornadas que exceden el '+
-    'límite diario de 12 horas (Art. 68 LFT) y checadas incompletas. Ordenado de mayor a menor incidencia, para '+
-    'apoyar la decisión del Gerente General sobre qué casos atender primero.';
-  const explicLines = doc.splitTextToSize(explicText, usableW);
-  doc.text(explicLines, M, 1.95);
-  let y2 = 1.95 + explicLines.length*0.32 + 0.35;
-
-  const roster = buildColabRosterForUnidad(unidadKey);
-  doc.autoTable({
-    startY: y2, margin: {left: M, right: M},
-    head: [['Colaborador','Área','Días','Retardos','Faltas','>12h/día','Checada incompleta']],
-    body: roster.map(e=>[e.nombre||'—', e.area||'—', e.dias, e.retardos, e.faltas, e.excesos, e.incompletas]),
-    styles: {fontSize:7.2, textColor: INKc, lineColor: DIV, lineWidth:0.01, cellPadding:{top:0.08,bottom:0.08,left:0.12,right:0.12}},
-    headStyles: {fillColor: GRAPH, textColor:'#FFFFFF', fontStyle:'bold', fontSize:7.4},
-    alternateRowStyles: {fillColor: BOX},
-    columnStyles: {0:{cellWidth:4.6},1:{cellWidth:3.2},2:{cellWidth:1.6,halign:'center'},3:{cellWidth:2.0,halign:'center'},
-      4:{cellWidth:1.9,halign:'center'},5:{cellWidth:2.1,halign:'center'},6:{cellWidth:'auto',halign:'center'}},
-    didParseCell: (data)=>{
-      if(data.section==='body' && [3,4,5,6].includes(data.column.index) && Number(data.cell.raw)>0){
-        data.cell.styles.textColor = RED; data.cell.styles.fontStyle = 'bold';
-      }
-    },
-  });
-  let y3 = doc.lastAutoTable.finalY + 0.3;
-  doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(SOFT);
-  doc.text(`${roster.length} colaborador(es) con registro en el periodo.`, M, y3);
-
   // ---- footer (en cada página) ----
   const totalPages = doc.internal.getNumberOfPages();
   for(let p=1; p<=totalPages; p++){
