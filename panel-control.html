@@ -1183,15 +1183,20 @@
 <div class="flex justify-between items-start mb-lg">
 <div>
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">Nube de Archivos</h2>
-<p class="font-body-md text-body-md text-on-surface-variant mb-xs">Evidencia, dictámenes y auditorías, conectado directo a tu carpeta de Google Drive.</p>
+<p class="font-body-md text-body-md text-on-surface-variant mb-xs">Evidencia, dictámenes y auditorías, organizadas por centro de trabajo dentro de tu carpeta de Google Drive.</p>
 <p class="text-xs text-on-surface-variant" id="nube-drive-status">Verificando conexión con Google Drive…</p>
 </div>
 <button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-all hidden" id="btn-conectar-drive" onclick="conectarGoogleDrive()" type="button">Conectar con Google Drive</button>
 </div>
+<div class="mb-lg hidden" id="nube-centro-selector-wrap">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Centro de trabajo</label>
+<select class="w-full max-w-md border border-outline-variant rounded p-sm" id="nube-centro-select" onchange="cambiarCentroNube(this.value)"></select>
+<p class="text-xs text-on-surface-variant mt-1" id="nube-carpeta-info"></p>
+</div>
 <div class="bg-white border-2 border-dashed border-outline-variant rounded p-xl text-center mb-lg" id="nube-dropzone" ondragover="event.preventDefault(); this.classList.add('bg-surface-container-high')" ondragleave="this.classList.remove('bg-surface-container-high')" ondrop="event.preventDefault(); this.classList.remove('bg-surface-container-high'); subirArchivosADrive(event.dataTransfer.files)">
 <span class="material-symbols-outlined text-5xl text-primary" data-icon="cloud_upload">cloud_upload</span>
 <p class="font-bold mt-2">Arrastra tus archivos aquí</p>
-<p class="text-xs text-on-surface-variant mb-md">Se suben directo a tu carpeta de Drive. Cualquier formato, máx. 25MB.</p>
+<p class="text-xs text-on-surface-variant mb-md">Se suben directo a la carpeta del centro seleccionado arriba. Cualquier formato, máx. 25MB.</p>
 <input class="hidden" id="nube-file-input" multiple onchange="subirArchivosADrive(this.files)" type="file"/>
 <button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="document.getElementById('nube-file-input').click()" type="button">Elegir Archivos</button>
 </div>
@@ -1467,6 +1472,8 @@ async function quitarFotoPerfil(){
 let DRIVE_CONFIG = null; // { client_id, folder_id }
 let DRIVE_TOKEN_CLIENT = null;
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+let NUBE_CENTRO_ACTUAL = null; // centro_id seleccionado en "Nube de Archivos"
+const DRIVE_CARPETAS_CENTRO_CACHE = {}; // centro_id -> drive_folder_id (evita repetir consultas en la misma sesión)
 
 async function cargarIntegracionDrive(){
     const { data } = await supabaseClient.from('integracion_drive').select('client_id, folder_id').eq('id', 1).maybeSingle();
@@ -1540,10 +1547,12 @@ function obtenerTokenDrive(forzarPopup){
 async function initNubeArchivos(){
     const statusEl = document.getElementById('nube-drive-status');
     const btnConectar = document.getElementById('btn-conectar-drive');
+    const selectorWrap = document.getElementById('nube-centro-selector-wrap');
     const { data, error } = await supabaseClient.from('integracion_drive').select('client_id, folder_id').eq('id', 1).maybeSingle();
     if(error || !data || !data.client_id || !data.folder_id){
         statusEl.textContent = 'Todavía no está configurada la integración con Google Drive. Ve a Configuración → Integración con Google Drive.';
         btnConectar.classList.add('hidden');
+        selectorWrap.classList.add('hidden');
         document.getElementById('lista-archivos').innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Sin conexión configurada todavía.</div>';
         return;
     }
@@ -1558,12 +1567,88 @@ async function initNubeArchivos(){
     if(tokenValido){
         statusEl.textContent = 'Conectado a Google Drive.';
         btnConectar.classList.add('hidden');
-        listarArchivosDrive();
+        poblarSelectorCentroNube();
     } else {
         statusEl.textContent = 'Conecta tu cuenta de Google para ver y subir archivos reales.';
         btnConectar.classList.remove('hidden');
+        selectorWrap.classList.add('hidden');
         document.getElementById('lista-archivos').innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Dale clic a "Conectar con Google Drive" arriba.</div>';
     }
+}
+
+function poblarSelectorCentroNube(){
+    const selectorWrap = document.getElementById('nube-centro-selector-wrap');
+    const select = document.getElementById('nube-centro-select');
+    if(!centrosData.length){
+        selectorWrap.classList.add('hidden');
+        document.getElementById('lista-archivos').innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">No hay centros de trabajo registrados todavía. Créalos en "Centros de Trabajo".</div>';
+        return;
+    }
+    selectorWrap.classList.remove('hidden');
+    select.innerHTML = centrosData.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    const previo = sessionStorage.getItem('nube_centro_actual');
+    const centroInicial = (previo && centrosData.find(c => c.id === previo)) ? previo : centrosData[0].id;
+    select.value = centroInicial;
+    cambiarCentroNube(centroInicial);
+}
+
+async function cambiarCentroNube(centroId){
+    NUBE_CENTRO_ACTUAL = centroId;
+    sessionStorage.setItem('nube_centro_actual', centroId);
+    const info = document.getElementById('nube-carpeta-info');
+    const lista = document.getElementById('lista-archivos');
+    info.textContent = 'Buscando la carpeta de este centro en Drive…';
+    lista.innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Cargando…</div>';
+    try{
+        const folderId = await obtenerCarpetaDriveParaCentro(centroId);
+        info.innerHTML = `Archivos guardados en la subcarpeta <a class="text-primary hover:underline" href="https://drive.google.com/drive/folders/${folderId}" rel="noopener" target="_blank">de este centro</a> dentro de tu carpeta de Drive.`;
+        listarArchivosDrive();
+    } catch(e){
+        info.textContent = '';
+        lista.innerHTML = `<div class="p-lg text-center text-error text-sm">No se pudo preparar la carpeta de este centro: ${e.message}</div>`;
+    }
+}
+
+// Busca la subcarpeta de Drive para este centro dentro de la carpeta principal;
+// si no existe todavía, la crea. Guarda el resultado en Supabase para no
+// tener que buscarla/crearla cada vez (y para que el equipo comparta el
+// mismo mapeo centro -> carpeta).
+async function obtenerCarpetaDriveParaCentro(centroId){
+    if(DRIVE_CARPETAS_CENTRO_CACHE[centroId]) return DRIVE_CARPETAS_CENTRO_CACHE[centroId];
+
+    const { data: fila } = await supabaseClient.from('drive_carpetas_centro').select('drive_folder_id').eq('centro_id', centroId).maybeSingle();
+    if(fila && fila.drive_folder_id){
+        DRIVE_CARPETAS_CENTRO_CACHE[centroId] = fila.drive_folder_id;
+        return fila.drive_folder_id;
+    }
+
+    const centro = centrosData.find(c => c.id === centroId);
+    const nombreCarpeta = (centro ? centro.nombre : centroId).replace(/'/g, "\\'");
+    const token = await obtenerTokenDrive(false);
+
+    const q = encodeURIComponent(`'${DRIVE_CONFIG.folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and name='${nombreCarpeta}' and trashed=false`);
+    const buscar = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if(!buscar.ok) throw new Error(`Google respondió ${buscar.status} al buscar la carpeta.`);
+    const encontrados = (await buscar.json()).files || [];
+
+    let folderId;
+    if(encontrados.length){
+        folderId = encontrados[0].id; // ya existía en Drive (creada a mano, por ejemplo), la adoptamos
+    } else {
+        const crear = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: centro ? centro.nombre : centroId, mimeType: 'application/vnd.google-apps.folder', parents: [DRIVE_CONFIG.folder_id] })
+        });
+        if(!crear.ok) throw new Error(`Google respondió ${crear.status} al crear la carpeta.`);
+        folderId = (await crear.json()).id;
+    }
+
+    await supabaseClient.from('drive_carpetas_centro').upsert({ centro_id: centroId, drive_folder_id: folderId });
+    DRIVE_CARPETAS_CENTRO_CACHE[centroId] = folderId;
+    return folderId;
 }
 
 async function conectarGoogleDrive(){
@@ -1573,7 +1658,7 @@ async function conectarGoogleDrive(){
         await obtenerTokenDrive(true);
         statusEl.textContent = 'Conectado a Google Drive.';
         document.getElementById('btn-conectar-drive').classList.add('hidden');
-        listarArchivosDrive();
+        poblarSelectorCentroNube();
     } catch(e){
         statusEl.textContent = 'No se pudo conectar: ' + e.message;
         mostrarToast('No se pudo conectar con Google Drive: ' + e.message, 'error');
@@ -1606,10 +1691,15 @@ function tiempoRelativo(fechaISO){
 
 async function listarArchivosDrive(){
     const lista = document.getElementById('lista-archivos');
+    if(!NUBE_CENTRO_ACTUAL){
+        lista.innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Selecciona un centro de trabajo arriba.</div>';
+        return;
+    }
     lista.innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Cargando archivos de Drive…</div>';
     try{
+        const folderId = await obtenerCarpetaDriveParaCentro(NUBE_CENTRO_ACTUAL);
         const token = await obtenerTokenDrive(false);
-        const q = encodeURIComponent(`'${DRIVE_CONFIG.folder_id}' in parents and trashed = false`);
+        const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
         const fields = encodeURIComponent('files(id,name,mimeType,modifiedTime,webViewLink,iconLink)');
         const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=modifiedTime desc&pageSize=100`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -1618,7 +1708,7 @@ async function listarArchivosDrive(){
         const data = await resp.json();
         const archivos = data.files || [];
         if(!archivos.length){
-            lista.innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Esta carpeta de Drive todavía no tiene archivos.</div>';
+            lista.innerHTML = '<div class="p-lg text-center text-on-surface-variant text-sm">Esta carpeta todavía no tiene archivos para este centro.</div>';
             return;
         }
         lista.innerHTML = archivos.map((f, i) => `
@@ -1636,12 +1726,13 @@ async function listarArchivosDrive(){
 
 async function subirArchivosADrive(fileList){
     if(!fileList || !fileList.length) return;
-    const lista = document.getElementById('lista-archivos');
+    if(!NUBE_CENTRO_ACTUAL){ mostrarToast('Selecciona un centro de trabajo antes de subir archivos.', 'error'); return; }
     try{
+        const folderId = await obtenerCarpetaDriveParaCentro(NUBE_CENTRO_ACTUAL);
         const token = await obtenerTokenDrive(false);
         for(const file of Array.from(fileList)){
             if(file.size > 25 * 1024 * 1024){ mostrarToast(`"${file.name}" pesa más de 25MB, sáltala.`, 'error'); continue; }
-            const metadata = { name: file.name, parents: [DRIVE_CONFIG.folder_id] };
+            const metadata = { name: file.name, parents: [folderId] };
             const form = new FormData();
             form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
             form.append('file', file);
