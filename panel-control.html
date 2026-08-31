@@ -775,7 +775,7 @@
 <!-- ============ SEC: PROGRESO NOM-STPS ============ -->
 <div class="page-section" id="sec-nom">
 <h2 class="font-display-lg text-display-lg text-primary mb-xs">Progreso NOM-STPS</h2>
-<p class="font-body-md text-body-md text-on-surface-variant mb-lg">Estatus por norma aplicable, agregado de los 22 centros de Grupo Chesa.</p>
+<p class="font-body-md text-body-md text-on-surface-variant mb-lg" id="nom-progreso-subtitulo">Estatus por norma aplicable, agregado de los 22 centros de Grupo Chesa.</p>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
@@ -787,47 +787,8 @@
 <th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acciones</th>
 </tr>
 </thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-data-mono text-data-mono">NOM-001-STPS-2008</td>
-<td class="px-md py-sm text-sm">Edificios, locales e instalaciones</td>
-<td class="px-md py-sm w-56">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1"><div class="bg-on-tertiary-container h-full" style="width:100%;"></div></div>
-<span class="text-xs font-bold text-on-tertiary-container">100%</span>
-</td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Cumple</span></td>
-<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert" onclick="mostrarToast('Detalle NOM-001 (demo).')">more_vert</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-data-mono text-data-mono">NOM-002-STPS-2010</td>
-<td class="px-md py-sm text-sm">Prevención y protección contra incendios</td>
-<td class="px-md py-sm w-56">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1"><div class="bg-secondary h-full" style="width:75%;"></div></div>
-<span class="text-xs font-bold text-secondary">75%</span>
-</td>
-<td class="px-md py-sm"><span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded text-[10px] font-bold uppercase">En Progreso</span></td>
-<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert" onclick="mostrarToast('Detalle NOM-002 (demo).')">more_vert</button></td>
-</tr>
-<tr class="hover:bg-error-container/5 transition-colors">
-<td class="px-md py-sm font-data-mono text-data-mono">NOM-017-STPS-2024</td>
-<td class="px-md py-sm text-sm">Equipo de protección personal</td>
-<td class="px-md py-sm w-56">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1"><div class="bg-error h-full" style="width:32%;"></div></div>
-<span class="text-xs font-bold text-error">32%</span>
-</td>
-<td class="px-md py-sm"><span class="bg-error text-on-error px-2 py-0.5 rounded text-[10px] font-bold uppercase">Deficiente</span></td>
-<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert" onclick="mostrarToast('Detalle NOM-017 (demo).')">more_vert</button></td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-data-mono text-data-mono">NOM-035-STPS-2018</td>
-<td class="px-md py-sm text-sm">Factores de riesgo psicosocial</td>
-<td class="px-md py-sm w-56">
-<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1"><div class="bg-on-tertiary-container h-full" style="width:92%;"></div></div>
-<span class="text-xs font-bold text-on-tertiary-container">92%</span>
-</td>
-<td class="px-md py-sm"><span class="bg-tertiary-fixed-dim text-on-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold uppercase">Cumple</span></td>
-<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert" onclick="mostrarToast('Detalle NOM-035 (demo).')">more_vert</button></td>
-</tr>
+<tbody class="divide-y divide-outline-variant" id="nom-progreso-tbody">
+<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Cargando…</td></tr>
 </tbody>
 </table>
 </div>
@@ -2490,6 +2451,89 @@ ${barras}
     }
 }
 
+// ---- Progreso NOM-STPS (sec-nom) ----
+// % de actividades del calendario normativo completadas en el MES EN CURSO,
+// agrupado por norma (norma_code) y sumado sobre los 22 centros. El estatus
+// solo pasa a "Cumple" cuando el 100% de las actividades del mes de esa
+// norma están en "Realizada" — antes de eso se queda en "En Progreso" o
+// "Deficiente" aunque el % sea alto, para no dar una falsa señal de listo.
+let NOM_PROGRESO_ULTIMO = { mes: null, anio: null, porNorma: {} };
+
+async function renderProgresoNomStps(){
+    const tbody = document.getElementById('nom-progreso-tbody');
+    if(!tbody) return;
+    tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">Cargando…</td></tr>';
+    await asegurarCatalogoNormas();
+
+    const hoy = new Date();
+    const mes = hoy.getMonth() + 1, anio = hoy.getFullYear();
+    const subtitulo = document.getElementById('nom-progreso-subtitulo');
+    if(subtitulo) subtitulo.textContent = `Estatus por norma aplicable en ${NOMBRES_MES[mes-1]} ${anio}, según % de actividades del calendario completadas en el mes, agregado de los 22 centros de Grupo Chesa.`;
+
+    const { data, error } = await supabaseClient.from('calendario_normativo')
+        .select('norma_code, estado')
+        .eq('mes', mes).eq('anio', anio);
+
+    if(error){
+        tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-error" colspan="5">No se pudo cargar: ${error.message}</td></tr>`;
+        return;
+    }
+    if(!data || !data.length){
+        tbody.innerHTML = `<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="5">No hay actividades de ${NOMBRES_MES[mes-1]} ${anio} importadas todavía. Ve a "Actividades Normativas" para importar el calendario.</td></tr>`;
+        return;
+    }
+
+    const porNorma = {};
+    data.forEach(a => {
+        const code = a.norma_code || 'Sin clasificar';
+        if(!porNorma[code]) porNorma[code] = { total: 0, realizadas: 0 };
+        porNorma[code].total++;
+        if(a.estado === 'Realizada') porNorma[code].realizadas++;
+    });
+    NOM_PROGRESO_ULTIMO = { mes, anio, porNorma };
+
+    const filas = Object.keys(porNorma).map(code => {
+        const info = porNorma[code];
+        const pct = info.total ? Math.round((info.realizadas / info.total) * 100) : 0;
+        const cat = CATALOGO_NOM.find(n => n.code === code);
+        return { code, desc: cat ? cat.desc : 'Norma no encontrada en el catálogo', ...info, pct };
+    }).sort((a, b) => a.code.localeCompare(b.code));
+
+    tbody.innerHTML = filas.map(f => {
+        let colorBarra, colorTexto, badge;
+        if(f.pct >= 100){
+            colorBarra = 'bg-on-tertiary-container'; colorTexto = 'text-on-tertiary-container';
+            badge = { clase: 'bg-tertiary-fixed-dim text-on-tertiary-fixed', texto: 'Cumple' };
+        } else if(f.pct >= 50){
+            colorBarra = 'bg-secondary'; colorTexto = 'text-secondary';
+            badge = { clase: 'bg-secondary-container text-on-secondary-container', texto: 'En Progreso' };
+        } else {
+            colorBarra = 'bg-error'; colorTexto = 'text-error';
+            badge = { clase: 'bg-error text-on-error', texto: 'Deficiente' };
+        }
+        return `<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-sm font-data-mono text-data-mono">${f.code}</td>
+<td class="px-md py-sm text-sm">${f.desc}</td>
+<td class="px-md py-sm w-56">
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-1"><div class="${colorBarra} h-full" style="width:${f.pct}%;"></div></div>
+<span class="text-xs font-bold ${colorTexto}">${f.pct}% (${f.realizadas}/${f.total})</span>
+</td>
+<td class="px-md py-sm"><span class="${badge.clase} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${badge.texto}</span></td>
+<td class="px-md py-sm text-right"><button class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert" onclick="verDetalleProgresoNorma('${f.code}')" type="button">more_vert</button></td>
+</tr>`;
+    }).join('');
+}
+
+function verDetalleProgresoNorma(code){
+    const info = NOM_PROGRESO_ULTIMO.porNorma[code];
+    if(!info) return;
+    const faltan = info.total - info.realizadas;
+    const msg = faltan === 0
+        ? `${code}: las ${info.total} actividad(es) de ${NOMBRES_MES[NOM_PROGRESO_ULTIMO.mes-1]} ${NOM_PROGRESO_ULTIMO.anio} están completadas (100%).`
+        : `${code}: ${info.realizadas}/${info.total} actividades completadas en ${NOMBRES_MES[NOM_PROGRESO_ULTIMO.mes-1]} ${NOM_PROGRESO_ULTIMO.anio}. Faltan ${faltan} para llegar a Cumple (100%).`;
+    mostrarToast(msg);
+}
+
 async function renderPanelControl(){
     const hoy = new Date();
     const mes = hoy.getMonth() + 1, anio = hoy.getFullYear();
@@ -3899,6 +3943,7 @@ function showSection(id){
     window.scrollTo(0,0);
     if(id === 'sec-centros' && currentUser) cargarCentros();
     if(id === 'sec-actividades' && currentUser) poblarSelectoresMensual();
+    if(id === 'sec-nom' && currentUser) renderProgresoNomStps();
     if(id === 'sec-nom035' && currentUser) renderNom035();
     if(id === 'sec-panel' && currentUser) renderPanelControl();
     if(id === 'sec-config' && currentUser) { renderReglamentosMarca(); cargarFirmaCorreo(); cargarIntegracionDrive(); }
