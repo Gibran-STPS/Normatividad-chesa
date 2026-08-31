@@ -613,6 +613,12 @@
 </div>
 <p class="text-xs text-on-surface-variant mt-sm">El Excel debe tener una hoja por centro. El nombre de cada hoja debe coincidir con el "Código de agencia" del centro (o, si no lo capturaste, con su nombre completo en "Centros de Trabajo"). <strong>Solo necesitas subir este archivo una vez al año</strong> — importa los 12 meses de todos los centros de una sola vez; el "Mes" y "Centro" de abajo son únicamente para <em>ver</em> el resultado, no afectan la importación. Si más adelante el calendario cambia, vuelve a subir el archivo actualizado con el mismo "Año": se actualiza sin duplicar nada.</p>
 </div>
+<div class="bg-white border border-outline-variant rounded overflow-hidden mb-lg">
+<div class="px-md py-sm bg-surface-container border-b border-outline-variant">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Actividades por agencia — mes seleccionado</span>
+</div>
+<div id="cal-resumen-centros"><div class="p-md text-center text-on-surface-variant text-sm">Cargando…</div></div>
+</div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
@@ -2241,6 +2247,7 @@ function poblarSelectoresMensual(){
         const el = document.getElementById(id);
         if(el && !el.value) el.value = anioActual;
     });
+    cargarCalendarioMes();
 }
 
 function switchMensualTab(panelId, el){
@@ -3083,6 +3090,7 @@ async function cargarCalendarioMes(){
     const centroId = document.getElementById('cal-centro').value;
     const mes = parseInt(document.getElementById('cal-mes').value, 10);
     const anio = parseInt(document.getElementById('cal-anio').value, 10);
+    renderResumenCentrosCalendario(mes, anio);
     const tbody = document.getElementById('cal-mes-tbody');
     if(!centroId){
         tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Elige un centro para ver su calendario del mes.</td></tr>';
@@ -3126,6 +3134,61 @@ async function cambiarEstadoActividad(id, nuevoEstado){
         realizado_por: nuevoEstado === 'Realizada' ? (user ? user.id : null) : null
     }).eq('id', id);
     if(error){ mostrarToast('Error: ' + error.message); return; }
+    cargarCalendarioMes();
+}
+
+// Lista, para el mes/año seleccionados arriba, cada agencia con cuántas
+// actividades tiene realizadas vs. el total, y un indicador Pendiente/
+// Realizado (Realizado solo cuando el 100% de sus actividades del mes están
+// hechas). Al hacer clic en una agencia, se selecciona en "Centro" y se
+// muestra su detalle completo (con las pendientes marcadas) en la tabla de abajo.
+async function renderResumenCentrosCalendario(mes, anio){
+    const cont = document.getElementById('cal-resumen-centros');
+    if(!cont) return;
+    cont.innerHTML = '<div class="p-md text-center text-on-surface-variant text-sm">Cargando resumen por agencia…</div>';
+
+    const { data, error } = await supabaseClient.from('calendario_normativo').select('centro_id, estado').eq('mes', mes).eq('anio', anio);
+    if(error){ cont.innerHTML = `<div class="p-md text-center text-error text-sm">${error.message}</div>`; return; }
+    if(!data || !data.length){
+        cont.innerHTML = `<div class="p-md text-center text-on-surface-variant text-sm">No hay actividades importadas para ${NOMBRES_MES[mes-1]} ${anio} todavía. Usa "Importar calendario" arriba.</div>`;
+        return;
+    }
+
+    const porCentro = {};
+    data.forEach(a => {
+        if(!porCentro[a.centro_id]) porCentro[a.centro_id] = { total: 0, realizadas: 0 };
+        porCentro[a.centro_id].total++;
+        if(a.estado === 'Realizada') porCentro[a.centro_id].realizadas++;
+    });
+
+    const centroSeleccionado = document.getElementById('cal-centro').value;
+    const filas = Object.keys(porCentro).map(id => {
+        const c = centrosData.find(x => x.id === id);
+        const info = porCentro[id];
+        return { id, nombre: c ? c.nombre : id, ...info };
+    }).sort((a, b) => {
+        const pendA = a.total - a.realizadas, pendB = b.total - b.realizadas;
+        if(pendA !== pendB) return pendB - pendA; // más pendientes primero
+        return a.nombre.localeCompare(b.nombre);
+    });
+
+    cont.innerHTML = filas.map((f, i) => {
+        const completo = f.total > 0 && f.realizadas === f.total;
+        const badge = completo ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed' : 'bg-orange-500 text-white';
+        const texto = completo ? 'Realizado' : 'Pendiente';
+        const activo = f.id === centroSeleccionado;
+        return `<button class="w-full flex items-center justify-between px-md py-sm ${i < filas.length - 1 ? 'border-b border-outline-variant' : ''} hover:bg-surface-container transition-colors text-left ${activo ? 'bg-surface-container' : ''}" onclick="seleccionarCentroCalendario('${f.id}')" type="button">
+<span class="font-semibold text-sm">${f.nombre}</span>
+<span class="flex items-center gap-sm">
+<span class="text-xs text-on-surface-variant">${f.realizadas}/${f.total}</span>
+<span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${texto}</span>
+</span>
+</button>`;
+    }).join('');
+}
+
+function seleccionarCentroCalendario(centroId){
+    document.getElementById('cal-centro').value = centroId;
     cargarCalendarioMes();
 }
 
