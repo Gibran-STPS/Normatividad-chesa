@@ -595,10 +595,6 @@
 <div class="bg-white border border-outline-variant rounded p-md mb-lg">
 <div class="flex flex-wrap gap-md items-end">
 <div>
-<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Centro</label>
-<select class="border border-outline-variant rounded p-sm text-sm min-w-[220px]" id="cal-centro" onchange="cargarCalendarioMes()"></select>
-</div>
-<div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Mes</label>
 <select class="border border-outline-variant rounded p-sm text-sm" id="cal-mes" onchange="cargarCalendarioMes()"></select>
 </div>
@@ -611,26 +607,13 @@
 <input accept=".xlsx" class="hidden" id="input-importar-calendario" onchange="importarCalendarioExcel(event)" type="file"/>
 </label>
 </div>
-<p class="text-xs text-on-surface-variant mt-sm">El Excel debe tener una hoja por centro. El nombre de cada hoja debe coincidir con el "Código de agencia" del centro (o, si no lo capturaste, con su nombre completo en "Centros de Trabajo"). <strong>Solo necesitas subir este archivo una vez al año</strong> — importa los 12 meses de todos los centros de una sola vez; el "Mes" y "Centro" de abajo son únicamente para <em>ver</em> el resultado, no afectan la importación. Si más adelante el calendario cambia, vuelve a subir el archivo actualizado con el mismo "Año": se actualiza sin duplicar nada.</p>
-</div>
-<div class="bg-white border border-outline-variant rounded overflow-hidden mb-lg">
-<div class="px-md py-sm bg-surface-container border-b border-outline-variant">
-<span class="font-label-caps text-label-caps text-on-surface-variant">Actividades por agencia — mes seleccionado</span>
-</div>
-<div id="cal-resumen-centros"><div class="p-md text-center text-on-surface-variant text-sm">Cargando…</div></div>
+<p class="text-xs text-on-surface-variant mt-sm">El Excel debe tener una hoja por centro. El nombre de cada hoja debe coincidir con el "Código de agencia" del centro (o, si no lo capturaste, con su nombre completo en "Centros de Trabajo"). <strong>Solo necesitas subir este archivo una vez al año</strong> — importa los 12 meses de todos los centros de una sola vez; el "Mes" de abajo es únicamente para <em>ver</em> el resultado, no afecta la importación. Si más adelante el calendario cambia, vuelve a subir el archivo actualizado con el mismo "Año": se actualiza sin duplicar nada.</p>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden">
-<table class="w-full text-left border-collapse">
-<thead class="bg-surface-container border-b border-outline-variant">
-<tr>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Norma</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Actividad</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Estado</th>
-<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
-</tr>
-</thead>
-<tbody id="cal-mes-tbody"><tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Elige un centro para ver su calendario del mes.</td></tr></tbody>
-</table>
+<div class="px-md py-sm bg-surface-container border-b border-outline-variant">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Actividades por agencia — mes seleccionado (da clic en una agencia para ver y marcar sus actividades)</span>
+</div>
+<div id="cal-resumen-centros"><div class="p-md text-center text-on-surface-variant text-sm">Cargando…</div></div>
 </div>
 </div>
 
@@ -2235,7 +2218,7 @@ function poblarSelectoresMensual(){
     const mesActual = new Date().getMonth() + 1;
     const opcionesCentro = '<option value="">Selecciona…</option>' + centrosData.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
     const opcionesMes = NOMBRES_MES.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
-    ['cal-centro','vac-centro','correo-centro','plantillas-centro'].forEach(id => {
+    ['vac-centro','correo-centro','plantillas-centro'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.innerHTML = opcionesCentro;
     });
@@ -3086,62 +3069,20 @@ function exportarEstatusCentrosCSV(){
     mostrarToast('CSV exportado.');
 }
 
-async function cargarCalendarioMes(){
-    const centroId = document.getElementById('cal-centro').value;
+function cargarCalendarioMes(){
     const mes = parseInt(document.getElementById('cal-mes').value, 10);
     const anio = parseInt(document.getElementById('cal-anio').value, 10);
     renderResumenCentrosCalendario(mes, anio);
-    const tbody = document.getElementById('cal-mes-tbody');
-    if(!centroId){
-        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Elige un centro para ver su calendario del mes.</td></tr>';
-        return;
-    }
-    tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">Cargando...</td></tr>';
-
-    const { data, error } = await supabaseClient
-        .from('calendario_normativo')
-        .select('id, norma_code, norma_titulo_original, actividad, estado, notas')
-        .eq('centro_id', centroId).eq('mes', mes).eq('anio', anio)
-        .order('norma_code', { ascending: true, nullsFirst: false });
-
-    if(error){ mostrarToast('Error: ' + error.message, 'error'); return; }
-
-    if(!data || !data.length){
-        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay actividades importadas para este centro / mes / año todavía. Usa "Importar calendario" arriba.</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = data.map(f => {
-        const normaTxt = f.norma_code || (f.norma_titulo_original ? (f.norma_titulo_original.length > 45 ? f.norma_titulo_original.slice(0,45) + '…' : f.norma_titulo_original) : 'Sin norma');
-        const esRealizada = f.estado === 'Realizada';
-        const badge = esRealizada ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed' : 'bg-orange-500 text-white';
-        const siguienteEstado = esRealizada ? 'Planeada' : 'Realizada';
-        const accionTxt = esRealizada ? 'Marcar pendiente' : 'Marcar realizada';
-        return `<tr class="hover:bg-surface-container transition-colors">
-<td class="px-md py-sm font-data-mono text-data-mono text-xs align-top">${normaTxt}</td>
-<td class="px-md py-sm text-sm align-top">${f.actividad}${f.notas ? `<div class="text-xs text-on-surface-variant italic mt-0.5">Excel original: "${f.notas}"</div>` : ''}</td>
-<td class="px-md py-sm align-top"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f.estado}</span></td>
-<td class="px-md py-sm text-right align-top"><button class="text-primary hover:underline font-bold text-xs" onclick="cambiarEstadoActividad('${f.id}','${siguienteEstado}')" type="button">${accionTxt}</button></td>
-</tr>`;
-    }).join('');
 }
 
-async function cambiarEstadoActividad(id, nuevoEstado){
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const { error } = await supabaseClient.from('calendario_normativo').update({
-        estado: nuevoEstado,
-        fecha_realizada: nuevoEstado === 'Realizada' ? new Date().toISOString().slice(0,10) : null,
-        realizado_por: nuevoEstado === 'Realizada' ? (user ? user.id : null) : null
-    }).eq('id', id);
-    if(error){ mostrarToast('Error: ' + error.message); return; }
-    cargarCalendarioMes();
-}
+let CAL_CENTRO_EXPANDIDO = null; // centro_id de la agencia abierta en el acordeón (una a la vez)
+let CAL_RESUMEN_ULTIMO = { mes: null, anio: null, filas: [] };
 
 // Lista, para el mes/año seleccionados arriba, cada agencia con cuántas
 // actividades tiene realizadas vs. el total, y un indicador Pendiente/
 // Realizado (Realizado solo cuando el 100% de sus actividades del mes están
-// hechas). Al hacer clic en una agencia, se selecciona en "Centro" y se
-// muestra su detalle completo (con las pendientes marcadas) en la tabla de abajo.
+// hechas). Al hacer clic en una agencia, se abre justo debajo de ella misma
+// (acordeón) con el detalle de sus actividades y el botón para marcarlas.
 async function renderResumenCentrosCalendario(mes, anio){
     const cont = document.getElementById('cal-resumen-centros');
     if(!cont) return;
@@ -3151,6 +3092,7 @@ async function renderResumenCentrosCalendario(mes, anio){
     if(error){ cont.innerHTML = `<div class="p-md text-center text-error text-sm">${error.message}</div>`; return; }
     if(!data || !data.length){
         cont.innerHTML = `<div class="p-md text-center text-on-surface-variant text-sm">No hay actividades importadas para ${NOMBRES_MES[mes-1]} ${anio} todavía. Usa "Importar calendario" arriba.</div>`;
+        CAL_RESUMEN_ULTIMO = { mes, anio, filas: [] };
         return;
     }
 
@@ -3161,7 +3103,6 @@ async function renderResumenCentrosCalendario(mes, anio){
         if(a.estado === 'Realizada') porCentro[a.centro_id].realizadas++;
     });
 
-    const centroSeleccionado = document.getElementById('cal-centro').value;
     const filas = Object.keys(porCentro).map(id => {
         const c = centrosData.find(x => x.id === id);
         const info = porCentro[id];
@@ -3172,24 +3113,103 @@ async function renderResumenCentrosCalendario(mes, anio){
         return a.nombre.localeCompare(b.nombre);
     });
 
+    CAL_RESUMEN_ULTIMO = { mes, anio, filas };
+    pintarResumenCentrosCalendario();
+}
+
+function pintarResumenCentrosCalendario(){
+    const cont = document.getElementById('cal-resumen-centros');
+    const { filas } = CAL_RESUMEN_ULTIMO;
+    if(!filas.length) return; // el mensaje de "sin datos" ya lo puso renderResumenCentrosCalendario
+
     cont.innerHTML = filas.map((f, i) => {
         const completo = f.total > 0 && f.realizadas === f.total;
         const badge = completo ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed' : 'bg-orange-500 text-white';
         const texto = completo ? 'Realizado' : 'Pendiente';
-        const activo = f.id === centroSeleccionado;
-        return `<button class="w-full flex items-center justify-between px-md py-sm ${i < filas.length - 1 ? 'border-b border-outline-variant' : ''} hover:bg-surface-container transition-colors text-left ${activo ? 'bg-surface-container' : ''}" onclick="seleccionarCentroCalendario('${f.id}')" type="button">
+        const abierto = f.id === CAL_CENTRO_EXPANDIDO;
+        return `<div class="${i < filas.length - 1 ? 'border-b border-outline-variant' : ''}">
+<button class="w-full flex items-center justify-between px-md py-sm hover:bg-surface-container transition-colors text-left ${abierto ? 'bg-surface-container' : ''}" onclick="toggleCentroCalendario('${f.id}')" type="button">
+<span class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="${abierto ? 'expand_less' : 'expand_more'}">${abierto ? 'expand_less' : 'expand_more'}</span>
 <span class="font-semibold text-sm">${f.nombre}</span>
+</span>
 <span class="flex items-center gap-sm">
 <span class="text-xs text-on-surface-variant">${f.realizadas}/${f.total}</span>
 <span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${texto}</span>
 </span>
-</button>`;
+</button>
+<div class="${abierto ? '' : 'hidden'}" id="cal-detalle-${f.id}"></div>
+</div>`;
     }).join('');
+
+    if(CAL_CENTRO_EXPANDIDO) cargarDetalleCentroCalendario(CAL_CENTRO_EXPANDIDO);
 }
 
-function seleccionarCentroCalendario(centroId){
-    document.getElementById('cal-centro').value = centroId;
-    cargarCalendarioMes();
+function toggleCentroCalendario(centroId){
+    CAL_CENTRO_EXPANDIDO = (CAL_CENTRO_EXPANDIDO === centroId) ? null : centroId;
+    pintarResumenCentrosCalendario();
+}
+
+async function cargarDetalleCentroCalendario(centroId){
+    const cont = document.getElementById('cal-detalle-' + centroId);
+    if(!cont) return;
+    cont.innerHTML = '<div class="p-md text-center text-on-surface-variant text-sm">Cargando actividades…</div>';
+
+    const { mes, anio } = CAL_RESUMEN_ULTIMO;
+    const { data, error } = await supabaseClient
+        .from('calendario_normativo')
+        .select('id, norma_code, norma_titulo_original, actividad, estado, notas')
+        .eq('centro_id', centroId).eq('mes', mes).eq('anio', anio)
+        .order('norma_code', { ascending: true, nullsFirst: false });
+
+    if(error){ cont.innerHTML = `<div class="p-md text-center text-error text-sm">${error.message}</div>`; return; }
+    if(!data || !data.length){
+        cont.innerHTML = '<div class="p-md text-center text-on-surface-variant text-sm">Sin actividades para este centro en este mes.</div>';
+        return;
+    }
+
+    // Pendientes primero, para verlas de inmediato sin tener que buscarlas.
+    const ordenado = data.slice().sort((a, b) => {
+        if(a.estado === b.estado) return 0;
+        return a.estado === 'Realizada' ? 1 : -1;
+    });
+
+    cont.innerHTML = `<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container border-b border-outline-variant">
+<tr>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Norma</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Actividad</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">Estado</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">Acción</th>
+</tr>
+</thead>
+<tbody>${ordenado.map(f => {
+        const normaTxt = f.norma_code || (f.norma_titulo_original ? (f.norma_titulo_original.length > 45 ? f.norma_titulo_original.slice(0,45) + '…' : f.norma_titulo_original) : 'Sin norma');
+        const esRealizada = f.estado === 'Realizada';
+        const badge = esRealizada ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed' : 'bg-orange-500 text-white';
+        const siguienteEstado = esRealizada ? 'Planeada' : 'Realizada';
+        const accionTxt = esRealizada ? 'Marcar pendiente' : 'Marcar realizada';
+        return `<tr class="hover:bg-white transition-colors border-b border-outline-variant last:border-0">
+<td class="px-md py-sm font-data-mono text-data-mono text-xs align-top">${normaTxt}</td>
+<td class="px-md py-sm text-sm align-top">${f.actividad}${f.notas ? `<div class="text-xs text-on-surface-variant italic mt-0.5">Excel original: "${f.notas}"</div>` : ''}</td>
+<td class="px-md py-sm align-top"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f.estado}</span></td>
+<td class="px-md py-sm text-right align-top"><button class="text-primary hover:underline font-bold text-xs" onclick="cambiarEstadoActividad('${f.id}','${siguienteEstado}')" type="button">${accionTxt}</button></td>
+</tr>`;
+    }).join('')}</tbody>
+</table>`;
+}
+
+async function cambiarEstadoActividad(id, nuevoEstado){
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { error } = await supabaseClient.from('calendario_normativo').update({
+        estado: nuevoEstado,
+        fecha_realizada: nuevoEstado === 'Realizada' ? new Date().toISOString().slice(0,10) : null,
+        realizado_por: nuevoEstado === 'Realizada' ? (user ? user.id : null) : null
+    }).eq('id', id);
+    if(error){ mostrarToast('Error: ' + error.message); return; }
+    // Refresca contadores/badge de todas las agencias y vuelve a pintar,
+    // sin cerrar el acordeón que ya tenías abierto.
+    renderResumenCentrosCalendario(CAL_RESUMEN_ULTIMO.mes, CAL_RESUMEN_ULTIMO.anio);
 }
 
 // ---- TAB 2: Constancias de Vacaciones ----
