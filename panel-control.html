@@ -873,6 +873,22 @@
 </div>
 </div>
 
+<!-- MODAL: Renombrar archivos antes de subir a Drive -->
+<div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-subir-archivos">
+<div class="bg-white rounded max-w-xl w-full p-lg max-h-[90vh] overflow-y-auto">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-bold text-lg">Renombrar antes de subir</h3>
+<button class="material-symbols-outlined text-on-surface-variant" data-icon="close" onclick="cancelarSubidaArchivos()" type="button">close</button>
+</div>
+<p class="text-xs text-on-surface-variant mb-md">Puedes cambiar el nombre de cada archivo. La extensión (.pdf, .xlsx, etc.) se conserva automáticamente.</p>
+<div id="subir-archivos-lista" class="space-y-sm mb-lg"></div>
+<div class="flex gap-sm justify-end pt-md border-t border-outline-variant">
+<button class="border border-outline-variant px-lg py-sm font-bold hover:bg-surface-container-high transition-colors" onclick="cancelarSubidaArchivos()" type="button">Cancelar</button>
+<button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" id="btn-confirmar-subida" onclick="confirmarSubidaArchivos()" type="button">Subir a Drive</button>
+</div>
+</div>
+</div>
+
 <!-- MODAL: Detalle de progreso por norma (sec-nom) -->
 <div class="hidden fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-lg" id="modal-detalle-norma">
 <div class="bg-white rounded max-w-2xl w-full p-lg max-h-[90vh] overflow-y-auto">
@@ -1193,11 +1209,11 @@
 <select class="w-full max-w-md border border-outline-variant rounded p-sm" id="nube-centro-select" onchange="cambiarCentroNube(this.value)"></select>
 <p class="text-xs text-on-surface-variant mt-1" id="nube-carpeta-info"></p>
 </div>
-<div class="bg-white border-2 border-dashed border-outline-variant rounded p-xl text-center mb-lg" id="nube-dropzone" ondragover="event.preventDefault(); this.classList.add('bg-surface-container-high')" ondragleave="this.classList.remove('bg-surface-container-high')" ondrop="event.preventDefault(); this.classList.remove('bg-surface-container-high'); subirArchivosADrive(event.dataTransfer.files)">
+<div class="bg-white border-2 border-dashed border-outline-variant rounded p-xl text-center mb-lg" id="nube-dropzone" ondragover="event.preventDefault(); this.classList.add('bg-surface-container-high')" ondragleave="this.classList.remove('bg-surface-container-high')" ondrop="event.preventDefault(); this.classList.remove('bg-surface-container-high'); prepararSubidaArchivos(event.dataTransfer.files)">
 <span class="material-symbols-outlined text-5xl text-primary" data-icon="cloud_upload">cloud_upload</span>
 <p class="font-bold mt-2">Arrastra tus archivos aquí</p>
-<p class="text-xs text-on-surface-variant mb-md">Se suben directo a la carpeta del centro seleccionado arriba. Cualquier formato, máx. 25MB.</p>
-<input class="hidden" id="nube-file-input" multiple onchange="subirArchivosADrive(this.files)" type="file"/>
+<p class="text-xs text-on-surface-variant mb-md">Podrás renombrarlos antes de subirlos a la carpeta del centro seleccionado arriba. Cualquier formato, máx. 25MB.</p>
+<input class="hidden" id="nube-file-input" multiple onchange="prepararSubidaArchivos(this.files)" type="file"/>
 <button class="bg-primary text-on-primary px-lg py-sm font-bold hover:opacity-90 transition-all" onclick="document.getElementById('nube-file-input').click()" type="button">Elegir Archivos</button>
 </div>
 <div class="bg-white border border-outline-variant rounded overflow-hidden" id="lista-archivos">
@@ -1724,15 +1740,66 @@ async function listarArchivosDrive(){
     }
 }
 
-async function subirArchivosADrive(fileList){
+// Separa "documento.pdf" en { base: "documento", ext: ".pdf" }. Si no hay
+// punto (o el archivo empieza con punto, ej. ".gitignore"), no hay extensión.
+function separarNombreExtension(nombre){
+    const punto = nombre.lastIndexOf('.');
+    if(punto <= 0) return { base: nombre, ext: '' };
+    return { base: nombre.slice(0, punto), ext: nombre.slice(punto) };
+}
+
+let ARCHIVOS_PENDIENTES_SUBIDA = []; // [{ file, base, ext }]
+
+function prepararSubidaArchivos(fileList){
     if(!fileList || !fileList.length) return;
+    if(!NUBE_CENTRO_ACTUAL){ mostrarToast('Selecciona un centro de trabajo antes de subir archivos.', 'error'); return; }
+    ARCHIVOS_PENDIENTES_SUBIDA = Array.from(fileList).map(file => {
+        const { base, ext } = separarNombreExtension(file.name);
+        return { file, base, ext };
+    });
+    renderSubidaArchivosModal();
+    toggleModal('modal-subir-archivos');
+}
+
+function renderSubidaArchivosModal(){
+    document.getElementById('subir-archivos-lista').innerHTML = ARCHIVOS_PENDIENTES_SUBIDA.map((a, i) => `
+<div class="flex items-center gap-sm">
+<input class="flex-1 border border-outline-variant rounded p-sm text-sm" value="${a.base.replace(/"/g, '&quot;')}" oninput="ARCHIVOS_PENDIENTES_SUBIDA[${i}].base = this.value" type="text"/>
+<span class="text-xs text-on-surface-variant whitespace-nowrap">${a.ext || '(sin extensión)'}</span>
+</div>`).join('');
+}
+
+function cancelarSubidaArchivos(){
+    ARCHIVOS_PENDIENTES_SUBIDA = [];
+    document.getElementById('nube-file-input').value = '';
+    toggleModal('modal-subir-archivos');
+}
+
+async function confirmarSubidaArchivos(){
+    const btn = document.getElementById('btn-confirmar-subida');
+    const pendientes = ARCHIVOS_PENDIENTES_SUBIDA.filter(a => a.base.trim());
+    if(!pendientes.length){ mostrarToast('Ponle un nombre a cada archivo antes de subir.', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Subiendo…';
+    try{
+        await subirArchivosADrive(pendientes.map(a => ({ file: a.file, nombreFinal: a.base.trim() + a.ext })));
+        toggleModal('modal-subir-archivos');
+        ARCHIVOS_PENDIENTES_SUBIDA = [];
+    } finally {
+        btn.disabled = false; btn.textContent = 'Subir a Drive';
+        document.getElementById('nube-file-input').value = '';
+    }
+}
+
+async function subirArchivosADrive(items){
+    // "items" es una lista de { file, nombreFinal } ya con el nombre editado.
+    if(!items || !items.length) return;
     if(!NUBE_CENTRO_ACTUAL){ mostrarToast('Selecciona un centro de trabajo antes de subir archivos.', 'error'); return; }
     try{
         const folderId = await obtenerCarpetaDriveParaCentro(NUBE_CENTRO_ACTUAL);
         const token = await obtenerTokenDrive(false);
-        for(const file of Array.from(fileList)){
-            if(file.size > 25 * 1024 * 1024){ mostrarToast(`"${file.name}" pesa más de 25MB, sáltala.`, 'error'); continue; }
-            const metadata = { name: file.name, parents: [folderId] };
+        for(const { file, nombreFinal } of items){
+            if(file.size > 25 * 1024 * 1024){ mostrarToast(`"${nombreFinal}" pesa más de 25MB, sáltala.`, 'error'); continue; }
+            const metadata = { name: nombreFinal, parents: [folderId] };
             const form = new FormData();
             form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
             form.append('file', file);
@@ -1741,14 +1808,12 @@ async function subirArchivosADrive(fileList){
                 headers: { Authorization: `Bearer ${token}` },
                 body: form
             });
-            if(!resp.ok) throw new Error(`Google respondió ${resp.status} al subir "${file.name}"`);
+            if(!resp.ok) throw new Error(`Google respondió ${resp.status} al subir "${nombreFinal}"`);
         }
         mostrarToast('Archivo(s) subido(s) a Google Drive.');
         listarArchivosDrive();
     } catch(e){
         mostrarToast('No se pudo subir: ' + e.message, 'error');
-    } finally {
-        document.getElementById('nube-file-input').value = '';
     }
 }
 
