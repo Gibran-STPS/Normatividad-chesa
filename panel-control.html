@@ -3666,9 +3666,15 @@ function limpiarRazonSocial(razonSocial){
         .trim();
 }
 
-async function construirConstanciaPDF(c, centro){
+async function construirConstanciaPDF(c, centro, docExistente){
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+    let doc;
+    if(docExistente){
+        doc = docExistente;
+        doc.addPage('letter', 'p');
+    } else {
+        doc = new jsPDF({ unit: 'mm', format: 'letter' });
+    }
     const fmt = d => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
     const centerX = 107.95;
     const TAMANO_FUENTE = 12;
@@ -3778,17 +3784,14 @@ async function generarTodasConstancias(){
     const lista = COLABORADORES_CENTRO_CACHE.data;
     if(!lista || !lista.length){ mostrarToast('No hay constancias que generar para este centro/mes.'); return; }
     mostrarToast('Generando ' + lista.length + ' constancia(s)...');
-    const zip = new JSZip();
     const centro = centrosData.find(x => x.id === COLABORADORES_CENTRO_CACHE.centroId);
+    let doc = null;
     for(const c of lista){
-        const doc = await construirConstanciaPDF(c, centro);
-        const nombreSeguro = c.nombre.replace(/[^a-zA-Z0-9]+/g, '_');
-        zip.file(`Constancia_Vacaciones_${c.clave}_${nombreSeguro}.pdf`, doc.output('blob'));
+        doc = await construirConstanciaPDF(c, centro, doc);
         await registrarConstanciaGenerada(c, COLABORADORES_CENTRO_CACHE.centroId);
     }
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
-    descargarBlob(blob, `Constancias_Vacaciones_${centro ? centro.id : 'centro'}_${COLABORADORES_CENTRO_CACHE.mes}_${COLABORADORES_CENTRO_CACHE.anio}.zip`);
-    mostrarToast('Listo: ' + lista.length + ' constancia(s) generada(s).');
+    doc.save(`Constancias_Vacaciones_${centro ? centro.id : 'centro'}_${COLABORADORES_CENTRO_CACHE.mes}_${COLABORADORES_CENTRO_CACHE.anio}.pdf`);
+    mostrarToast('Listo: ' + lista.length + ' constancia(s) generada(s) en un solo PDF.');
 }
 
 // ---- TAB 3: Plantillas de Documentos ----
@@ -4289,7 +4292,7 @@ async function generarBorradorCorreo(){
 
     let htmlAdj = '<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Adjuntos que incluirá el ZIP</label><ul class="text-sm list-disc pl-lg">';
     plantillasAplicables.forEach(p => htmlAdj += `<li>${p.nombre_archivo}</li>`);
-    colaboradoresMes.forEach(c => htmlAdj += `<li>Constancia_Vacaciones_${c.clave}.pdf</li>`);
+    if(colaboradoresMes.length) htmlAdj += `<li>Constancias_Vacaciones_${mes}_${anio}.pdf (${colaboradoresMes.length} colaborador${colaboradoresMes.length === 1 ? '' : 'es'} en un solo PDF)</li>`;
     if(!plantillasAplicables.length && !colaboradoresMes.length) htmlAdj += '<li class="text-on-surface-variant">Sin adjuntos por ahora</li>';
     htmlAdj += '</ul>';
     document.getElementById('correo-adjuntos-lista').innerHTML = htmlAdj;
@@ -4406,9 +4409,12 @@ async function descargarAdjuntosCorreo(){
         const personalizado = await personalizarArchivo(data, p.nombre_archivo, CORREO_CONTEXTO.centro, { normaCode: p.norma_code, mes: CORREO_CONTEXTO.mes, anio: CORREO_CONTEXTO.anio });
         zip.file(p.nombre_archivo, personalizado);
     }
+    let docConstancias = null;
     for(const c of CORREO_CONTEXTO.colaboradores){
-        const doc = await construirConstanciaPDF(c, CORREO_CONTEXTO.centro);
-        zip.file(`Constancia_Vacaciones_${c.clave}.pdf`, doc.output('blob'));
+        docConstancias = await construirConstanciaPDF(c, CORREO_CONTEXTO.centro, docConstancias);
+    }
+    if(docConstancias){
+        zip.file(`Constancias_Vacaciones_${CORREO_CONTEXTO.mes}_${CORREO_CONTEXTO.anio}.pdf`, docConstancias.output('blob'));
     }
 
     const nombreZip = `Adjuntos_${CORREO_CONTEXTO.centro.id}_${CORREO_CONTEXTO.mes}_${CORREO_CONTEXTO.anio}.zip`;
