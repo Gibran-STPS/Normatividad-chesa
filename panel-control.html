@@ -3279,10 +3279,17 @@ async function importarColaboradoresExcel(event){
 
     const centrosPorClave = {};
     centrosData.forEach(c => {
+        // Clave por nombre completo y por código de agencia (como antes)...
         centrosPorClave[normalizarClave(c.nombre)] = c.id;
         if(c.codigoAgencia) centrosPorClave[normalizarClave(c.codigoAgencia)] = c.id;
+        // ...y también por "MARCA + NOMBRE" combinados, para poder emparejar
+        // aunque la columna SUCURSAL del Excel solo traiga la ciudad (ej.
+        // "Tuxtla") separada de la columna MARCA (ej. "CHANGAN"). Combinar
+        // ambas columnas del Excel es lo que evita el choque entre centros
+        // de distinta marca que comparten ciudad (Changan Tuxtla / Renault
+        // Tuxtla), sin recurrir a coincidencias parciales de texto.
+        if(c.marca) centrosPorClave[normalizarClave(`${c.marca} ${c.nombre}`)] = c.id;
     });
-    const clavesConocidas = Object.keys(centrosPorClave);
 
     const filas = [];
     const sinMapear = new Set();
@@ -3302,13 +3309,16 @@ async function importarColaboradoresExcel(event){
         if(!fechaISO) continue;
 
         const sucursalTxt = (fila[iSucursal] || '').toString().trim();
+        const marcaTxt = iMarca > -1 ? (fila[iMarca] || '').toString().trim() : '';
         const normSucursal = normalizarClave(sucursalTxt);
-        let centroId = centrosPorClave[normSucursal] || null;
-        if(!centroId && normSucursal){
-            const match = clavesConocidas.find(k => k && (normSucursal.includes(k) || k.includes(normSucursal)));
-            if(match) centroId = centrosPorClave[match];
-        }
-        if(!centroId && sucursalTxt) sinMapear.add(sucursalTxt);
+        const normMarcaSucursal = normalizarClave(`${marcaTxt} ${sucursalTxt}`);
+        // Primero intenta "MARCA + SUCURSAL" (desambigua ciudades compartidas
+        // entre marcas); si no hay marca en el Excel o no hubo coincidencia,
+        // cae a solo SUCURSAL. Ambas son coincidencias EXACTAS (normalizadas)
+        // — ya no hay coincidencia parcial que pueda enganchar el centro
+        // equivocado.
+        const centroId = (marcaTxt && centrosPorClave[normMarcaSucursal]) || centrosPorClave[normSucursal] || null;
+        if(!centroId && sucursalTxt) sinMapear.add(marcaTxt ? `${marcaTxt} ${sucursalTxt}` : sucursalTxt);
 
         filas.push({
             clave: String(fila[iClave]).trim(),
