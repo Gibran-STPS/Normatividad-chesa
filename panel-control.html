@@ -3553,42 +3553,97 @@ function logoParaCentro(centro){
 }
 
 // ---- Escritura de párrafos con segmentos en negrita dentro de jsPDF ----
-// segmentos: [{ text: '...', bold: true|false }, ...]. Hace su propio ajuste de línea
-// respetando el ancho máximo, y regresa la coordenada Y final tras escribir el párrafo.
-function escribirParrafoConNegritas(doc, segmentos, x, yInicial, maxWidth, tamanoFuente, interlineado){
-    tamanoFuente = tamanoFuente || 10;
-    interlineado = interlineado || 5;
-    doc.setFontSize(tamanoFuente);
+// segmentos: [{ text: '...', bold: true|false }, ...]. Ajusta línea, justifica
+// el texto (excepto la última línea de cada párrafo) y regresa la Y final.
+function escribirParrafoConNegritas(doc, segmentos, x, yInicial, maxWidth, opciones){
+    const {
+        tamanoFuente = 12,
+        interlineadoMultiplicador = 1.5,
+        fuente = 'helvetica',
+        justificar = true,
+    } = opciones || {};
 
-    const palabras = [];
+    doc.setFontSize(tamanoFuente);
+    const interlineado = tamanoFuente * 0.352778 * interlineadoMultiplicador; // pt -> mm
+
+    // Aplana los segmentos preservando adyacencia real (sin insertar espacios
+    // que no estaban en el texto original, p.ej. entre una palabra en negritas
+    // y la coma que le sigue sin espacio).
+    const tokens = [];
     segmentos.forEach(seg => {
         seg.text.split(/(\s+)/).forEach(tok => {
             if(tok === '') return;
-            palabras.push({ text: tok, bold: !!seg.bold });
+            tokens.push({ text: tok, bold: !!seg.bold, isSpace: /^\s+$/.test(tok) });
         });
     });
 
-    let y = yInicial;
-    let cursorX = x;
-    const espacioAncho = (() => { doc.setFont('helvetica', 'normal'); return doc.getTextWidth(' '); })();
-
-    palabras.forEach(p => {
-        if(/^\s+$/.test(p.text)){
-            cursorX += espacioAncho;
-            return;
-        }
-        doc.setFont('helvetica', p.bold ? 'bold' : 'normal');
-        const ancho = doc.getTextWidth(p.text);
-        if(cursorX + ancho > x + maxWidth){
-            y += interlineado;
-            cursorX = x;
-        }
-        doc.text(p.text, cursorX, y);
-        cursorX += ancho;
+    // Agrupa en "palabras": cada palabra es una racha de sub-partes pegadas
+    // (sin espacio entre ellas), posiblemente con distintos estilos.
+    const palabras = [];
+    let actual = null;
+    tokens.forEach(t => {
+        if(t.isSpace){ actual = null; return; }
+        if(!actual){ actual = []; palabras.push(actual); }
+        actual.push(t);
     });
 
-    doc.setFont('helvetica', 'normal');
-    return y + interlineado;
+    doc.setFont(fuente, 'normal');
+    const espacioAncho = doc.getTextWidth(' ');
+    const medir = (texto, bold) => { doc.setFont(fuente, bold ? 'bold' : 'normal'); return doc.getTextWidth(texto); };
+    palabras.forEach(partes => {
+        partes.forEach(p => { p.ancho = medir(p.text, p.bold); });
+        partes.ancho = partes.reduce((acc, p) => acc + p.ancho, 0);
+    });
+
+    // Arma las líneas respetando maxWidth
+    const lineas = [];
+    let lineaActual = [];
+    let anchoLinea = 0;
+    palabras.forEach(palabra => {
+        const anchoConEspacio = lineaActual.length ? espacioAncho + palabra.ancho : palabra.ancho;
+        if(anchoLinea + anchoConEspacio > maxWidth && lineaActual.length){
+            lineas.push(lineaActual);
+            lineaActual = [palabra];
+            anchoLinea = palabra.ancho;
+        } else {
+            lineaActual.push(palabra);
+            anchoLinea += anchoConEspacio;
+        }
+    });
+    if(lineaActual.length) lineas.push(lineaActual);
+
+    let y = yInicial;
+    lineas.forEach((linea, idx) => {
+        const esUltima = idx === lineas.length - 1;
+        const sumaAnchoPalabras = linea.reduce((acc, palabra) => acc + palabra.ancho, 0);
+        const huecos = linea.length - 1;
+
+        let espacioEntrePalabras = espacioAncho;
+        if(justificar && !esUltima && huecos > 0){
+            espacioEntrePalabras = (maxWidth - sumaAnchoPalabras) / huecos;
+        }
+
+        let cursorX = x;
+        linea.forEach(palabra => {
+            palabra.forEach(p => {
+                doc.setFont(fuente, p.bold ? 'bold' : 'normal');
+                doc.text(p.text, cursorX, y);
+                cursorX += p.ancho;
+            });
+            cursorX += espacioEntrePalabras;
+        });
+        y += interlineado;
+    });
+
+    doc.setFont(fuente, 'normal');
+    return y;
+}
+
+// Quita el sufijo "S.A. de C.V." (y variantes) de una razón social para el encabezado
+function limpiarRazonSocial(razonSocial){
+    return razonSocial
+        .replace(/,?\s*S\.?\s*A\.?\s*(DE\s*C\.?\s*V\.?)?\.?$/i, '')
+        .trim();
 }
 
 async function construirConstanciaPDF(c, centro){
@@ -3596,6 +3651,7 @@ async function construirConstanciaPDF(c, centro){
     const doc = new jsPDF({ unit: 'mm', format: 'letter' });
     const fmt = d => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
     const centerX = 107.95;
+    const TAMANO_FUENTE = 12;
 
     // ---- Encabezado: logo de marca + razón social + RFC ----
     const logoUrl = logoParaCentro(centro);
@@ -3612,7 +3668,7 @@ async function construirConstanciaPDF(c, centro){
 
     const razonSocial = (centro && centro.razonSocial) ? centro.razonSocial : (centro && centro.nombre ? centro.nombre : 'CENTRO DE TRABAJO');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-    doc.text(razonSocial.toUpperCase(), centerX, y, { align: 'center' });
+    doc.text(limpiarRazonSocial(razonSocial).toUpperCase(), centerX, y, { align: 'center' });
     y += 6;
 
     if(centro && centro.rfc){
@@ -3625,52 +3681,51 @@ async function construirConstanciaPDF(c, centro){
     doc.text('Constancia de Vacaciones', centerX, y, { align: 'center' });
     y += 14;
 
-    // ---- Párrafo con los datos del colaborador en negritas ----
-    const puestoTxt = c.puesto ? ` con puesto de ${c.puesto}` : '';
+    // ---- Párrafo con los datos del colaborador, incluyendo ya el periodo autorizado ----
     const segmentos = [
         { text: 'Por medio de la presente se hace constar que el(la) colaborador(a) ', bold: false },
-        { text: `${c.nombre}${puestoTxt}`, bold: true },
+        { text: c.nombre, bold: true },
         { text: ', con número de empleado ', bold: false },
         { text: `${c.clave}`, bold: true },
-        { text: centro ? `, adscrito(a) al centro de trabajo "${centro.nombre}"` : '', bold: false },
         { text: ', con fecha de ingreso el ', bold: false },
         { text: `${fmt(c.ingreso)}`, bold: true },
         { text: ' y una antigüedad de ', bold: false },
         { text: `${c.anios} año${c.anios === 1 ? '' : 's'}`, bold: true },
         { text: ' de servicio, cuenta con ', bold: false },
         { text: `${c.dias} días`, bold: true },
-        { text: ' de vacaciones conforme a la tabla vigente de la Ley Federal del Trabajo.', bold: false }
-    ];
-    y = escribirParrafoConNegritas(doc, segmentos, 20, y, 170, 10, 5.5);
-
-    y += 8;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-    doc.text('Periodo de vacaciones autorizado:', 20, y);
-    y += 7;
-    y = escribirParrafoConNegritas(doc, [
-        { text: 'Del ', bold: false },
+        { text: ' de vacaciones conforme a la tabla vigente de la Ley Federal del Trabajo, mismas que disfrutará del ', bold: false },
         { text: `${fmt(c.inicio)}`, bold: true },
         { text: ' al ', bold: false },
         { text: `${fmt(c.fin)}`, bold: true },
-        { text: ` (${c.dias} días, sin contar domingos ni días feriados de ley).`, bold: false }
-    ], 20, y, 170, 10, 5.5);
+        { text: '.', bold: false }
+    ];
+    y = escribirParrafoConNegritas(doc, segmentos, 20, y, 170, { tamanoFuente: TAMANO_FUENTE, interlineadoMultiplicador: 1.5 });
+
+    // ---- Declaración de la prima vacacional ----
+    y += 8;
+    y = escribirParrafoConNegritas(doc, [
+        { text: 'Hago constar que disfrutaré de mis vacaciones conforme a lo antes detallado, más una prima del ', bold: false },
+        { text: '25%', bold: true },
+        { text: ' sobre mi salario correspondiente al periodo de vacaciones.', bold: false }
+    ], 20, y, 170, { tamanoFuente: TAMANO_FUENTE, interlineadoMultiplicador: 1.5 });
 
     // ---- Ciudad y fecha de elaboración (con la fecha del primer día del goce de vacaciones) ----
-    y += 12;
+    y += 8;
     const ciudadTxt = (centro && centro.ciudad) ? centro.ciudad : '';
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(TAMANO_FUENTE);
     doc.text(`${ciudadTxt}${ciudadTxt ? ', a ' : 'A '}${fmt(c.inicio)}.`, 20, y);
 
-    // ---- Firmas ----
+    // ---- Firmas (dos columnas) ----
     y += 30;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(TAMANO_FUENTE);
     doc.text('_____________________________', 20, y);
     doc.text('_____________________________', 120, y);
-    y += 5;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(TAMANO_FUENTE);
     doc.text(c.nombre, 20, y);
     doc.text(FIRMA_TALENTO_HUMANO.nombre, 120, y);
-    y += 4.5;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+    y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(TAMANO_FUENTE);
     doc.text('Firma del colaborador', 20, y);
     doc.text(FIRMA_TALENTO_HUMANO.puesto, 120, y);
 
