@@ -3851,6 +3851,22 @@ async function obtenerBytesLogoMarca(marca){
     return buffer;
 }
 
+// Resuelve una ruta relativa (p.ej. "../media/image1.png" visto desde
+// "xl/drawings") al nombre de entrada real dentro del zip ("xl/media/image1.png").
+// Sin esto, la concatenacion ingenua deja un "../" literal en el nombre de la
+// entrada del zip: crea una parte nueva y mal formada en vez de sobrescribir
+// la imagen real, y Excel lo detecta como archivo corrupto (Word no sufre esto
+// porque ahi el header y las imagenes viven en la misma carpeta "word/").
+function resolverRutaRelativa(dirBase, rutaRelativa){
+    const partes = dirBase.split('/').filter(Boolean);
+    for(const seg of rutaRelativa.split('/')){
+        if(seg === '..') partes.pop();
+        else if(seg === '.' || seg === '') continue;
+        else partes.push(seg);
+    }
+    return partes.join('/');
+}
+
 // Busca, en cualquier encabezado/pie/cuerpo del documento, la imagen marcada
 // con descr="LOGO_MARCA" y sustituye el archivo de imagen real por el logo
 // de la marca del centro (Nissan/Renault/Changan/Ecos Digitales).
@@ -3887,7 +3903,7 @@ async function reemplazarLogoMarcaEnPartes(zip, marca, patronArchivos, prefijoRe
         rIdsEncontrados.forEach(rId => {
             const relMatch = relsXml.match(new RegExp('Id="' + rId + '"[^>]*Target="([^"]+)"'));
             if(!relMatch) return;
-            const mediaPath = dir + '/' + relMatch[1];
+            const mediaPath = resolverRutaRelativa(dir, relMatch[1]);
             zip.file(mediaPath, bytesLogo);
         });
     }
