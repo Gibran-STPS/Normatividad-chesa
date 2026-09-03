@@ -3786,7 +3786,7 @@ async function generarTodasConstancias(){
         zip.file(`Constancia_Vacaciones_${c.clave}_${nombreSeguro}.pdf`, doc.output('blob'));
         await registrarConstanciaGenerada(c, COLABORADORES_CENTRO_CACHE.centroId);
     }
-    const blob = await zip.generateAsync({ type: 'blob' });
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
     descargarBlob(blob, `Constancias_Vacaciones_${centro ? centro.id : 'centro'}_${COLABORADORES_CENTRO_CACHE.mes}_${COLABORADORES_CENTRO_CACHE.anio}.zip`);
     mostrarToast('Listo: ' + lista.length + ' constancia(s) generada(s).');
 }
@@ -4008,7 +4008,7 @@ async function personalizarArchivo(blob, nombreArchivo, centro, extra){
             doc.render(datos);
             const zipFinal = doc.getZip();
             await reemplazarLogoMarca(zipFinal, centro && centro.marca);
-            return zipFinal.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            return zipFinal.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression: 'DEFLATE', compressionOptions: { level: 9 } });
         } catch(err){
             mostrarToast('No se pudo personalizar "' + nombreArchivo + '" (se anexa sin rellenar): ' + (err.message || err));
             return blob;
@@ -4042,7 +4042,7 @@ async function personalizarArchivo(blob, nombreArchivo, centro, extra){
             });
 
             await reemplazarLogoMarca(zip, centro && centro.marca);
-            return zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            return zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', compression: 'DEFLATE', compressionOptions: { level: 9 } });
         } catch(err){
             mostrarToast('No se pudo personalizar "' + nombreArchivo + '" (se anexa sin rellenar): ' + (err.message || err), 'error');
             return blob;
@@ -4072,7 +4072,7 @@ async function descargarPlantillasPersonalizadas(){
         const carpeta = p.norma_code || 'sin_norma';
         zip.file(`${carpeta}/${p.nombre_archivo}`, personalizado);
     }
-    const blob = await zip.generateAsync({ type: 'blob' });
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
     descargarBlob(blob, `Plantillas_${centro.id}.zip`);
     mostrarToast('Listo: plantillas personalizadas para ' + centro.nombre + '.');
 }
@@ -4412,7 +4412,7 @@ async function descargarAdjuntosCorreo(){
     }
 
     const nombreZip = `Adjuntos_${CORREO_CONTEXTO.centro.id}_${CORREO_CONTEXTO.mes}_${CORREO_CONTEXTO.anio}.zip`;
-    const blob = await zip.generateAsync({ type: 'blob' });
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
     descargarBlob(blob, nombreZip);
     ZIP_ADJUNTOS_DESCARGADO = true;
     mostrarToast(`ZIP descargado como "${nombreZip}" (revisa tu carpeta de Descargas). Ahora dale a "2. Abrir en Outlook" y arrastra ese archivo dentro del correo antes de enviarlo — Outlook no lo adjunta solo.`);
@@ -5050,7 +5050,7 @@ ${anchors.join('\n')}
             zip.file(contentTypesPath, contentTypesXml);
         }
 
-        return zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        return zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', compression: 'DEFLATE', compressionOptions: { level: 9 } });
     } catch(err){
         console.error('No se pudo aplicar el formato/gráficas de riesgo al Excel:', err);
         return buffer;
