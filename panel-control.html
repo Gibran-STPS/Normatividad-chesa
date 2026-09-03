@@ -750,13 +750,16 @@
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Liga de acceso al curso (Sabionet)</label>
 <input class="w-full border border-outline-variant rounded p-sm text-sm" id="correo-cap-link" placeholder="https://..." type="text"/>
 </div>
-<div class="mb-sm">
+<div class="mb-sm relative">
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puestos a convocar</label>
-<div class="flex flex-wrap gap-sm p-sm border border-outline-variant rounded bg-surface" id="correo-cap-puestos-lista">
-<span class="text-xs text-on-surface-variant">Elige un centro y genera el borrador para ver los puestos disponibles.</span>
-</div>
+<button class="w-full flex items-center justify-between border border-outline-variant rounded p-sm text-sm bg-surface hover:bg-surface-container-high transition-colors" id="correo-cap-puestos-btn" onclick="toggleDropdownPuestos()" type="button">
+<span id="correo-cap-puestos-btn-txt">Elige un centro y genera el borrador para ver los puestos disponibles.</span>
+<span class="material-symbols-outlined text-base" data-icon="expand_more">expand_more</span>
+</button>
+<div class="hidden absolute z-10 mt-1 w-full max-h-64 overflow-y-auto custom-scrollbar border border-outline-variant rounded bg-surface shadow-lg p-sm" id="correo-cap-puestos-lista"></div>
 <p class="text-xs text-on-surface-variant mt-1">Marca uno o más puestos: se agregan automáticamente los colaboradores activos de esta agencia que tengan ese puesto (nombre y puesto) a la lista de abajo. Puedes seguir editando la lista a mano después.</p>
 </div>
+
 <div class="mb-sm">
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Colaboradores citados (uno por línea)</label>
 <textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar" id="correo-cap-colaboradores" rows="4"></textarea>
@@ -4308,11 +4311,13 @@ let CORREO_CAP_COLABORADORES_CENTRO = [];
 
 async function cargarPuestosCapacitacion(centroId){
     const cont = document.getElementById('correo-cap-puestos-lista');
+    const btnTxt = document.getElementById('correo-cap-puestos-btn-txt');
     const { data, error } = await supabaseClient.from('colaboradores')
         .select('clave, nombre, puesto')
         .eq('centro_id', centroId).eq('activo', true);
     if(error){
         cont.innerHTML = `<span class="text-xs text-error">Error cargando puestos: ${error.message}</span>`;
+        btnTxt.textContent = 'Error cargando puestos';
         CORREO_CAP_COLABORADORES_CENTRO = [];
         return;
     }
@@ -4323,18 +4328,42 @@ async function cargarPuestosCapacitacion(centroId){
 
     if(!puestos.length){
         cont.innerHTML = '<span class="text-xs text-on-surface-variant">Ningún colaborador activo de este centro tiene puesto capturado (revisa la columna "PUESTO" al importar el Cuadro de Antigüedades).</span>';
+        btnTxt.textContent = 'Sin puestos capturados en este centro';
         return;
     }
     cont.innerHTML = puestos.map((p, i) => `
-<label class="flex items-center gap-1 text-sm border border-outline-variant rounded px-sm py-1 cursor-pointer hover:bg-surface-container-high transition-colors">
+<label class="flex items-center gap-2 text-sm rounded px-sm py-1 cursor-pointer hover:bg-surface-container-high transition-colors">
 <input type="checkbox" class="correo-cap-puesto-check" value="${p.replace(/"/g, '&quot;')}" id="correo-cap-puesto-${i}" onchange="actualizarColaboradoresPorPuesto()"/>
 ${p}
 </label>`).join('');
+    btnTxt.textContent = `Selecciona puestos (${puestos.length} disponibles)`;
 }
+
+function toggleDropdownPuestos(forzarCerrado){
+    const panel = document.getElementById('correo-cap-puestos-lista');
+    if(forzarCerrado){ panel.classList.add('hidden'); return; }
+    panel.classList.toggle('hidden');
+}
+
+document.addEventListener('click', (ev) => {
+    const panel = document.getElementById('correo-cap-puestos-lista');
+    const btn = document.getElementById('correo-cap-puestos-btn');
+    if(!panel || panel.classList.contains('hidden')) return;
+    if(!panel.contains(ev.target) && !btn.contains(ev.target)) panel.classList.add('hidden');
+});
 
 function actualizarColaboradoresPorPuesto(){
     const seleccionados = Array.from(document.querySelectorAll('.correo-cap-puesto-check:checked')).map(el => el.value);
     const textarea = document.getElementById('correo-cap-colaboradores');
+    const btnTxt = document.getElementById('correo-cap-puestos-btn-txt');
+    const totalPuestos = document.querySelectorAll('.correo-cap-puesto-check').length;
+
+    if(btnTxt && totalPuestos){
+        btnTxt.textContent = seleccionados.length
+            ? `${seleccionados.length} puesto${seleccionados.length === 1 ? '' : 's'} seleccionado${seleccionados.length === 1 ? '' : 's'}`
+            : `Selecciona puestos (${totalPuestos} disponibles)`;
+    }
+
     if(!seleccionados.length){
         textarea.value = '';
         return;
