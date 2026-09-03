@@ -751,6 +751,13 @@
 <input class="w-full border border-outline-variant rounded p-sm text-sm" id="correo-cap-link" placeholder="https://..." type="text"/>
 </div>
 <div class="mb-sm">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puestos a convocar</label>
+<div class="flex flex-wrap gap-sm p-sm border border-outline-variant rounded bg-surface" id="correo-cap-puestos-lista">
+<span class="text-xs text-on-surface-variant">Elige un centro y genera el borrador para ver los puestos disponibles.</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Marca uno o más puestos: se agregan automáticamente los colaboradores activos de esta agencia que tengan ese puesto (nombre y puesto) a la lista de abajo. Puedes seguir editando la lista a mano después.</p>
+</div>
+<div class="mb-sm">
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Colaboradores citados (uno por línea)</label>
 <textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar" id="correo-cap-colaboradores" rows="4"></textarea>
 </div>
@@ -4267,6 +4274,7 @@ async function generarBorradorCorreo(){
         wrapCap.classList.remove('hidden');
         document.getElementById('correo-cap-detectadas').innerHTML = actsCapacitacion
             .map(a => `• [${a.norma_code || a.norma_titulo_original || 'Norma no identificada'}] ${a.actividad}`).join('<br>');
+        await cargarPuestosCapacitacion(centroId);
     } else {
         wrapCap.classList.add('hidden');
     }
@@ -4291,6 +4299,52 @@ function reconstruirCuerpoCorreo(){
     if(CORREO_CAP_BLOQUE) partes.push(CORREO_CAP_BLOQUE + '\n');
     partes.push(CORREO_FIRMA);
     document.getElementById('correo-cuerpo').value = partes.join('');
+}
+
+// Colaboradores activos del centro seleccionado (clave, nombre, puesto), para
+// poder convocarlos a capacitación por puesto sin importar si tienen o no
+// aniversario de vacaciones ese mes.
+let CORREO_CAP_COLABORADORES_CENTRO = [];
+
+async function cargarPuestosCapacitacion(centroId){
+    const cont = document.getElementById('correo-cap-puestos-lista');
+    const { data, error } = await supabaseClient.from('colaboradores')
+        .select('clave, nombre, puesto')
+        .eq('centro_id', centroId).eq('activo', true);
+    if(error){
+        cont.innerHTML = `<span class="text-xs text-error">Error cargando puestos: ${error.message}</span>`;
+        CORREO_CAP_COLABORADORES_CENTRO = [];
+        return;
+    }
+    CORREO_CAP_COLABORADORES_CENTRO = data || [];
+
+    const puestos = [...new Set(CORREO_CAP_COLABORADORES_CENTRO.map(c => (c.puesto || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es'));
+
+    if(!puestos.length){
+        cont.innerHTML = '<span class="text-xs text-on-surface-variant">Ningún colaborador activo de este centro tiene puesto capturado (revisa la columna "PUESTO" al importar el Cuadro de Antigüedades).</span>';
+        return;
+    }
+    cont.innerHTML = puestos.map((p, i) => `
+<label class="flex items-center gap-1 text-sm border border-outline-variant rounded px-sm py-1 cursor-pointer hover:bg-surface-container-high transition-colors">
+<input type="checkbox" class="correo-cap-puesto-check" value="${p.replace(/"/g, '&quot;')}" id="correo-cap-puesto-${i}" onchange="actualizarColaboradoresPorPuesto()"/>
+${p}
+</label>`).join('');
+}
+
+function actualizarColaboradoresPorPuesto(){
+    const seleccionados = Array.from(document.querySelectorAll('.correo-cap-puesto-check:checked')).map(el => el.value);
+    const textarea = document.getElementById('correo-cap-colaboradores');
+    if(!seleccionados.length){
+        textarea.value = '';
+        return;
+    }
+    const seleccionadosNorm = seleccionados.map(s => s.toLowerCase());
+    const filas = CORREO_CAP_COLABORADORES_CENTRO
+        .filter(c => c.puesto && seleccionadosNorm.includes(c.puesto.trim().toLowerCase()))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+        .map(c => `${c.nombre} — ${c.puesto}`);
+    textarea.value = filas.join('\n');
 }
 
 function insertarCapacitacionEnCorreo(){
