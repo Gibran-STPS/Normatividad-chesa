@@ -4210,34 +4210,40 @@ async function generarBorradorCorreo(){
     const fechaLimiteTxt = `${fechaLimite.getDate()} de ${MESES_MINUS[fechaLimite.getMonth()]} de ${fechaLimite.getFullYear()}`;
 
     let cuerpo = `Para dar continuidad al Programa de Seguridad e Higiene ${anio} de ${centro.nombre}, envío las actividades normativas programadas para ${nombreMesTxt} de ${anio}.\n\n`;
-    cuerpo += `Adjunto también las constancias de vacaciones, favor de recabar las firmas correspondientes y, si algún colaborador ya no se encuentra laborando con nosotros, indicar con la leyenda "BAJA".\n\n`;
+    if(colaboradoresMes.length){
+        cuerpo += `Adjunto también las constancias de vacaciones, favor de recabar las firmas correspondientes.\n\n`;
+    }
+    cuerpo += `Si en el transcurso de la elaboración de las actividades algún colaborador causa baja, indicar con la leyenda "BAJA" y enviarlo con las actividades del mes.\n\n`;
+    cuerpo += 'Actividades del mes:\n\n';
     if(actividades && actividades.length){
-        actividades.forEach((a, i) => {
-            cuerpo += `${i + 1}. [${a.norma_code || a.norma_titulo_original || 'Norma no identificada'}] ${a.actividad}\n`;
+        // Agrupa las actividades por norma, numerando cada grupo de forma
+        // consecutiva (1, 2, 3...) y listando debajo cada actividad tal cual
+        // viene capturada (ya trae su propio "N.- descripción").
+        const gruposPorNorma = [];
+        const indiceGrupo = new Map();
+        actividades.forEach(a => {
+            const clave = a.norma_code || a.norma_titulo_original || 'Norma no identificada';
+            if(!indiceGrupo.has(clave)){
+                indiceGrupo.set(clave, gruposPorNorma.length);
+                gruposPorNorma.push({ norma: clave, actividades: [] });
+            }
+            gruposPorNorma[indiceGrupo.get(clave)].actividades.push(a.actividad);
+        });
+        gruposPorNorma.forEach((grupo, i) => {
+            cuerpo += `${i + 1}. [${grupo.norma}]\n`;
+            grupo.actividades.forEach(act => { cuerpo += `${act}\n`; });
+            cuerpo += '\n';
         });
     } else {
-        cuerpo += '(No hay actividades registradas en el calendario para este mes. Verifica que ya se importó el calendario del año.)\n';
+        cuerpo += '(No hay actividades registradas en el calendario para este mes. Verifica que ya se importó el calendario del año.)\n\n';
     }
-    cuerpo += '\n';
-    cuerpo += 'CARNETS IMSS (recordar que este trámite es de carácter OBLIGATORIO)\n';
-    cuerpo += 'Se solicita la evidencia en formato PDF del alta ante el IMSS de los siguientes colaboradores:\n';
     if(nuevosIngresosMes.length){
+        cuerpo += 'CARNETS IMSS (recordar que este trámite es de carácter OBLIGATORIO)\n';
+        cuerpo += 'Se solicita la evidencia en formato PDF del alta ante el IMSS de los siguientes colaboradores:\n';
         nuevosIngresosMes.forEach((c, i) => { cuerpo += `${i + 1}. ${c.nombre}\n`; });
-    } else {
-        cuerpo += '(Sin colaboradores de nuevo ingreso registrados este mes.)\n';
+        cuerpo += '\n';
     }
-    cuerpo += '\n';
     cuerpo += `Fecha límite de entrega: ${fechaLimiteTxt}\n\n`;
-    if(plantillasAplicables.length){
-        cuerpo += 'Formatos anexos a este correo:\n';
-        plantillasAplicables.forEach(p => { cuerpo += `- ${p.nombre_archivo}\n`; });
-    } else {
-        cuerpo += 'No hay formatos registrados todavía para las normas de este mes (sección "Plantillas de Documentos").\n';
-    }
-    cuerpo += '\n';
-    if(colaboradoresMes.length){
-        cuerpo += `También se anexan ${colaboradoresMes.length} constancia(s) de vacaciones de colaboradores que cumplen aniversario este mes.\n\n`;
-    }
     CORREO_BASE = cuerpo;
     const firmaPartes = [currentUser.nombre, currentUser.puesto, currentUser.telefono ? `Cel: ${currentUser.telefono}` : null, 'Grupo Automotriz Chesa'].filter(Boolean);
     CORREO_FIRMA = firmaPartes.join(' | ');
