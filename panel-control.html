@@ -2443,6 +2443,8 @@ async function importarCalendarioExcel(event){
     const emparejadosPorNombre = [];
     const valoresNoReconocidos = new Set();
     let centrosProcesados = 0;
+    let totalEliminadasObsoletas = 0;
+    const centrosConLimpieza = [];
 
     for(const nombreHoja of wb.SheetNames){
         if(nombreHoja.toUpperCase().includes('MACHOTE')) continue; // hoja plantilla, no es un centro real
@@ -2478,6 +2480,9 @@ async function importarCalendarioExcel(event){
         let normaActualCode = null;
         let normaActualTitulo = null;
         let actividadesEnHoja = 0;
+        // Filas de ESTE centro (no de todo el archivo), para poder comparar
+        // contra lo que ya existe en Supabase y detectar qué ya no aplica.
+        const filasDeEsteCentro = [];
 
         for(let r = rango.s.r; r <= rango.e.r; r++){
             const colB = celda(r, 1); // columna B
@@ -2494,7 +2499,7 @@ async function importarCalendarioExcel(event){
                     const clasificacion = clasificarValorCelda(celda(r, 3 + mIdx)); // columnas D..O
                     if(!clasificacion) continue;
                     actividadesEnHoja++;
-                    filas.push({
+                    const fila = {
                         centro_id: centroId,
                         norma_code: normaActualCode,
                         norma_titulo_original: normaActualTitulo,
@@ -2503,9 +2508,50 @@ async function importarCalendarioExcel(event){
                         anio: anioInput,
                         estado: clasificacion.estado,
                         notas: clasificacion.notas
-                    });
+                    };
+                    filas.push(fila);
+                    filasDeEsteCentro.push(fila);
                     if(clasificacion.noReconocido){
                         valoresNoReconocidos.add(clasificacion.notas);
+                    }
+                }
+            }
+        }
+
+        // Limpieza de obsoletos: si una celda estaba marcada "P"/"R" en una
+        // importación anterior y en ESTE archivo ya quedó en blanco (o su
+        // actividad se recorrió a otro mes), la fila vieja se queda para
+        // siempre en Supabase porque el upsert de abajo solo toca claves que
+        // sí traen valor — nunca borra las que dejaron de tenerlo. Eso es
+        // justo lo que provocaba que agencias sin taller de Hojalatería y
+        // Pintura siguieran recibiendo actividades de gas LP, y que una
+        // actividad reubicada de un mes a otro apareciera duplicada en los
+        // dos meses. Por eso, antes del upsert, comparamos contra lo que
+        // hay hoy en Supabase para este centro+año y borramos lo que ya no
+        // está en el archivo actual (solo si SÍ se leyó al menos una
+        // actividad de la hoja — si la hoja vino vacía por un problema de
+        // formato, no queremos borrar nada por accidente).
+        if(actividadesEnHoja > 0){
+            const clavesNuevas = new Set(filasDeEsteCentro.map(f =>
+                `${f.centro_id}|${f.norma_code || ''}|${f.actividad}|${f.mes}|${f.anio}`));
+            const { data: existentes, error: errExistentes } = await supabaseClient
+                .from('calendario_normativo')
+                .select('id, clave_unica')
+                .eq('centro_id', centroId).eq('anio', anioInput);
+            if(errExistentes){
+                mostrarToast(`No se pudo revisar actividades obsoletas de "${nombreHoja}": ${errExistentes.message}`, 'error');
+            } else {
+                const idsObsoletos = (existentes || [])
+                    .filter(e => !clavesNuevas.has(e.clave_unica))
+                    .map(e => e.id);
+                if(idsObsoletos.length){
+                    const { error: errDelete } = await supabaseClient
+                        .from('calendario_normativo').delete().in('id', idsObsoletos);
+                    if(errDelete){
+                        mostrarToast(`No se pudieron limpiar actividades obsoletas de "${nombreHoja}": ${errDelete.message}`, 'error');
+                    } else {
+                        totalEliminadasObsoletas += idsObsoletos.length;
+                        centrosConLimpieza.push(`${nombreHoja.trim()} (${idsObsoletos.length})`);
                     }
                 }
             }
@@ -2540,6 +2586,9 @@ async function importarCalendarioExcel(event){
     let resumen = `Calendario ${anioInput} importado: ${insertados} actividades de ${centrosProcesados} hoja(s). `;
     resumen += `Emparejadas por código: ${emparejadosPorCodigo.length}. Por nombre: ${emparejadosPorNombre.length}.`;
     mostrarToast(resumen);
+    if(totalEliminadasObsoletas){
+        mostrarToast(`Limpieza: se eliminaron ${totalEliminadasObsoletas} actividad(es) que ya no están marcadas (o cambiaron de mes) en este Excel — ` + centrosConLimpieza.join(', '));
+    }
     if(emparejadosPorNombre.length){
         mostrarToast('Emparejadas por nombre (revisa que sean el centro correcto): ' + emparejadosPorNombre.join(', '));
     }
