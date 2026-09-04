@@ -749,25 +749,8 @@
 </div>
 <div class="hidden mb-md p-md rounded border border-outline-variant bg-surface-container-low" id="correo-cap-wrap">
 <p class="font-semibold text-sm mb-1">Capacitación detectada este mes</p>
-<p class="text-xs text-on-surface-variant mb-sm" id="correo-cap-detectadas"></p>
-<div class="mb-sm">
-<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Liga de acceso al curso (Sabionet)</label>
-<input class="w-full border border-outline-variant rounded p-sm text-sm" id="correo-cap-link" placeholder="https://..." type="text"/>
-</div>
-<div class="mb-sm relative">
-<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puestos a convocar</label>
-<button class="w-full flex items-center justify-between border border-outline-variant rounded p-sm text-sm bg-surface hover:bg-surface-container-high transition-colors" id="correo-cap-puestos-btn" onclick="toggleDropdownPuestos()" type="button">
-<span id="correo-cap-puestos-btn-txt">Elige un centro y genera el borrador para ver los puestos disponibles.</span>
-<span class="material-symbols-outlined text-base" data-icon="expand_more">expand_more</span>
-</button>
-<div class="hidden absolute z-10 mt-1 w-full max-h-64 overflow-y-auto custom-scrollbar border border-outline-variant rounded bg-surface shadow-lg p-sm" id="correo-cap-puestos-lista"></div>
-<p class="text-xs text-on-surface-variant mt-1">Marca uno o más puestos: se agregan automáticamente los colaboradores activos de esta agencia que tengan ese puesto (nombre y puesto) a la lista de abajo. Puedes seguir editando la lista a mano después.</p>
-</div>
-
-<div class="mb-sm">
-<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Colaboradores citados (uno por línea)</label>
-<textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar" id="correo-cap-colaboradores" rows="4"></textarea>
-</div>
+<p class="text-xs text-on-surface-variant mb-sm">Cada curso trae su propia liga de Sabionet y su propia lista de convocados, porque no siempre aplican al mismo personal.</p>
+<div id="correo-cap-lista"></div>
 <button class="border border-outline-variant px-md py-sm rounded font-bold text-sm hover:bg-surface-container-high transition-colors" onclick="insertarCapacitacionEnCorreo()" type="button">Agregar al cuerpo del correo</button>
 <p class="text-xs text-on-surface-variant mt-sm">Nota: este botón vuelve a armar el cuerpo completo del correo, así que agrégalo antes de hacer otros cambios manuales al texto de abajo.</p>
 </div>
@@ -4358,20 +4341,20 @@ async function generarBorradorCorreo(){
     CORREO_FIRMA = firmaPartes.join(' | ');
 
     // Apartado de Capacitación (Sabionet): se muestra solo si el calendario de
-    // este mes trae alguna actividad de capacitación, para capturar la liga
-    // del curso y los colaboradores citados antes de enviar el correo.
+    // este mes trae alguna actividad de capacitación. Cada actividad detectada
+    // arma su propia tarjeta (liga + puestos + colaboradores citados), porque
+    // un mismo mes puede traer más de un curso y no siempre son para el mismo
+    // personal (ej. NOM-009 vs NOM-020 convocan puestos distintos).
     const actsCapacitacion = (actividades || []).filter(a => /capacitac/i.test(a.actividad || ''));
     const wrapCap = document.getElementById('correo-cap-wrap');
+    CORREO_CAP_ACTIVIDADES = actsCapacitacion;
     if(actsCapacitacion.length){
         wrapCap.classList.remove('hidden');
-        document.getElementById('correo-cap-detectadas').innerHTML = actsCapacitacion
-            .map(a => `• [${a.norma_code || a.norma_titulo_original || 'Norma no identificada'}] ${a.actividad}`).join('<br>');
-        await cargarPuestosCapacitacion(centroId);
+        await renderTarjetasCapacitacion(centroId);
     } else {
         wrapCap.classList.add('hidden');
+        document.getElementById('correo-cap-lista').innerHTML = '';
     }
-    document.getElementById('correo-cap-link').value = '';
-    document.getElementById('correo-cap-colaboradores').value = '';
     CORREO_CAP_BLOQUE = '';
 
     reconstruirCuerpoCorreo();
@@ -4395,57 +4378,95 @@ function reconstruirCuerpoCorreo(){
 
 // Colaboradores activos del centro seleccionado (clave, nombre, puesto), para
 // poder convocarlos a capacitación por puesto sin importar si tienen o no
-// aniversario de vacaciones ese mes.
+// aniversario de vacaciones ese mes. Se comparte entre todas las tarjetas de
+// capacitación del mes.
 let CORREO_CAP_COLABORADORES_CENTRO = [];
+// Las actividades de capacitación detectadas este mes (una tarjeta por cada una).
+let CORREO_CAP_ACTIVIDADES = [];
 
-async function cargarPuestosCapacitacion(centroId){
-    const cont = document.getElementById('correo-cap-puestos-lista');
-    const btnTxt = document.getElementById('correo-cap-puestos-btn-txt');
+function escaparHtml(txt){
+    return (txt || '').toString()
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function renderTarjetasCapacitacion(centroId){
+    const cont = document.getElementById('correo-cap-lista');
     const { data, error } = await supabaseClient.from('colaboradores')
         .select('clave, nombre, puesto')
         .eq('centro_id', centroId).eq('activo', true);
     if(error){
         cont.innerHTML = `<span class="text-xs text-error">Error cargando puestos: ${error.message}</span>`;
-        btnTxt.textContent = 'Error cargando puestos';
         CORREO_CAP_COLABORADORES_CENTRO = [];
         return;
     }
     CORREO_CAP_COLABORADORES_CENTRO = data || [];
-
     const puestos = [...new Set(CORREO_CAP_COLABORADORES_CENTRO.map(c => (c.puesto || '').trim()).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, 'es'));
 
-    if(!puestos.length){
-        cont.innerHTML = '<span class="text-xs text-on-surface-variant">Ningún colaborador activo de este centro tiene puesto capturado (revisa la columna "PUESTO" al importar el Cuadro de Antigüedades).</span>';
-        btnTxt.textContent = 'Sin puestos capturados en este centro';
-        return;
-    }
-    cont.innerHTML = puestos.map((p, i) => `
+    cont.innerHTML = CORREO_CAP_ACTIVIDADES.map((a, i) => `
+<div class="mb-md p-md rounded border border-outline-variant bg-surface" data-cap-idx="${i}">
+<p class="text-xs font-semibold mb-sm">[${escaparHtml(a.norma_code || a.norma_titulo_original || 'Norma no identificada')}] ${escaparHtml(a.actividad)}</p>
+<div class="mb-sm">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Liga de acceso al curso (Sabionet)</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm cap-link" placeholder="https://..." type="text"/>
+</div>
+<div class="mb-sm relative">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puestos a convocar</label>
+<button class="w-full flex items-center justify-between border border-outline-variant rounded p-sm text-sm bg-surface hover:bg-surface-container-high transition-colors cap-puestos-btn" type="button">
+<span class="cap-puestos-btn-txt">${puestos.length ? `Selecciona puestos (${puestos.length} disponibles)` : 'Ningún colaborador activo de este centro tiene puesto capturado.'}</span>
+<span class="material-symbols-outlined text-base" data-icon="expand_more">expand_more</span>
+</button>
+<div class="hidden absolute z-10 mt-1 w-full max-h-64 overflow-y-auto custom-scrollbar border border-outline-variant rounded bg-surface shadow-lg p-sm cap-puestos-lista">
+${puestos.map((p, pi) => `
 <label class="flex items-center gap-2 text-sm rounded px-sm py-1 cursor-pointer hover:bg-surface-container-high transition-colors">
-<input type="checkbox" class="correo-cap-puesto-check" value="${p.replace(/"/g, '&quot;')}" id="correo-cap-puesto-${i}" onchange="actualizarColaboradoresPorPuesto()"/>
-${p}
-</label>`).join('');
-    btnTxt.textContent = `Selecciona puestos (${puestos.length} disponibles)`;
+<input type="checkbox" class="cap-puesto-check" value="${p.replace(/"/g, '&quot;')}" id="cap-${i}-puesto-${pi}"/>
+${escaparHtml(p)}
+</label>`).join('')}
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Marca uno o más puestos: se agregan automáticamente los colaboradores activos de esta agencia que tengan ese puesto (nombre y puesto) a la lista de abajo. Puedes seguir editando la lista a mano después.</p>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Colaboradores citados (uno por línea)</label>
+<textarea class="w-full border border-outline-variant rounded p-sm text-sm custom-scrollbar cap-colaboradores" rows="4"></textarea>
+</div>
+</div>`).join('');
 }
 
-function toggleDropdownPuestos(forzarCerrado){
-    const panel = document.getElementById('correo-cap-puestos-lista');
-    if(forzarCerrado){ panel.classList.add('hidden'); return; }
+function toggleDropdownPuestos(btn){
+    const tarjeta = btn.closest('[data-cap-idx]');
+    const panel = tarjeta.querySelector('.cap-puestos-lista');
+    // Cierra cualquier otro dropdown de puestos que haya quedado abierto en
+    // otra tarjeta antes de abrir (o cerrar) el de esta.
+    document.querySelectorAll('.cap-puestos-lista').forEach(p => { if(p !== panel) p.classList.add('hidden'); });
     panel.classList.toggle('hidden');
 }
 
 document.addEventListener('click', (ev) => {
-    const panel = document.getElementById('correo-cap-puestos-lista');
-    const btn = document.getElementById('correo-cap-puestos-btn');
-    if(!panel || panel.classList.contains('hidden')) return;
-    if(!panel.contains(ev.target) && !btn.contains(ev.target)) panel.classList.add('hidden');
+    document.querySelectorAll('[data-cap-idx]').forEach(tarjeta => {
+        const panel = tarjeta.querySelector('.cap-puestos-lista');
+        const btn = tarjeta.querySelector('.cap-puestos-btn');
+        if(!panel || panel.classList.contains('hidden')) return;
+        if(!panel.contains(ev.target) && !btn.contains(ev.target)) panel.classList.add('hidden');
+    });
 });
 
-function actualizarColaboradoresPorPuesto(){
-    const seleccionados = Array.from(document.querySelectorAll('.correo-cap-puesto-check:checked')).map(el => el.value);
-    const textarea = document.getElementById('correo-cap-colaboradores');
-    const btnTxt = document.getElementById('correo-cap-puestos-btn-txt');
-    const totalPuestos = document.querySelectorAll('.correo-cap-puesto-check').length;
+document.addEventListener('click', (ev) => {
+    if(ev.target.closest && ev.target.closest('.cap-puestos-btn')){
+        toggleDropdownPuestos(ev.target.closest('.cap-puestos-btn'));
+    }
+});
+
+document.addEventListener('change', (ev) => {
+    if(!ev.target.classList || !ev.target.classList.contains('cap-puesto-check')) return;
+    const tarjeta = ev.target.closest('[data-cap-idx]');
+    actualizarColaboradoresPorPuesto(tarjeta);
+});
+
+function actualizarColaboradoresPorPuesto(tarjeta){
+    const seleccionados = Array.from(tarjeta.querySelectorAll('.cap-puesto-check:checked')).map(el => el.value);
+    const textarea = tarjeta.querySelector('.cap-colaboradores');
+    const btnTxt = tarjeta.querySelector('.cap-puestos-btn-txt');
+    const totalPuestos = tarjeta.querySelectorAll('.cap-puesto-check').length;
 
     if(btnTxt && totalPuestos){
         btnTxt.textContent = seleccionados.length
@@ -4466,18 +4487,31 @@ function actualizarColaboradoresPorPuesto(){
 }
 
 function insertarCapacitacionEnCorreo(){
-    const link = document.getElementById('correo-cap-link').value.trim();
-    const colaboradoresTxt = document.getElementById('correo-cap-colaboradores').value.trim();
-    if(!link && !colaboradoresTxt){ mostrarToast('Captura la liga del curso o la lista de colaboradores citados.', 'error'); return; }
+    const tarjetas = Array.from(document.querySelectorAll('#correo-cap-lista [data-cap-idx]'));
+    const bloques = [];
+    let algunaConDatos = false;
 
-    const colaboradores = colaboradoresTxt.split('\n').map(s => s.trim()).filter(Boolean);
-    let bloque = 'CAPACITACIÓN\n';
-    if(link) bloque += `Liga de acceso al curso (Sabionet): ${link}\n`;
-    if(colaboradores.length){
-        bloque += 'Colaboradores citados:\n';
-        colaboradores.forEach((c, i) => { bloque += `${i + 1}. ${c}\n`; });
-    }
-    CORREO_CAP_BLOQUE = bloque;
+    tarjetas.forEach(tarjeta => {
+        const idx = parseInt(tarjeta.dataset.capIdx, 10);
+        const actividad = CORREO_CAP_ACTIVIDADES[idx];
+        const link = tarjeta.querySelector('.cap-link').value.trim();
+        const colaboradoresTxt = tarjeta.querySelector('.cap-colaboradores').value.trim();
+        if(!link && !colaboradoresTxt) return; // esta tarjeta se dejó vacía, no se incluye
+        algunaConDatos = true;
+
+        const colaboradores = colaboradoresTxt.split('\n').map(s => s.trim()).filter(Boolean);
+        let bloque = `CAPACITACIÓN — [${actividad.norma_code || actividad.norma_titulo_original || 'Norma no identificada'}] ${actividad.actividad}\n`;
+        if(link) bloque += `Liga de acceso al curso (Sabionet): ${link}\n`;
+        if(colaboradores.length){
+            bloque += 'Colaboradores citados:\n';
+            colaboradores.forEach((c, i) => { bloque += `${i + 1}. ${c}\n`; });
+        }
+        bloques.push(bloque);
+    });
+
+    if(!algunaConDatos){ mostrarToast('Captura la liga del curso o la lista de colaboradores citados en al menos una tarjeta.', 'error'); return; }
+
+    CORREO_CAP_BLOQUE = bloques.join('\n');
     reconstruirCuerpoCorreo();
     mostrarToast('Se agregó la capacitación al cuerpo del correo.');
 }
