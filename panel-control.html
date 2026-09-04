@@ -4238,7 +4238,8 @@ async function quitarTodasPlantillasNorma(normaCode, cantidad){
 // ---- TAB 4: Correo Mensual ----
 
 let CORREO_CONTEXTO = null;
-let CORREO_BASE = '';       // cuerpo del correo sin el bloque de capacitación ni la firma
+let CORREO_INTRO = '';      // párrafo introductorio, antes de todo lo demás
+let CORREO_RESTO = '';      // "Actividades del mes" + carnets IMSS + fecha límite
 let CORREO_FIRMA = '';      // firma, siempre al final
 let CORREO_CAP_BLOQUE = ''; // bloque de "CAPACITACIÓN" (liga + colaboradores citados), vacío si no aplica
 
@@ -4301,19 +4302,28 @@ async function generarBorradorCorreo(){
     const MESES_MINUS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
     const fechaLimiteTxt = `${fechaLimite.getDate()} de ${MESES_MINUS[fechaLimite.getMonth()]} de ${fechaLimite.getFullYear()}`;
 
-    let cuerpo = `Para dar continuidad al Programa de Seguridad e Higiene ${anio} de ${centro.nombre}, envío las actividades normativas programadas para ${nombreMesTxt} de ${anio}.\n\n`;
+    let intro = `Para dar continuidad al Programa de Seguridad e Higiene ${anio} de ${centro.nombre}, envío las actividades normativas programadas para ${nombreMesTxt} de ${anio}.\n\n`;
     if(colaboradoresMes.length){
-        cuerpo += `Adjunto también las constancias de vacaciones, favor de recabar las firmas correspondientes.\n\n`;
+        intro += `Adjunto también las constancias de vacaciones, favor de recabar las firmas correspondientes.\n\n`;
     }
-    cuerpo += `Si en el transcurso de la elaboración de las actividades algún colaborador causa baja, indicar con la leyenda "BAJA" y enviarlo con las actividades del mes.\n\n`;
-    cuerpo += 'Actividades del mes:\n\n';
-    if(actividades && actividades.length){
+    intro += `Si en el transcurso de la elaboración de las actividades algún colaborador causa baja, indicar con la leyenda "BAJA" y enviarlo con las actividades del mes.\n\n`;
+
+    let cuerpo = 'Actividades del mes:\n\n';
+    // A la agencia solo le corresponde ejecutar/firmar lo que le toca a ella.
+    // La capacitación y el llenado de DC-3 los prepara y envía Talento
+    // Humano/administración (no la agencia), así que se excluyen de este
+    // listado: la capacitación ya se cita aparte más abajo (con liga y
+    // colaboradores convocados) y el DC-3 ni siquiera necesita mención,
+    // porque no es una tarea que la agencia deba hacer.
+    const actividadesParaAgencia = (actividades || [])
+        .filter(a => !/capacitac/i.test(a.actividad || '') && !/DC-3/i.test(a.actividad || ''));
+    if(actividadesParaAgencia.length){
         // Agrupa las actividades por norma, numerando cada grupo de forma
         // consecutiva (1, 2, 3...) y listando debajo cada actividad tal cual
         // viene capturada (ya trae su propio "N.- descripción").
         const gruposPorNorma = [];
         const indiceGrupo = new Map();
-        actividades.forEach(a => {
+        actividadesParaAgencia.forEach(a => {
             const clave = a.norma_code || a.norma_titulo_original || 'Norma no identificada';
             if(!indiceGrupo.has(clave)){
                 indiceGrupo.set(clave, gruposPorNorma.length);
@@ -4336,7 +4346,8 @@ async function generarBorradorCorreo(){
         cuerpo += '\n';
     }
     cuerpo += `Fecha límite de entrega: ${fechaLimiteTxt}\n\n`;
-    CORREO_BASE = cuerpo;
+    CORREO_INTRO = intro;
+    CORREO_RESTO = cuerpo;
     const firmaPartes = [currentUser.nombre, currentUser.puesto, currentUser.telefono ? `Cel: ${currentUser.telefono}` : null, 'Grupo Automotriz Chesa'].filter(Boolean);
     CORREO_FIRMA = firmaPartes.join(' | ');
 
@@ -4370,8 +4381,13 @@ async function generarBorradorCorreo(){
 }
 
 function reconstruirCuerpoCorreo(){
-    const partes = [CORREO_BASE];
-    if(CORREO_CAP_BLOQUE) partes.push(CORREO_CAP_BLOQUE + '\n');
+    // La capacitación va primero, justo después del párrafo introductorio,
+    // para que sea lo primero que vea el responsable de agencia y se
+    // programe cuanto antes — antes iba hasta el final, después de las
+    // actividades y los carnets IMSS.
+    const partes = [CORREO_INTRO];
+    if(CORREO_CAP_BLOQUE) partes.push(CORREO_CAP_BLOQUE + '\n\n');
+    partes.push(CORREO_RESTO);
     partes.push(CORREO_FIRMA);
     document.getElementById('correo-cuerpo').value = partes.join('');
 }
