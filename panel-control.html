@@ -4419,12 +4419,30 @@ async function renderTarjetasCapacitacion(centroId){
     const puestos = [...new Set(CORREO_CAP_COLABORADORES_CENTRO.map(c => (c.puesto || '').trim()).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, 'es'));
 
+    // Fechas por defecto para el plazo del curso: hoy → hoy+14, igual que el
+    // resto del correo. Cada tarjeta las trae precargadas pero editables,
+    // porque un curso puede necesitar un plazo distinto a otro.
+    const hoyISO = new Date().toISOString().slice(0, 10);
+    const limiteDate = new Date();
+    limiteDate.setDate(limiteDate.getDate() + 14);
+    const limiteISO = limiteDate.toISOString().slice(0, 10);
+
     cont.innerHTML = CORREO_CAP_ACTIVIDADES.map((a, i) => `
 <div class="mb-md p-md rounded border border-outline-variant bg-surface" data-cap-idx="${i}">
 <p class="text-xs font-semibold mb-sm">[${escaparHtml(a.norma_code || a.norma_titulo_original || 'Norma no identificada')}] ${escaparHtml(a.actividad)}</p>
 <div class="mb-sm">
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Liga de acceso al curso (Sabionet)</label>
 <input class="w-full border border-outline-variant rounded p-sm text-sm cap-link" placeholder="https://..." type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-sm mb-sm">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Fecha de inicio</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm cap-fecha-inicio" type="date" value="${hoyISO}"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Fecha límite</label>
+<input class="w-full border border-outline-variant rounded p-sm text-sm cap-fecha-limite" type="date" value="${limiteISO}"/>
+</div>
 </div>
 <div class="mb-sm relative">
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puestos a convocar</label>
@@ -4506,18 +4524,23 @@ function insertarCapacitacionEnCorreo(){
     const tarjetas = Array.from(document.querySelectorAll('#correo-cap-lista [data-cap-idx]'));
     const bloques = [];
     let algunaConDatos = false;
+    const fmtFecha = iso => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
     tarjetas.forEach(tarjeta => {
         const idx = parseInt(tarjeta.dataset.capIdx, 10);
         const actividad = CORREO_CAP_ACTIVIDADES[idx];
         const link = tarjeta.querySelector('.cap-link').value.trim();
+        const fechaInicio = tarjeta.querySelector('.cap-fecha-inicio').value;
+        const fechaLimite = tarjeta.querySelector('.cap-fecha-limite').value;
         const colaboradoresTxt = tarjeta.querySelector('.cap-colaboradores').value.trim();
-        if(!link && !colaboradoresTxt) return; // esta tarjeta se dejó vacía, no se incluye
+        if(!link && !colaboradoresTxt && !fechaInicio && !fechaLimite) return; // esta tarjeta se dejó vacía, no se incluye
         algunaConDatos = true;
 
         const colaboradores = colaboradoresTxt.split('\n').map(s => s.trim()).filter(Boolean);
         let bloque = `CAPACITACIÓN — [${actividad.norma_code || actividad.norma_titulo_original || 'Norma no identificada'}] ${actividad.actividad}\n`;
         if(link) bloque += `Liga de acceso al curso (Sabionet): ${link}\n`;
+        if(fechaInicio) bloque += `Fecha de inicio: ${fmtFecha(fechaInicio)}\n`;
+        if(fechaLimite) bloque += `Fecha límite para realizarlo: ${fmtFecha(fechaLimite)}\n`;
         if(colaboradores.length){
             bloque += 'Colaboradores citados:\n';
             colaboradores.forEach((c, i) => { bloque += `${i + 1}. ${c}\n`; });
@@ -4525,7 +4548,7 @@ function insertarCapacitacionEnCorreo(){
         bloques.push(bloque);
     });
 
-    if(!algunaConDatos){ mostrarToast('Captura la liga del curso o la lista de colaboradores citados en al menos una tarjeta.', 'error'); return; }
+    if(!algunaConDatos){ mostrarToast('Captura la liga, las fechas o la lista de colaboradores en al menos una tarjeta.', 'error'); return; }
 
     CORREO_CAP_BLOQUE = bloques.join('\n');
     reconstruirCuerpoCorreo();
