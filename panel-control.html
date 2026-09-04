@@ -4550,7 +4550,7 @@ function insertarCapacitacionEnCorreo(){
 
     if(!algunaConDatos){ mostrarToast('Captura la liga, las fechas o la lista de colaboradores en al menos una tarjeta.', 'error'); return; }
 
-    CORREO_CAP_BLOQUE = bloques.join('\n');
+    CORREO_CAP_BLOQUE = bloques.join('\n') + '\nNota: Si el colaborador no realiza el curso con el usuario oficial de Sabionet, no se considerará como realizado y se eliminará de la plataforma.\n';
     reconstruirCuerpoCorreo();
     mostrarToast('Se agregó la capacitación al cuerpo del correo.');
 }
