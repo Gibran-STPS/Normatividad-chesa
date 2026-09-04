@@ -3338,6 +3338,7 @@ async function importarColaboradoresExcel(event){
     const iContrato = encabezados.indexOf(normalizarClave('TIPO DE CONTRATO'));
     const iIngreso = encabezados.indexOf(normalizarClave('FECHA DE INGRESO'));
     const iPuesto = encabezados.indexOf('PUESTO');
+    const iImss = encabezados.indexOf('IMSS');
 
     if(iClave === -1 || iNombre === -1 || iIngreso === -1){
         mostrarToast('Faltan columnas obligatorias (CLAVE, NOMBRE, FECHA DE INGRESO) en la hoja.');
@@ -3387,7 +3388,7 @@ async function importarColaboradoresExcel(event){
         const centroId = (marcaTxt && centrosPorClave[normMarcaSucursal]) || centrosPorClave[normSucursal] || null;
         if(!centroId && sucursalTxt) sinMapear.add(marcaTxt ? `${marcaTxt} ${sucursalTxt}` : sucursalTxt);
 
-        filas.push({
+        const filaColaborador = {
             clave: String(fila[iClave]).trim(),
             nombre: (fila[iNombre] || '').toString().trim(),
             marca: iMarca > -1 ? (fila[iMarca] || '').toString().trim() : null,
@@ -3397,7 +3398,26 @@ async function importarColaboradoresExcel(event){
             puesto: iPuesto > -1 ? (fila[iPuesto] || '').toString().trim() : null,
             fecha_ingreso: fechaISO,
             activo: true
-        });
+        };
+        // Columna "IMSS" del Cuadro General: trae "OK"/"ok" cuando el
+        // colaborador ya entregó su evidencia de alta ante el IMSS, y queda
+        // vacía cuando sigue pendiente. Antes esto NUNCA se leía — el
+        // estatus solo se movía a mano dentro del panel (botón "Marcar
+        // enviado"), así que un colaborador con el check puesto en Excel
+        // podía seguir viéndose "Pendiente" en el panel si nadie había
+        // dado ese clic. Solo se agrega esta llave cuando el Excel SÍ trae
+        // la columna "IMSS" (si algún día subes un Cuadro sin esa columna,
+        // el panel no toca lo que ya tenías marcado a mano). Cuando sí
+        // viene, el Excel vuelve a ser la fuente real: si marcaste
+        // "Enviado" a mano en el panel para alguien que en Excel sigue en
+        // blanco, la siguiente vez que reimportes este Cuadro se regresará
+        // a "Pendiente" hasta que también lo marques "OK" en el Excel.
+        if(iImss > -1){
+            const imssTxt = (fila[iImss] || '').toString().trim().toUpperCase();
+            filaColaborador.carnet_imss_estatus = imssTxt === 'OK' ? 'Enviado' : 'Pendiente';
+        }
+
+        filas.push(filaColaborador);
     }
 
     if(!filas.length){
@@ -3414,6 +3434,10 @@ async function importarColaboradoresExcel(event){
     }
 
     let msg = `Colaboradores importados: ${insertados}.`;
+    if(iImss > -1){
+        const enviados = filas.filter(f => f.carnet_imss_estatus === 'Enviado').length;
+        msg += ` Carnet IMSS tomado de la columna "IMSS" del Excel: ${enviados} entregado(s), ${insertados - enviados} pendiente(s).`;
+    }
     if(sinMapear.size){
         const ejemplos = Array.from(sinMapear).slice(0,6).join(', ');
         msg += ` Sucursales sin centro asignado: ${ejemplos}${sinMapear.size > 6 ? '…' : ''} (revisa el nombre o código de agencia de esos centros).`;
