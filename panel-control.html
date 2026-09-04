@@ -668,8 +668,8 @@
 
 <div class="bg-white border border-outline-variant rounded overflow-hidden mt-lg">
 <div class="p-md border-b border-outline-variant">
-<p class="text-sm font-bold">Carnets IMSS — nuevo ingreso este mes</p>
-<p class="text-xs text-on-surface-variant">Marca aquí quién ya entregó su evidencia de alta ante el IMSS. El correo mensual solo lista a los que sigan "Pendiente".</p>
+<p class="text-sm font-bold">Carnets IMSS pendientes</p>
+<p class="text-xs text-on-surface-variant">Nuevos ingresos de este mes, más cualquier pendiente de meses anteriores que siga sin entregar. Márcalo aquí en cuanto entregue su evidencia. El correo mensual solo lista a los que sigan "Pendiente".</p>
 </div>
 <table class="w-full text-left border-collapse">
 <thead class="bg-surface-container border-b border-outline-variant">
@@ -3513,12 +3513,19 @@ async function cargarCarnetsImssMes(centroId, mes, anio){
 
     const nuevos = (data || []).filter(c => {
         const f = new Date(c.fecha_ingreso + 'T00:00:00');
-        return (f.getMonth() + 1) === mes && f.getFullYear() === anio;
+        const esDeEsteMes = (f.getMonth() + 1) === mes && f.getFullYear() === anio;
+        // Antes solo entraban aquí los de ingreso exacto de este mes. Eso
+        // hacía que alguien contratado, digamos, en agosto y que seguía sin
+        // entregar su carnet en septiembre desapareciera del listado en
+        // cuanto cambiaba el mes — aunque su estatus siguiera "Pendiente".
+        // Ahora también se arrastran los pendientes de meses anteriores
+        // hasta que se marquen "Enviado".
+        return esDeEsteMes || c.carnet_imss_estatus !== 'Enviado';
     });
     CARNETS_IMSS_CACHE = { centroId, mes, anio, data: nuevos };
 
     if(!nuevos.length){
-        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay colaboradores de nuevo ingreso ese mes en este centro.</td></tr>';
+        tbody.innerHTML = '<tr><td class="px-md py-lg text-center text-on-surface-variant" colspan="4">No hay ingresos nuevos este mes ni carnets IMSS pendientes de meses anteriores en este centro.</td></tr>';
         return;
     }
     const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -4303,10 +4310,7 @@ async function generarBorradorCorreo(){
     const { data: colaboradoresCentro } = await supabaseClient.from('colaboradores')
         .select('clave, nombre, fecha_ingreso, carnet_imss_estatus')
         .eq('centro_id', centroId).eq('activo', true);
-    const nuevosIngresosMes = (colaboradoresCentro || []).filter(c => {
-        const f = new Date(c.fecha_ingreso + 'T00:00:00');
-        return (f.getMonth() + 1) === mes && f.getFullYear() === anio && c.carnet_imss_estatus !== 'Enviado';
-    });
+    const nuevosIngresosMes = (colaboradoresCentro || []).filter(c => c.carnet_imss_estatus !== 'Enviado');
 
     const hoy = new Date();
     const fechaLimite = new Date(hoy);
