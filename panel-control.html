@@ -4399,6 +4399,13 @@ function reconstruirCuerpoCorreo(){
 let CORREO_CAP_COLABORADORES_CENTRO = [];
 // Las actividades de capacitación detectadas este mes (una tarjeta por cada una).
 let CORREO_CAP_ACTIVIDADES = [];
+// Integrantes de la Comisión de Seguridad e Higiene del centro seleccionado
+// (secretario y vocales), tal como se capturaron al dar de alta el centro de
+// trabajo. Se ofrecen como un "puesto" especial en el desplegable para poder
+// convocarlos de un clic, sin depender de que su puesto real coincida con el
+// de algún colaborador activo.
+let CORREO_CAP_COMISION_CENTRO = [];
+const VALOR_COMISION_SEG_HIG = '__comision_seguridad_higiene__';
 
 function escaparHtml(txt){
     return (txt || '').toString()
@@ -4418,6 +4425,17 @@ async function renderTarjetasCapacitacion(centroId){
     CORREO_CAP_COLABORADORES_CENTRO = data || [];
     const puestos = [...new Set(CORREO_CAP_COLABORADORES_CENTRO.map(c => (c.puesto || '').trim()).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, 'es'));
+
+    // Comisión de Seguridad e Higiene: secretario y vocales registrados en la
+    // ficha del centro. Se listan aparte porque no son "colaboradores activos
+    // con puesto capturado" — son cargos fijos de la comisión.
+    const centroComision = centrosData.find(c => c.id === centroId);
+    CORREO_CAP_COMISION_CENTRO = centroComision ? [
+        { nombre: centroComision.responsable, puesto: centroComision.responsablePuesto ? `Responsable del Centro de Trabajo — ${centroComision.responsablePuesto}` : 'Responsable del Centro de Trabajo' },
+        { nombre: centroComision.secretarioComision, puesto: centroComision.secretarioPuesto ? `Secretario de la Comisión de Seguridad e Higiene — ${centroComision.secretarioPuesto}` : 'Secretario de la Comisión de Seguridad e Higiene' },
+        { nombre: centroComision.vocal1Comision, puesto: centroComision.vocal1Puesto ? `Vocal de la Comisión de Seguridad e Higiene — ${centroComision.vocal1Puesto}` : 'Vocal de la Comisión de Seguridad e Higiene' },
+        { nombre: centroComision.vocal2Comision, puesto: centroComision.vocal2Puesto ? `Vocal de la Comisión de Seguridad e Higiene — ${centroComision.vocal2Puesto}` : 'Vocal de la Comisión de Seguridad e Higiene' },
+    ].filter(m => m.nombre && m.nombre.trim()) : [];
 
     // Fechas por defecto para el plazo del curso: hoy → hoy+14, igual que el
     // resto del correo. Cada tarjeta las trae precargadas pero editables,
@@ -4447,10 +4465,15 @@ async function renderTarjetasCapacitacion(centroId){
 <div class="mb-sm relative">
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Puestos a convocar</label>
 <button class="w-full flex items-center justify-between border border-outline-variant rounded p-sm text-sm bg-surface hover:bg-surface-container-high transition-colors cap-puestos-btn" type="button">
-<span class="cap-puestos-btn-txt">${puestos.length ? `Selecciona puestos (${puestos.length} disponibles)` : 'Ningún colaborador activo de este centro tiene puesto capturado.'}</span>
+<span class="cap-puestos-btn-txt">${(puestos.length + CORREO_CAP_COMISION_CENTRO.length) ? `Selecciona puestos (${puestos.length + CORREO_CAP_COMISION_CENTRO.length} disponibles)` : 'Ningún colaborador activo de este centro tiene puesto capturado.'}</span>
 <span class="material-symbols-outlined text-base" data-icon="expand_more">expand_more</span>
 </button>
 <div class="hidden absolute z-10 mt-1 w-full max-h-64 overflow-y-auto custom-scrollbar border border-outline-variant rounded bg-surface shadow-lg p-sm cap-puestos-lista">
+${CORREO_CAP_COMISION_CENTRO.length ? `
+<label class="flex items-center gap-2 text-sm rounded px-sm py-1 cursor-pointer hover:bg-surface-container-high transition-colors font-semibold border-b border-outline-variant mb-xs pb-xs">
+<input type="checkbox" class="cap-puesto-check" value="${VALOR_COMISION_SEG_HIG}" id="cap-${i}-puesto-comision"/>
+Comisión de Seguridad e Higiene (responsable, secretario y vocales)
+</label>` : ''}
 ${puestos.map((p, pi) => `
 <label class="flex items-center gap-2 text-sm rounded px-sm py-1 cursor-pointer hover:bg-surface-container-high transition-colors">
 <input type="checkbox" class="cap-puesto-check" value="${p.replace(/"/g, '&quot;')}" id="cap-${i}-puesto-${pi}"/>
@@ -4512,12 +4535,23 @@ function actualizarColaboradoresPorPuesto(tarjeta){
         textarea.value = '';
         return;
     }
-    const seleccionadosNorm = seleccionados.map(s => s.toLowerCase());
-    const filas = CORREO_CAP_COLABORADORES_CENTRO
-        .filter(c => c.puesto && seleccionadosNorm.includes(c.puesto.trim().toLowerCase()))
+    const incluyeComision = seleccionados.includes(VALOR_COMISION_SEG_HIG);
+    const puestosSeleccionados = seleccionados.filter(s => s !== VALOR_COMISION_SEG_HIG);
+    const puestosSeleccionadosNorm = puestosSeleccionados.map(s => s.toLowerCase());
+
+    const filasPorPuesto = CORREO_CAP_COLABORADORES_CENTRO
+        .filter(c => c.puesto && puestosSeleccionadosNorm.includes(c.puesto.trim().toLowerCase()))
         .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
         .map(c => `${c.nombre} — ${c.puesto}`);
-    textarea.value = filas.join('\n');
+
+    // Los de la comisión van aparte y no se ordenan alfabéticamente con el
+    // resto: son cargos fijos (secretario, vocales) y conviene que aparezcan
+    // agrupados y en ese orden, no mezclados entre los demás puestos.
+    const filasComision = incluyeComision
+        ? CORREO_CAP_COMISION_CENTRO.map(c => `${c.nombre} — ${c.puesto}`)
+        : [];
+
+    textarea.value = [...filasComision, ...filasPorPuesto].join('\n');
 }
 
 function insertarCapacitacionEnCorreo(){
