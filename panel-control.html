@@ -4348,7 +4348,7 @@ async function generarBorradorCorreo(){
     cuerpo += `Fecha límite de entrega: ${fechaLimiteTxt}\n\n`;
     CORREO_INTRO = intro;
     CORREO_RESTO = cuerpo;
-    const firmaPartes = [currentUser.nombre, currentUser.puesto, currentUser.telefono ? `Cel: ${currentUser.telefono}` : null, 'Grupo Automotriz Chesa'].filter(Boolean);
+    const firmaPartes = [currentUser.nombre, currentUser.puesto, currentUser.telefono ? `Cel: ${currentUser.telefono}` : null, 'Chesa'].filter(Boolean);
     CORREO_FIRMA = firmaPartes.join(' | ');
 
     // Apartado de Capacitación (Sabionet): se muestra solo si el calendario de
