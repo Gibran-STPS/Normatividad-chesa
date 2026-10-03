@@ -3453,11 +3453,21 @@ async function cargarVacacionesMes(){
         const ingreso = new Date(c.fecha_ingreso + 'T00:00:00');
         if((ingreso.getMonth() + 1) !== mes) return acc;
         const anios = anio - ingreso.getFullYear();
+        if(anios < 1) return acc;
         const dias = diasPorAntiguedad(anios);
-        if(anios < 1 || !dias) return acc;
+        if(!dias){
+            // No existe un tramo en tabla_vacaciones_dias para esta antigüedad
+            // (ej. un bloque de años faltante). Antes esto excluía al
+            // colaborador en silencio y el caso pasaba inadvertido; ahora se
+            // muestra con advertencia para que el tramo faltante se detecte
+            // y corrija de inmediato, en vez de omitir o calcular mal sus
+            // días de vacaciones.
+            acc.push({ clave: c.clave, nombre: c.nombre, puesto: c.puesto || null, ingreso, anios, dias: null, inicio: null, fin: null, errorTabla: true });
+            return acc;
+        }
         const inicio = new Date(anio, mes - 1, ingreso.getDate());
         const fin = calcularFinPeriodoHabil(inicio, dias);
-        acc.push({ clave: c.clave, nombre: c.nombre, puesto: c.puesto || null, ingreso, anios, dias, inicio, fin });
+        acc.push({ clave: c.clave, nombre: c.nombre, puesto: c.puesto || null, ingreso, anios, dias, inicio, fin, errorTabla: false });
         return acc;
     }, []);
 
@@ -3470,7 +3480,16 @@ async function cargarVacacionesMes(){
     }
 
     const fmt = d => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
-    tbody.innerHTML = filas.map(c => `
+    const errores = filas.filter(c => c.errorTabla);
+    if(errores.length){
+        mostrarToast('Atención: falta configurar la tabla de vacaciones para ' + errores.length + ' colaborador(es) con antigüedades no cubiertas. Revisa tabla_vacaciones_dias.', 'error');
+    }
+    tbody.innerHTML = filas.map(c => c.errorTabla ? `
+<tr class="bg-red-50">
+<td class="px-md py-sm"><div class="font-bold">${c.nombre}</div><div class="text-xs text-on-surface-variant font-data-mono">${c.clave}</div></td>
+<td class="px-md py-sm text-right font-data-mono text-data-mono">${c.anios} año${c.anios === 1 ? '' : 's'}</td>
+<td class="px-md py-sm text-right text-red-600 font-bold text-xs" colspan="3">⚠ Falta configurar tabla_vacaciones_dias para ${c.anios} años. No se generó constancia.</td>
+</tr>` : `
 <tr class="hover:bg-surface-container transition-colors">
 <td class="px-md py-sm"><div class="font-bold">${c.nombre}</div><div class="text-xs text-on-surface-variant font-data-mono">${c.clave}</div></td>
 <td class="px-md py-sm text-right font-data-mono text-data-mono">${c.anios} año${c.anios === 1 ? '' : 's'}</td>
