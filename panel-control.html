@@ -3344,6 +3344,7 @@ async function importarColaboradoresExcel(event){
 
     const filas = [];
     const sinMapear = new Set();
+    const sinFechaValida = [];
 
     for(let r = idxEncabezado + 1; r < filasHoja.length; r++){
         const fila = filasHoja[r];
@@ -3356,8 +3357,34 @@ async function importarColaboradoresExcel(event){
         } else if(typeof fechaIngresoRaw === 'number' && window.XLSX && XLSX.SSF){
             const d = XLSX.SSF.parse_date_code(fechaIngresoRaw);
             if(d) fechaISO = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+        } else if(typeof fechaIngresoRaw === 'string'){
+            // Algunas filas del Cuadro traen la fecha capturada como TEXTO
+            // (ej. "01/10/1999") en vez de una fecha real de Excel — esto es
+            // justo lo que les pasó a SANTIZ LOPEZ MISAEL y HERNÁNDEZ GOMEZ
+            // ANSELMO (Nissan San Cristóbal) y antes los dejaba fuera de la
+            // lista de aniversarios del mes EN SILENCIO, sin avisar, porque
+            // la fila completa se descartaba. Aquí se interpreta de forma
+            // EXPLÍCITA como DD/MM/AAAA (el formato en que se captura el
+            // Cuadro), nunca como MM/DD/AAAA: ese es el formato que habría
+            // asumido `new Date("01/10/1999")`, que habría leído "10 de
+            // ENERO" en vez de "1 de OCTUBRE" y los habría hecho
+            // desaparecer de la lista de octubre sin ningún error visible.
+            const m = fechaIngresoRaw.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if(m){
+                const [, dd, mm, yyyy] = m;
+                const dNum = parseInt(dd, 10), mNum = parseInt(mm, 10), yNum = parseInt(yyyy, 10);
+                if(mNum >= 1 && mNum <= 12 && dNum >= 1 && dNum <= 31){
+                    fechaISO = `${yNum}-${String(mNum).padStart(2,'0')}-${String(dNum).padStart(2,'0')}`;
+                }
+            }
         }
-        if(!fechaISO) continue;
+        if(!fechaISO){
+            // Ya no se descarta la fila en silencio: se reporta al final del
+            // import para que el hueco se detecte y corrija de inmediato en
+            // vez de desaparecer sin explicación de la lista de aniversarios.
+            sinFechaValida.push(`${(fila[iNombre] || '').toString().trim() || '(sin nombre)'} (clave ${fila[iClave]})`);
+            continue;
+        }
 
         const sucursalTxt = (fila[iSucursal] || '').toString().trim();
         const marcaTxt = iMarca > -1 ? (fila[iMarca] || '').toString().trim() : '';
@@ -3426,6 +3453,10 @@ async function importarColaboradoresExcel(event){
         msg += ` Sucursales sin centro asignado: ${ejemplos}${sinMapear.size > 6 ? '…' : ''} (revisa el nombre o código de agencia de esos centros).`;
     }
     mostrarToast(msg);
+    if(sinFechaValida.length){
+        const ejemplos = sinFechaValida.slice(0, 6).join(', ');
+        mostrarToast(`Atención: ${sinFechaValida.length} colaborador(es) NO se importaron por tener "FECHA DE INGRESO" en un formato irreconocible en el Excel: ${ejemplos}${sinFechaValida.length > 6 ? '…' : ''}. Corrige esa celda en el Cuadro (debe ser fecha, no texto) y vuelve a importar.`, 'error');
+    }
     cargarVacacionesMes();
 }
 
