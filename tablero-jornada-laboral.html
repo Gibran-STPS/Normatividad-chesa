@@ -736,6 +736,47 @@ footer .foot-title{color:var(--ink-onDark); font-weight:600; margin-bottom:4px; 
 .alert-actions{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
 .alert-actions .export-btn{padding:7px 10px; font-size:12px; text-decoration:none; display:inline-block; margin:0;}
 
+
+/* ---------- 02 — Consulta (vista compacta) ---------- */
+#secConsulta{padding-top:30px;}
+.cq-bar{display:grid; grid-template-columns:minmax(200px,1fr) minmax(170px,0.8fr) minmax(280px,1.6fr) auto; gap:14px; align-items:end;
+  background:var(--paper-2); border:1px solid var(--divider); border-radius:var(--radius); padding:14px 18px; box-shadow:var(--shadow);}
+.cq-bar label{font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; display:block; margin-bottom:4px;}
+.cq-bar select, .cq-search input{width:100%; font-family:'IBM Plex Sans',sans-serif; font-size:14px; padding:9px 10px; border-radius:6px; border:1px solid var(--divider); background:var(--paper); color:var(--ink);}
+.cq-bar select:disabled{opacity:0.55;}
+.cq-search{position:relative;}
+.cq-search input{padding-left:34px; padding-right:34px;}
+.cq-search input:focus{outline:2px solid var(--blue); outline-offset:-1px; background:#fff;}
+.cq-search .cq-ico{position:absolute; left:11px; bottom:10px; color:var(--ink-soft); font-size:14px; pointer-events:none;}
+.cq-search .cq-x{position:absolute; right:7px; bottom:7px; width:24px; height:24px; border-radius:50%; border:1px solid var(--divider); background:var(--paper-2); cursor:pointer; color:var(--ink-soft); font-size:13px; line-height:1;}
+.cq-search .cq-x:hover{background:var(--red); color:#fff; border-color:var(--red);}
+.cq-sug{position:absolute; left:0; right:0; top:100%; margin-top:4px; background:#fff; border:1px solid var(--divider); border-radius:8px; box-shadow:0 8px 24px rgba(28,32,36,0.16); z-index:30; max-height:330px; overflow:auto;}
+.cq-sug-item{padding:9px 12px; cursor:pointer; display:flex; flex-direction:column; border-bottom:1px solid var(--divider);}
+.cq-sug-item:last-child{border-bottom:none;}
+.cq-sug-item.active, .cq-sug-item:hover{background:var(--blue-bg);}
+.cq-sug-name{font-weight:600; font-size:13.5px;}
+.cq-sug-meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);}
+.cq-sug-empty{padding:12px; font-size:13px; color:var(--ink-soft); font-style:italic;}
+.cq-actions{display:flex; gap:8px;}
+.cq-actions .export-btn{white-space:nowrap; padding:9px 12px;}
+.cq-scope{margin:16px 2px 14px; font-size:14px; color:var(--ink);}
+.cq-scope-tag{font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; background:var(--panel-dark); color:var(--ink-onDark); padding:3px 9px; border-radius:20px; margin-right:4px;}
+.cq-scope-tag.colab{background:var(--blue);}
+.cq-hint{color:var(--ink-soft); font-size:12.5px;}
+.cq-kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;}
+.cq-kpi{background:var(--paper-2); border:1px solid var(--divider); border-left:4px solid var(--blue); border-radius:8px; padding:12px 14px; box-shadow:var(--shadow);}
+.cq-kpi.ok{border-left-color:var(--green);} .cq-kpi.warn{border-left-color:var(--amber);} .cq-kpi.bad{border-left-color:var(--red);}
+.cq-kpi-num{font-family:'Oswald',sans-serif; font-size:27px; font-weight:600; line-height:1.1;}
+.cq-kpi.bad .cq-kpi-num{color:var(--red);} .cq-kpi.warn .cq-kpi-num{color:#B97A16;} .cq-kpi.ok .cq-kpi-num{color:var(--green);}
+.cq-kpi-lbl{font-size:12.5px; font-weight:600; margin-top:2px;}
+.cq-kpi-sub{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); margin-top:3px;}
+.cq-charts{grid-template-columns:1fr 1fr; margin-bottom:18px;}
+.cq-charts .chart-card h3{margin-bottom:4px;}
+.cq-note{font-size:12.5px; color:var(--ink-soft); margin:0 0 12px; min-height:18px;}
+td.cq-alert{color:var(--red); font-weight:600;}
+.cq-more-wrap{padding:10px 0 34px;}
+@media (max-width:1000px){ .cq-bar{grid-template-columns:1fr 1fr;} .cq-kpis{grid-template-columns:repeat(2,1fr);} .cq-charts{grid-template-columns:1fr;} }
+
 @media print{
   .filemanager, .filterbar, .cluster, .normativa, .fm-side, footer, .tc-actions input, section:first-of-type { }
   .table-scroll{max-height:none !important; overflow:visible !important;}
@@ -1589,27 +1630,6 @@ function renderShell(){
     </div>
   </div>
 
-  <div class="cluster">
-    <div class="wrap cluster-grid">
-      <div class="gauge-block">
-        ${gaugeSVG(globalPct, {size:260, dark:true})}
-        <div class="gauge-caption">Cumplimiento global de jornada semanal<br><b>límite ${limiteAnio}h/semana · fase ${anio}</b></div>
-      </div>
-      <div class="readout-grid">
-        <div class="readout rd-neutral"><div class="num">${fmt(g.colaboradores)}</div><div class="lbl">Colaboradores analizados</div></div>
-        <div class="readout ${g.colaboradores? (g.colaboradores_marcaje_completo/g.colaboradores>=0.85?'rd-ok':g.colaboradores_marcaje_completo/g.colaboradores>=0.59?'rd-warn':'rd-bad') : 'rd-neutral'}">
-          <div class="num">${fmt(g.colaboradores_marcaje_completo)}<span class="unit">/ ${fmt(g.colaboradores)}</span></div>
-          <div class="lbl">Colaboradores con marcaje completo (entrada+salida+comida; sábado: entrada+salida)</div>
-        </div>
-        <div class="readout rd-bad"><div class="num">${fmt(g.exceso_diario)}</div><div class="lbl">Jornadas &gt;12h en un día (Art. 68)</div></div>
-        <div class="readout rd-bad"><div class="num">${fmt(g.exceso_semanal)}</div><div class="lbl">Semanas-colaborador sobre el límite</div></div>
-        <div class="readout rd-warn"><div class="num">${fmt(g.checadas_incompletas)}</div><div class="lbl">Checadas incompletas (omisión)</div></div>
-        <div class="readout rd-warn"><div class="num">${fmt(g.faltas)}</div><div class="lbl">Faltas registradas</div></div>
-        <div class="readout rd-warn"><div class="num">${fmt(g.retardos)}</div><div class="lbl">Incidencias de retardo</div></div>
-      </div>
-    </div>
-  </div>
-
   <div class="normativa">
     <div class="wrap">
       <div class="phase-track">
@@ -1667,11 +1687,60 @@ function renderShell(){
   </section>
   `}
 
+  <section id="secConsulta">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">02 — Consulta</span>
+          <h2>Situación del centro de trabajo y por colaborador</h2>
+        </div>
+        <div class="section-desc">Elige un centro de trabajo y, si quieres ver a una persona, escribe su nombre o número de empleado.
+        Sin colaborador seleccionado se muestra todo el centro de trabajo.</div>
+      </div>
+      <div id="cqEmpty" class="empty-state" hidden>Carga los archivos de reloj checador del mes en "01 — Datos" para ver la consulta.</div>
+      <div id="cqBody">
+        <div class="cq-bar">
+          <div><label for="cqCentro">Centro de trabajo</label><select id="cqCentro"></select></div>
+          <div><label for="cqArea">Área</label><select id="cqArea"></select></div>
+          <div class="cq-search">
+            <label for="cqBuscar">Colaborador</label>
+            <span class="cq-ico">⌕</span>
+            <input type="text" id="cqBuscar" placeholder="Escribe nombre o número de empleado…" autocomplete="off" spellcheck="false">
+            <button type="button" class="cq-x" id="cqLimpiar" title="Quitar colaborador (ver todo el centro)" hidden>✕</button>
+            <div class="cq-sug" id="cqSug" hidden></div>
+          </div>
+          <div class="cq-actions">
+            <button class="export-btn" id="cqExcel" title="Descarga a Excel lo que estás viendo">⬇ Excel</button>
+            <button class="export-btn primary" id="cqPdf" hidden>⬇ PDF de firma</button>
+          </div>
+        </div>
+        <div class="cq-scope" id="cqScope"></div>
+        <div class="cq-kpis" id="cqKpis"></div>
+        <div class="chart-grid cq-charts">
+          <div class="chart-card"><h3 id="cqRetTitle">Retardos</h3><p class="cq-note" id="cqRetNote"></p><div class="chart-wrap" style="height:260px;"><canvas id="cqChartRet"></canvas></div></div>
+          <div class="chart-card"><h3 id="cqJorTitle">Jornadas excesivas</h3><p class="cq-note" id="cqJorNote"></p><div class="chart-wrap" style="height:260px;"><canvas id="cqChartJor"></canvas></div></div>
+        </div>
+        <div id="cqTabla"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cq-more-wrap">
+    <div class="wrap">
+      <button type="button" class="collapsible-toggle" id="toggleMas" aria-expanded="false" aria-controls="bodyMas">
+        <span class="ct-icon">▸</span>
+        <span class="ct-text">Mostrar más análisis y herramientas</span>
+        <span class="ct-hint">Comparativo por agencia · firmas · gráficas por unidad · evidencia · simulador · progreso mensual</span>
+      </button>
+    </div>
+  </section>
+  <div id="bodyMas" hidden>
+
   <section class="tinted">
     <div class="wrap">
       <div class="section-head">
         <div>
-          <span class="eyebrow">02 — Panorama y Documentos</span>
+          <span class="eyebrow">03 — Panorama y Documentos</span>
           <h2>Comparativo de cumplimiento por unidad de negocio</h2>
         </div>
         <div class="section-desc">Selecciona una unidad para filtrar el detalle, las gráficas de área y las tablas de evidencia más abajo.${MODO_CORREO ? '' : ' Incluye también los reportes de firma (PDF) por agencia.'}</div>
@@ -1696,11 +1765,11 @@ function renderShell(){
       <div id="bloqueFirmaManual">
         <div class="section-subhead" style="margin-top:26px;"><h3>Reportes de firma (PDF) por agencia</h3></div>
         <div class="section-desc" style="max-width:none; margin-bottom:16px;">Cada tarjeta de arriba ya trae su botón "⬇ Descargar PDF de firma". Usa esto solo si quieres
-        personalizar los nombres de firma o descargar todos los reportes de una sola vez (elabora ${esc(AREA_RESPONSABLE)}, recibe Gerente General, visto bueno Responsable de seguridad de sucursal).</div>
+        personalizar los nombres de firma o descargar todos los reportes de una sola vez (elabora ${esc(AREA_RESPONSABLE)}, recibe Gerente General, visto bueno ADPC o Responsable de seguridad).</div>
         <div class="filterbar" style="margin-bottom:20px;">
           <div><label>Elabora (nombre, opcional)</label><input type="text" id="firmaElabora" placeholder="${esc(AREA_RESPONSABLE)}" value="${esc(state.firmantes.elabora)}"></div>
           <div><label>Recibe (nombre, opcional)</label><input type="text" id="firmaRecibe" placeholder="Gerente General" value="${esc(state.firmantes.recibe)}"></div>
-          <div><label>Visto bueno (nombre, opcional)</label><input type="text" id="firmaVobo" placeholder="Responsable de seguridad de sucursal" value="${esc(state.firmantes.vobo)}"></div>
+          <div><label>Visto bueno (nombre, opcional)</label><input type="text" id="firmaVobo" placeholder="ADPC o Responsable de seguridad" value="${esc(state.firmantes.vobo)}"></div>
           <span class="pdf-note" style="max-width:220px;">Si los llenas, el PDF imprime el nombre y la fecha de hoy en la línea de firma; si no, deja el espacio en blanco para firmar a mano.</span>
         </div>
         <div class="pdf-toolbar">
@@ -1739,7 +1808,7 @@ function renderShell(){
   <section>
     <div class="wrap">
       <div class="section-head">
-        <div><span class="eyebrow">03 — Gráficas</span><h2>Cumplimiento, incidencias y retardos</h2></div>
+        <div><span class="eyebrow">04 — Gráficas por unidad</span><h2>Cumplimiento, incidencias y retardos</h2></div>
       </div>
       <div class="chart-grid" style="margin-bottom:20px;">
         <div class="chart-card"><h3>% Cumplimiento de jornada semanal por unidad</h3><div class="chart-wrap"><canvas id="chartCumplimiento" height="280"></canvas></div></div>
@@ -1748,34 +1817,6 @@ function renderShell(){
       <div class="chart-grid">
         <div class="chart-card"><h3>Incidencias por unidad (exceso diario · checadas incompletas · faltas)</h3><div class="chart-wrap"><canvas id="chartIncidencias" height="260"></canvas></div></div>
         <div class="chart-card"><h3 id="areaChartTitle">Detalle por área — selecciona una unidad</h3><div class="chart-wrap"><canvas id="chartArea" height="260"></canvas></div></div>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="wrap">
-      <div class="section-head">
-        <div><span class="eyebrow">04 — Colaboradores</span><h2>Situación exacta por colaborador</h2></div>
-        <div class="section-desc">Filtra por colaborador (y, si quieres acotar más, usa también la unidad y el área de
-        la sección "02 — Panorama" arriba). Verás retardos, faltas, checadas incompletas y jornadas que exceden el
-        límite diario, día por día — y podrás exportarlo todo a Excel. Sin filtrar por unidad, se muestran los
-        colaboradores de todas las agencias cargadas.</div>
-      </div>
-      <button type="button" class="collapsible-toggle" id="toggleColaboradores" aria-expanded="false" aria-controls="bodyColaboradores">
-        <span class="ct-icon">▸</span>
-        <span class="ct-text">Mostrar situación por colaborador</span>
-        <span class="ct-hint">Clic para desplegar</span>
-      </button>
-      <div class="collapsible-body" id="bodyColaboradores" hidden>
-        <div class="filterbar">
-          <div>
-            <label>3. Colaborador</label>
-            <select id="selColaborador"><option value="">Todos los colaboradores</option></select>
-          </div>
-          <button class="export-btn primary" id="btnExportColaborador" disabled>⬇ Exportar a Excel</button>
-        </div>
-        <div id="colabRosterHost"></div>
-        <div id="colabDetalleHost"></div>
       </div>
     </div>
   </section>
@@ -1887,6 +1928,8 @@ function renderShell(){
     </div>
   </section>
 
+  </div>
+
   <footer>
     <div class="wrap">
       <div>
@@ -1946,8 +1989,8 @@ function renderUnitCards(){
       if(e.target.closest('.uc-pdf-btn')) return;
       const u = card.getAttribute('data-unidad');
       state.unidad = (state.unidad === u) ? null : u;
-      state.area = null;
-      syncFilterInputs(); updateAreaChart(); renderAllTables(); renderUnitCards();
+      state.area = null; state.colaborador = null;
+      refreshScope();
     });
   });
   grid.querySelectorAll('.uc-pdf-btn').forEach(btn=>{
@@ -2886,7 +2929,7 @@ async function generateUnitPDF(unidadKey){
   const roles = [
     ['ELABORA', AREA_RESPONSABLE],
     ['RECIBE', 'Gerente General'],
-    ['VISTO BUENO', 'Responsable de seguridad de sucursal'],
+    ['VISTO BUENO', 'ADPC o Responsable de seguridad'],
   ];
   roles.forEach((r, i)=>{
     const cx = M + i*signW + signW/2;
@@ -2954,6 +2997,7 @@ function recompute(){
   renderAllTables();
   renderRecommendations();
   renderColabSection();
+  renderConsulta();
   renderSimulador();
   renderBitacora();
   renderHistorial();
@@ -2968,21 +3012,22 @@ function on(id, ev, handler){
 function wireStaticControls(){
   on('unidadSelect', 'change', (e)=>{
     state.unidad = e.target.value || null; state.area = null; state.colaborador = null;
-    syncFilterInputs(); updateAreaChart(); renderAllTables(); renderUnitCards(); renderColabSection();
+    refreshScope();
   });
   on('areaSelect', 'change', (e)=>{
     state.area = e.target.value || null; state.colaborador = null;
-    syncFilterInputs(); updateAreaChart(); renderAllTables(); renderColabSection();
+    refreshScope();
   });
   on('resetBtn', 'click', ()=>{
     state.unidad = null; state.area = null; state.colaborador = null;
-    syncFilterInputs(); updateAreaChart(); renderAllTables(); renderUnitCards(); renderColabSection();
+    refreshScope();
   });
   on('selColaborador', 'change', (e)=>{
     state.colaborador = e.target.value || null;
     renderColabSection();
   });
   on('btnExportColaborador', 'click', exportColaboradorExcel);
+  wireConsulta();
   // Los siguientes controles son de trabajo interno (carga de archivos, exportaciones,
   // firmantes/bitácora); no existen en el HTML ya recortado que se manda por correo a
   // directores/gerentes — por eso cada uno se engancha de forma segura con on().
@@ -3022,7 +3067,321 @@ function wireStaticControls(){
 
   wireCollapsibles();
 }
-// ---------- apartados desplegables (secciones 04 y 05) ----------
+
+// ============================================================
+// 02 — CONSULTA: vista compacta por centro de trabajo / colaborador
+// Sin colaborador seleccionado muestra todo el centro de trabajo (o el grupo,
+// si tampoco hay centro). Comparte state.unidad / state.area / state.colaborador
+// con el resto del tablero, así que todo queda sincronizado.
+// ============================================================
+const CQ_COLORS = { r6:'#F1C88A', r13:'#E8A33D', r25:'#D1483C', exceso:'#D1483C', semana:'#E8A33D', normal:'#9DB4CC', linea:'#21201C' };
+const cqNorm = (s) => stripAccents(String(s||'')).toLowerCase();
+const cqCorto = (nombre) => { const p = String(nombre||'').split(/\s+/); return p.length > 3 ? p.slice(0,3).join(' ') : String(nombre||''); };
+const cqFechaCorta = (f) => { const m = String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}` : String(f||''); };
+let cqSugIndex = -1;
+
+function refreshScope(){
+  syncFilterInputs(); updateAreaChart(); renderAllTables(); renderUnitCards(); renderColabSection(); renderConsulta();
+}
+function cqDatosAlcance(){
+  const enColab = (r)=> !state.colaborador || (r.unidad_negocio+'|||'+r.id_empleado)===state.colaborador;
+  const daily = DB.registros_diarios.filter(r=> r && inScope(r) && enColab(r));
+  const faltas = DB.faltas_resumen.filter(f=> f && inScope(f) && enColab(f));
+  const weekly = applyNormativa(aggregateWeekly(daily), DB.normativa, DB.anio_referencia);
+  return { daily, faltas, weekly };
+}
+function cqLimiteSemanal(){
+  const t = DB.normativa.jornada_ordinaria_maxima_semanal_por_anio;
+  return t[DB.anio_referencia] !== undefined ? t[DB.anio_referencia] : t['2026'];
+}
+function cqSeleccionarColaborador(key){
+  const inp = document.getElementById('cqBuscar');
+  if(inp && document.activeElement === inp) inp.blur();
+  state.colaborador = key || null;
+  if(key){
+    const unidad = key.split('|||')[0];
+    if(state.unidad !== unidad){ state.unidad = unidad; state.area = null; }
+  }
+  refreshScope();
+}
+function cqRenderSugerencias(){
+  const input = document.getElementById('cqBuscar');
+  const box = document.getElementById('cqSug');
+  if(!input || !box) return;
+  const q = cqNorm(input.value).trim();
+  if(!q){ box.hidden = true; box.innerHTML = ''; return; }
+  const tokens = q.split(/\s+/);
+  const prevColab = state.colaborador; state.colaborador = null;
+  const roster = colabRoster();
+  state.colaborador = prevColab;
+  const multi = new Set(roster.map(e=>e.unidad_negocio)).size > 1;
+  const hits = roster.filter(e=>{
+    const hay = cqNorm(e.nombre) + ' ' + cqNorm(e.id_empleado);
+    return tokens.every(t=>hay.includes(t));
+  }).sort((a,b)=>a.nombre.localeCompare(b.nombre)).slice(0, 8);
+  cqSugIndex = hits.length ? 0 : -1;
+  box.innerHTML = hits.length === 0
+    ? `<div class="cq-sug-empty">Sin coincidencias en el alcance actual. Prueba con otro nombre o selecciona "Todos los centros".</div>`
+    : hits.map((e,i)=>`<div class="cq-sug-item${i===0?' active':''}" data-key="${esc(e.key)}">
+        <span class="cq-sug-name">${esc(e.nombre)}</span>
+        <span class="cq-sug-meta">No. ${esc(e.id_empleado)} · ${esc(e.area||'—')}${multi?' · '+esc(e.unidad_negocio.replace(/_/g,' ')):''}</span>
+      </div>`).join('');
+  box.hidden = false;
+  box.querySelectorAll('.cq-sug-item').forEach(it=>{
+    it.addEventListener('mousedown', (ev)=>{ ev.preventDefault(); box.hidden = true; cqSeleccionarColaborador(it.getAttribute('data-key')); });
+  });
+}
+function cqKpi(valor, etiqueta, clase, sub){
+  return `<div class="cq-kpi ${clase||''}"><div class="cq-kpi-num">${valor}</div><div class="cq-kpi-lbl">${etiqueta}</div>${sub?`<div class="cq-kpi-sub">${sub}</div>`:''}</div>`;
+}
+function renderConsulta(){
+  const host = document.getElementById('secConsulta');
+  if(!host) return;
+  try{ renderConsultaInner(); }
+  catch(e){
+    console.error('renderConsulta:', e);
+    const k = document.getElementById('cqKpis');
+    if(k) k.innerHTML = `<div class="empty-state">No se pudo generar la consulta (${esc(e.message||'error')}). El resto del tablero sigue funcionando.</div>`;
+  }
+}
+function renderConsultaInner(){
+  ['cqRet','cqJor'].forEach(k=>{ if(charts[k]){ try{charts[k].destroy();}catch(e){} delete charts[k]; } });
+  const vacio = KPI.unidades.length === 0;
+  const body = document.getElementById('cqBody');
+  const empty = document.getElementById('cqEmpty');
+  if(body) body.hidden = vacio;
+  if(empty) empty.hidden = !vacio;
+  if(vacio) return;
+
+  // ---- controles ----
+  const selC = document.getElementById('cqCentro');
+  selC.innerHTML = `<option value="">Todos los centros (${KPI.unidades.length})</option>` +
+    [...KPI.unidades].sort((a,b)=>a.unidad_negocio.localeCompare(b.unidad_negocio))
+      .map(u=>`<option value="${esc(u.unidad_negocio)}">${esc(u.unidad_negocio.replace(/_/g,' '))}</option>`).join('');
+  selC.value = state.unidad || '';
+  const selA = document.getElementById('cqArea');
+  const areas = state.unidad ? areasDe(state.unidad) : [];
+  selA.innerHTML = `<option value="">Todas las áreas</option>` + areas.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  selA.value = state.area || ''; selA.disabled = !state.unidad;
+
+  const prevColab = state.colaborador; state.colaborador = null;
+  const rosterAlcance = colabRoster();
+  state.colaborador = prevColab;
+  if(state.colaborador && !rosterAlcance.find(e=>e.key===state.colaborador)) state.colaborador = null;
+  const emp = state.colaborador ? rosterAlcance.find(e=>e.key===state.colaborador) : null;
+  const input = document.getElementById('cqBuscar');
+  if(document.activeElement !== input) input.value = emp ? emp.nombre : '';
+  document.getElementById('cqLimpiar').hidden = !emp;
+  const btnPdf = document.getElementById('cqPdf');
+  if(btnPdf){ btnPdf.hidden = !state.unidad || MODO_CORREO; }
+
+  // ---- alcance ----
+  const centroTxt = state.unidad ? state.unidad.replace(/_/g,' ') : 'Todos los centros de trabajo';
+  const areaTxt = state.area ? ` / ${state.area}` : '';
+  document.getElementById('cqScope').innerHTML = emp
+    ? `<span class="cq-scope-tag colab">Colaborador</span> <b>${esc(emp.nombre)}</b> · No. ${esc(emp.id_empleado)} · ${esc(emp.area||'—')} · ${esc(emp.unidad_negocio.replace(/_/g,' '))}`
+    : `<span class="cq-scope-tag">Centro de trabajo</span> <b>${esc(centroTxt + areaTxt)}</b> · ${fmt(rosterAlcance.length)} colaboradores · <span class="cq-hint">escribe un nombre arriba o haz clic en una barra / fila para ver a un colaborador</span>`;
+
+  // ---- KPIs ----
+  const { daily, faltas, weekly } = cqDatosAlcance();
+  const limite = cqLimiteSemanal();
+  const semTot = weekly.length, semOk = weekly.filter(w=>w.cumple_semana).length;
+  const pctSem = semTot ? 100*semOk/semTot : null;
+  const r6 = daily.filter(r=>r.retardo_6_12).length, r13 = daily.filter(r=>r.retardo_13_24).length, r25 = daily.filter(r=>r.retardo_mas_25).length;
+  const exc = daily.filter(r=>r.jornada_excesiva_dia).length;
+  const semExc = weekly.filter(w=>!w.cumple_semana).length;
+  const totFaltas = faltas.reduce((s,f)=>s+(f.total_faltas||0),0);
+  const incompl = daily.filter(r=>r.checada_incompleta).length;
+  const promSem = semTot ? weekly.reduce((s,w)=>s+w.horas_semana,0)/semTot : null;
+  const st = statusOfPct(pctSem);
+  document.getElementById('cqKpis').innerHTML = [
+    emp ? cqKpi(fmt(daily.length), 'Días con registro', 'neutral') : cqKpi(fmt(rosterAlcance.length), 'Colaboradores', 'neutral'),
+    cqKpi(pctSem===null?'—':fmt(pctSem,1)+'%', `Semanas dentro de ${limite} h`, st, `${fmt(semOk)} de ${fmt(semTot)} semanas`),
+    cqKpi(promSem===null?'—':fmt(promSem,1)+' h', 'Promedio por semana', promSem!==null && promSem>limite ? 'bad' : 'neutral', `límite ${limite} h`),
+    cqKpi(fmt(r6+r13+r25), 'Retardos', (r6+r13+r25)>0?'warn':'ok', `6–12: ${fmt(r6)} · 13–24: ${fmt(r13)} · +25: ${fmt(r25)}`),
+    cqKpi(fmt(totFaltas), 'Faltas', totFaltas>0?'warn':'ok', 'días sin ninguna checada'),
+    cqKpi(fmt(exc), 'Jornadas >12 h en un día', exc>0?'bad':'ok', 'Art. 68 LFT'),
+    cqKpi(fmt(semExc), `Semanas sobre ${limite} h`, semExc>0?'bad':'ok', 'Art. 59 LFT'),
+    cqKpi(fmt(incompl), 'Checadas incompletas', incompl>0?'warn':'ok', 'falta alguna marca'),
+  ].join('');
+
+  // ---- gráficas ----
+  if(typeof Chart === 'undefined') return;
+  const retTitle = document.getElementById('cqRetTitle'), retNote = document.getElementById('cqRetNote');
+  const jorTitle = document.getElementById('cqJorTitle'), jorNote = document.getElementById('cqJorNote');
+  const baseOpts = { responsive:true, maintainAspectRatio:false, animation:{duration:250} };
+  if(emp){
+    // Retardos por semana
+    const semanas = [...new Set(daily.map(r=>r.semana_iso).filter(Boolean))].sort();
+    const porSem = (campo)=> semanas.map(s=>daily.filter(r=>r.semana_iso===s && r[campo]).length);
+    retTitle.textContent = 'Retardos por semana';
+    retNote.textContent = (r6+r13+r25) ? `${fmt(r6+r13+r25)} retardo(s) en el periodo. Las fechas exactas están en la tabla de abajo.` : 'Sin retardos en el periodo.';
+    charts.cqRet = new Chart(document.getElementById('cqChartRet'), {
+      type:'bar',
+      data:{ labels: semanas.map(niceWeek), datasets:[
+        {label:'6–12 min', data:porSem('retardo_6_12'), backgroundColor:CQ_COLORS.r6, borderRadius:3},
+        {label:'13–24 min', data:porSem('retardo_13_24'), backgroundColor:CQ_COLORS.r13, borderRadius:3},
+        {label:'+25 min', data:porSem('retardo_mas_25'), backgroundColor:CQ_COLORS.r25, borderRadius:3},
+      ]},
+      options:{ ...baseOpts, plugins:{legend:{position:'bottom'}},
+        scales:{ x:{stacked:true, grid:{display:false}}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}, grid:{color:'#EEEAE0'}, title:{display:true, text:'días con retardo'}} } }
+    });
+    // Horas por día con tope de 12 h
+    const dias = daily.filter(r=>r.fecha).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    jorTitle.textContent = 'Horas trabajadas por día';
+    const semExcTxt = weekly.filter(w=>!w.cumple_semana).sort((a,b)=>a.semana_iso.localeCompare(b.semana_iso))
+      .map(w=>`${niceWeek(w.semana_iso)}: ${fmt(w.horas_semana,1)} h (+${fmt(w.exceso_semanal,1)})`).join(' · ');
+    jorNote.textContent = (exc ? `${fmt(exc)} día(s) arriba de 12 h. ` : 'Ningún día arriba de 12 h. ') +
+      (semExcTxt ? `Semanas sobre ${limite} h — ${semExcTxt}` : `Ninguna semana sobre ${limite} h.`);
+    charts.cqJor = new Chart(document.getElementById('cqChartJor'), {
+      type:'bar',
+      data:{ labels: dias.map(r=>cqFechaCorta(r.fecha)), datasets:[
+        {type:'line', label:'Tope diario 12 h', data:dias.map(()=>12), borderColor:CQ_COLORS.linea, borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false},
+        {label:'Horas del día', data:dias.map(r=>r.horas_trabajadas), backgroundColor:dias.map(r=>r.jornada_excesiva_dia?CQ_COLORS.exceso:CQ_COLORS.normal), borderRadius:3},
+      ]},
+      options:{ ...baseOpts, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{
+          title:(it)=>{ const r = dias[it[0].dataIndex]; return `${r.fecha} · ${r.dia_semana||''}`; },
+          afterLabel:(c)=>{ const r = dias[c.dataIndex]; return c.dataset.type==='line' ? '' : `Entrada ${r.entrada||'—'} · Salida ${r.salida||'—'}`; } }}},
+        scales:{ x:{grid:{display:false}, ticks:{autoSkip:true, maxRotation:0}}, y:{beginAtZero:true, suggestedMax:13, grid:{color:'#EEEAE0'}, title:{display:true, text:'horas'}} } }
+    });
+  } else {
+    const TOP = 12;
+    const roster = colabRoster();
+    // Retardos: colaboradores con más retardos
+    const porEmp = new Map();
+    daily.forEach(r=>{
+      const k = r.unidad_negocio+'|||'+r.id_empleado;
+      if(!porEmp.has(k)) porEmp.set(k, {key:k, nombre:r.nombre, r6:0, r13:0, r25:0, exc:0, semExc:0});
+      const e = porEmp.get(k);
+      if(r.retardo_6_12) e.r6++; if(r.retardo_13_24) e.r13++; if(r.retardo_mas_25) e.r25++;
+      if(r.jornada_excesiva_dia) e.exc++;
+    });
+    weekly.forEach(w=>{ const e = porEmp.get(w.unidad_negocio+'|||'+w.id_empleado); if(e && !w.cumple_semana) e.semExc++; });
+    const topRet = [...porEmp.values()].filter(e=>e.r6+e.r13+e.r25>0)
+      .sort((a,b)=>(b.r6+b.r13+b.r25)-(a.r6+a.r13+a.r25) || (b.r25-a.r25)).slice(0, TOP);
+    const conRet = [...porEmp.values()].filter(e=>e.r6+e.r13+e.r25>0).length;
+    retTitle.textContent = 'Colaboradores con más retardos';
+    retNote.textContent = conRet ? `${fmt(conRet)} de ${fmt(roster.length)} colaboradores tuvieron al menos un retardo${conRet>TOP?` (se muestran los ${TOP} con más)`:''}. Haz clic en una barra para ver su detalle.` : 'Nadie tuvo retardos en este alcance.';
+    const altoRet = Math.max(220, 34 + topRet.length*26);
+    document.getElementById('cqChartRet').parentElement.style.height = altoRet+'px';
+    charts.cqRet = new Chart(document.getElementById('cqChartRet'), {
+      type:'bar',
+      data:{ labels: topRet.map(e=>cqCorto(e.nombre)), datasets:[
+        {label:'6–12 min', data:topRet.map(e=>e.r6), backgroundColor:CQ_COLORS.r6},
+        {label:'13–24 min', data:topRet.map(e=>e.r13), backgroundColor:CQ_COLORS.r13},
+        {label:'+25 min', data:topRet.map(e=>e.r25), backgroundColor:CQ_COLORS.r25},
+      ]},
+      options:{ ...baseOpts, indexAxis:'y', plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:(it)=>topRet[it[0].dataIndex].nombre}}},
+        onClick:(ev, els)=>{ if(els.length) cqSeleccionarColaborador(topRet[els[0].index].key); },
+        onHover:(ev, els)=>{ ev.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+        scales:{ x:{stacked:true, beginAtZero:true, ticks:{precision:0}, grid:{color:'#EEEAE0'}, title:{display:true, text:'días con retardo'}}, y:{stacked:true, grid:{display:false}} } }
+    });
+    // Jornadas excesivas: días >12 h y semanas sobre el límite
+    const topJor = [...porEmp.values()].filter(e=>e.exc+e.semExc>0).sort((a,b)=>(b.exc*2+b.semExc)-(a.exc*2+a.semExc)).slice(0, TOP);
+    const conJor = [...porEmp.values()].filter(e=>e.exc+e.semExc>0).length;
+    jorTitle.textContent = 'Colaboradores con jornadas excesivas';
+    jorNote.textContent = conJor ? `${fmt(conJor)} colaborador(es) con al menos un día de más de 12 h o una semana sobre ${limite} h${conJor>TOP?` (se muestran los ${TOP} con más)`:''}. Haz clic en una barra para ver su detalle.` : `Nadie rebasó 12 h en un día ni ${limite} h en una semana.`;
+    const altoJor = Math.max(220, 34 + topJor.length*26);
+    document.getElementById('cqChartJor').parentElement.style.height = altoJor+'px';
+    charts.cqJor = new Chart(document.getElementById('cqChartJor'), {
+      type:'bar',
+      data:{ labels: topJor.map(e=>cqCorto(e.nombre)), datasets:[
+        {label:'Días con más de 12 h', data:topJor.map(e=>e.exc), backgroundColor:CQ_COLORS.exceso},
+        {label:`Semanas sobre ${limite} h`, data:topJor.map(e=>e.semExc), backgroundColor:CQ_COLORS.semana},
+      ]},
+      options:{ ...baseOpts, indexAxis:'y', plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:(it)=>topJor[it[0].dataIndex].nombre}}},
+        onClick:(ev, els)=>{ if(els.length) cqSeleccionarColaborador(topJor[els[0].index].key); },
+        onHover:(ev, els)=>{ ev.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+        scales:{ x:{beginAtZero:true, ticks:{precision:0}, grid:{color:'#EEEAE0'}}, y:{grid:{display:false}} } }
+    });
+  }
+  if(emp){
+    document.getElementById('cqChartRet').parentElement.style.height = '260px';
+    document.getElementById('cqChartJor').parentElement.style.height = '260px';
+  }
+
+  // ---- tabla ----
+  const tabla = document.getElementById('cqTabla');
+  if(emp){
+    const faltaDates = (faltas[0] && faltas[0].fechas) || [];
+    const fechasDaily = new Set(daily.map(r=>r.fecha));
+    const rows = [
+      ...daily.map(r=>({ fecha:r.fecha, dia:r.dia_semana, entrada:r.entrada, salida:r.salida, horas:r.horas_trabajadas,
+        alerta:[r.retardo_6_12?'Retardo 6–12 min':null, r.retardo_13_24?'Retardo 13–24 min':null, r.retardo_mas_25?'Retardo +25 min':null,
+          r.falta_dia?'Falta (sin checada)':null, r.jornada_excesiva_dia?'Más de 12 h':null, r.checada_incompleta?'Checada incompleta':null].filter(Boolean).join(' · ') })),
+      ...faltaDates.filter(f=>!fechasDaily.has(f)).map(f=>({ fecha:f, dia:'', entrada:null, salida:null, horas:null, alerta:'Falta (sin checada)' })),
+    ].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+    tabla.innerHTML = `
+      <div class="table-card">
+        <div class="tc-head"><div><h3>Detalle día por día — ${esc(emp.nombre)}</h3></div>
+          <div class="tc-actions"><span class="count">${rows.filter(r=>r.alerta).length} día(s) con alerta de ${rows.length}</span></div></div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Fecha</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Horas</th><th>Alerta</th></tr></thead>
+          <tbody>${rows.length===0?`<tr class="empty-row"><td colspan="6">Sin registros.</td></tr>`:
+            rows.map(r=>`<tr class="${r.alerta?'row-alert':''}"><td class="mono">${esc(r.fecha||'')}</td><td>${esc(r.dia||'')}</td>
+              <td class="mono">${esc(r.entrada||'—')}</td><td class="mono">${esc(r.salida||'—')}</td>
+              <td class="num mono">${r.horas!=null?fmt(r.horas,1):'—'}</td><td>${r.alerta?('⚠ '+esc(r.alerta)):''}</td></tr>`).join('')}
+          </tbody></table></div>
+      </div>`;
+  } else {
+    const semExcPorEmp = new Map();
+    weekly.forEach(w=>{ if(!w.cumple_semana){ const k = w.unidad_negocio+'|||'+w.id_empleado; semExcPorEmp.set(k, (semExcPorEmp.get(k)||0)+1); } });
+    const multi = new Set(rosterAlcance.map(e=>e.unidad_negocio)).size > 1;
+    const cell = (v)=>`<td class="num mono${v>0?' cq-alert':''}">${fmt(v)}</td>`;
+    tabla.innerHTML = `
+      <div class="table-card">
+        <div class="tc-head"><div><h3>Colaboradores del alcance</h3></div>
+          <div class="tc-actions"><span class="count">${fmt(rosterAlcance.length)} colaborador(es) · clic en una fila para ver su detalle</span></div></div>
+        <div class="table-scroll"><table>
+          <thead><tr>${multi?'<th>Centro</th>':''}<th>Colaborador</th><th>Área</th><th class="num">Días</th><th class="num">Retardos</th><th class="num">Faltas</th>
+            <th class="num">Días &gt;12 h</th><th class="num">Semanas &gt;${limite} h</th><th class="num">Checadas incompletas</th></tr></thead>
+          <tbody>${rosterAlcance.length===0?`<tr class="empty-row"><td colspan="${multi?9:8}">Sin colaboradores en este alcance.</td></tr>`:
+            rosterAlcance.map(e=>`<tr data-id="${esc(e.key)}">${multi?`<td>${esc(e.unidad_negocio.replace(/_/g,' '))}</td>`:''}
+              <td>${esc(e.nombre)}</td><td>${esc(e.area||'')}</td><td class="num mono">${fmt(e.dias)}</td>
+              ${cell(e.retardos)}${cell(e.faltas)}${cell(e.excesos)}${cell(semExcPorEmp.get(e.key)||0)}${cell(e.incompletas)}</tr>`).join('')}
+          </tbody></table></div>
+      </div>`;
+    tabla.querySelectorAll('tbody tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>cqSeleccionarColaborador(tr.getAttribute('data-id'))));
+  }
+}
+function wireConsulta(){
+  on('cqCentro', 'change', (e)=>{ state.unidad = e.target.value || null; state.area = null; state.colaborador = null; refreshScope(); });
+  on('cqArea', 'change', (e)=>{ state.area = e.target.value || null; state.colaborador = null; refreshScope(); });
+  on('cqLimpiar', 'click', ()=>{ const i = document.getElementById('cqBuscar'); if(i) i.value=''; cqSeleccionarColaborador(null); });
+  on('cqExcel', 'click', exportColaboradorExcel);
+  on('cqPdf', 'click', async (ev)=>{
+    if(!state.unidad) return;
+    const btn = ev.currentTarget; btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Generando…';
+    try{ await generateUnitPDF(state.unidad); toast(`PDF de ${state.unidad.replace(/_/g,' ')} generado`); }
+    catch(err){ console.error(err); toast('No se pudo generar el PDF: '+err.message, true); }
+    btn.disabled = false; btn.textContent = txt;
+  });
+  const input = document.getElementById('cqBuscar');
+  const box = document.getElementById('cqSug');
+  if(input && box){
+    input.addEventListener('input', ()=>{
+      if(!input.value.trim() && state.colaborador){ cqSeleccionarColaborador(null); return; }
+      cqRenderSugerencias();
+    });
+    input.addEventListener('focus', ()=>{ if(state.colaborador) input.select(); else if(input.value.trim()) cqRenderSugerencias(); });
+    input.addEventListener('blur', ()=>{ setTimeout(()=>{ box.hidden = true; }, 120); });
+    input.addEventListener('keydown', (e)=>{
+      const items = [...box.querySelectorAll('.cq-sug-item')];
+      if(e.key==='ArrowDown' || e.key==='ArrowUp'){
+        if(!items.length) return; e.preventDefault();
+        cqSugIndex = (cqSugIndex + (e.key==='ArrowDown'?1:-1) + items.length) % items.length;
+        items.forEach((it,i)=>it.classList.toggle('active', i===cqSugIndex));
+        items[cqSugIndex].scrollIntoView({block:'nearest'});
+      } else if(e.key==='Enter'){
+        e.preventDefault();
+        if(items.length && cqSugIndex>=0){ box.hidden = true; cqSeleccionarColaborador(items[cqSugIndex].getAttribute('data-key')); input.blur(); }
+        else if(!input.value.trim()) cqSeleccionarColaborador(null);
+      } else if(e.key==='Escape'){ box.hidden = true; input.blur(); }
+    });
+  }
+}
+
+// ---------- apartados desplegables ----------
 function wireCollapsibles(){
   document.querySelectorAll('.collapsible-toggle').forEach(btn=>{
     const bodyId = btn.getAttribute('aria-controls');

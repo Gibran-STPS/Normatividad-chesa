@@ -2269,6 +2269,27 @@ function extraerNumeroActividad(actividadTxt){
     const m = (actividadTxt || '').match(/^\s*(\d+)/);
     return m ? m[1] : null;
 }
+function etiquetaNormaCorreo(normaCode, tituloOriginal){
+    // "NOM-002-STPS-2010" -> "NOM 002" ; "NOM-036-1-STPS-2018" -> "NOM 036-1".
+    // Si la actividad no se pudo ligar al catálogo (norma_code vacío), se usa
+    // el título tal como viene en el Excel para no perderla.
+    const fuente = normaCode || tituloOriginal || '';
+    const m = fuente.toUpperCase().match(/NOM-?\s*0*(\d{1,3})(-\d+)?/);
+    if(m){
+        const num = m[1].padStart(3, '0');
+        return { clave: 'NOM' + num + (m[2] || ''), texto: `NOM ${num}${m[2] || ''}`, orden: parseInt(m[1], 10) + (m[2] ? parseInt(m[2].slice(1), 10) / 100 : 0) };
+    }
+    const texto = (tituloOriginal || 'Norma no identificada').trim();
+    return { clave: normalizarClave(texto) || 'SINNORMA', texto, orden: 9999 };
+}
+function formatearActividadCorreo(actividadTxt){
+    // Homologa el arranque "9.-", "9 .-", "9-", "9." a "9.- " sin tocar el
+    // resto del texto, y colapsa espacios dobles.
+    let s = (actividadTxt || '').toString().replace(/\s+/g, ' ').trim();
+    const m = s.match(/^(\d+)\s*(?:\.\s*-|\.|-|\))\s*(.*)$/);
+    if(m) s = `${m[1]}.- ${m[2]}`;
+    return s;
+}
 function extraerClaveArchivoPlantilla(nombreArchivo){
     // "2_9_REGISTRO_REVISION_MENSUAL_EXTINTORES__PLANTILLA.xlsx" -> {norma:'2', actividad:'9'}
     // Documentos sin esa numeración (ej. políticas generales) devuelven null
@@ -2310,6 +2331,10 @@ function clasificarValorCelda(valorCelda){
     const norm = normalizarClave(original); // solo A-Z0-9, sin acentos/espacios
 
     if(norm === 'X' || norm === 'NA' || norm === 'NOAPLICA') return null; // explícitamente no aplica
+    // Celdas de relleno: "-", "—", ".", "0", "NO". Antes caían en "valor no
+    // reconocido" y se importaban como actividad "Planeada" de ese mes, así
+    // que aparecían en el correo aunque en el calendario no hubiera nada.
+    if(!norm || norm === '0' || norm === 'NO') return null;
 
     if(norm === 'R' || norm === 'P') {
         return { estado: norm === 'R' ? 'Realizada' : 'Planeada', notas: null };
@@ -2425,6 +2450,8 @@ async function importarCalendarioExcel(event){
     const emparejadosPorCodigo = [];
     const emparejadosPorNombre = [];
     const valoresNoReconocidos = new Set();
+    const hojasConColumnasMovidas = [];
+    const normasSinCatalogo = new Set();
     let centrosProcesados = 0;
     let totalEliminadasObsoletas = 0;
     const centrosConLimpieza = [];
@@ -2460,6 +2487,28 @@ async function importarCalendarioExcel(event){
         if(!rango) continue;
         const celda = (r, c) => { const cel = ws[XLSX.utils.encode_cell({ r, c })]; return cel ? cel.v : null; };
 
+        // Columnas de cada mes: se buscan por su encabezado (ENE, FEB... DIC)
+        // en las primeras filas. Si alguna hoja trae una columna extra entre
+        // la actividad y los meses, antes todo se recorría un mes sin avisar.
+        // Si no se encuentra el encabezado, se usa el acomodo de siempre (D..O).
+        const MESES_ABR = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+        let colMes = MESES_ABR.map((_, i) => 3 + i);
+        for(let r = rango.s.r; r <= Math.min(rango.e.r, rango.s.r + 40); r++){
+            const encontrados = new Array(12).fill(null);
+            for(let c = rango.s.c; c <= rango.e.c; c++){
+                const v = celda(r, c);
+                if(v === null || v === undefined) continue;
+                const k = normalizarClave(v).slice(0, 3);
+                const idx = MESES_ABR.indexOf(k === 'SET' ? 'SEP' : k);
+                if(idx > -1 && encontrados[idx] === null) encontrados[idx] = c;
+            }
+            if(encontrados.filter(x => x !== null).length >= 10 && encontrados.every((c, i) => c === null || i === 0 || encontrados[i-1] === null || c > encontrados[i-1])){
+                colMes = encontrados.map((c, i) => c !== null ? c : 3 + i);
+                if(colMes.some((c, i) => c !== 3 + i)) hojasConColumnasMovidas.push(nombreHoja.trim());
+                break;
+            }
+        }
+
         let normaActualCode = null;
         let normaActualTitulo = null;
         let actividadesEnHoja = 0;
@@ -2474,12 +2523,21 @@ async function importarCalendarioExcel(event){
             if(colB && typeof colB === 'string' && colB.toUpperCase().includes('NOM')){
                 normaActualTitulo = colB.trim();
                 normaActualCode = buscarNormaCode(colB);
+                if(!normaActualCode) normasSinCatalogo.add(normaActualTitulo);
+                continue;
+            }
+            if(colB && typeof colB === 'string' && colB.trim() && !(colC && String(colC).trim())){
+                // Título de sección que NO es una NOM (ej. "PROTECCIÓN CIVIL",
+                // "REGLAMENTO FEDERAL..."): antes se ignoraba y sus actividades
+                // quedaban registradas bajo la NOM anterior (p. ej. NOM-035).
+                normaActualTitulo = colB.trim();
+                normaActualCode = null;
                 continue;
             }
             if(colC && typeof colC === 'string' && colC.trim().length > 2 && !colB){
                 const actividadTxt = colC.trim();
                 for(let mIdx = 0; mIdx < 12; mIdx++){
-                    const clasificacion = clasificarValorCelda(celda(r, 3 + mIdx)); // columnas D..O
+                    const clasificacion = clasificarValorCelda(celda(r, colMes[mIdx])); // columna del mes (normalmente D..O)
                     if(!clasificacion) continue;
                     actividadesEnHoja++;
                     const fila = {
@@ -2574,6 +2632,12 @@ async function importarCalendarioExcel(event){
     }
     if(emparejadosPorNombre.length){
         mostrarToast('Emparejadas por nombre (revisa que sean el centro correcto): ' + emparejadosPorNombre.join(', '));
+    }
+    if(hojasConColumnasMovidas.length){
+        mostrarToast('En estas hojas los meses no empiezan en la columna D; se leyeron según su encabezado (ENE…DIC): ' + hojasConColumnasMovidas.join(', '));
+    }
+    if(normasSinCatalogo.size){
+        mostrarToast('Estas normas del Excel no están en el catálogo y sus actividades se guardaron solo con el título original (revisa el catálogo de normas): ' + Array.from(normasSinCatalogo).slice(0, 6).join(' | '), 'error');
     }
     if(valoresNoReconocidos.size){
         mostrarToast('Se importaron como "Planeada" algunos valores de estado que no reconocimos (revísalos): ' + Array.from(valoresNoReconocidos).join(' | '), 'error');
@@ -4406,27 +4470,36 @@ async function generarBorradorCorreo(){
     // listado: la capacitación ya se cita aparte más abajo (con liga y
     // colaboradores convocados) y el DC-3 ni siquiera necesita mención,
     // porque no es una tarea que la agencia deba hacer.
+    // Solo se piden las actividades pendientes: lo que en el calendario ya
+    // está como "Realizada" (R, "Vigente 2026", "Entrega en el transcurso del
+    // año"...) no se le vuelve a solicitar a la agencia.
     const actividadesParaAgencia = (actividades || [])
-        .filter(a => !/capacitac/i.test(a.actividad || '') && !/DC-3/i.test(a.actividad || ''));
+        .filter(a => !/capacitac/i.test(a.actividad || '') && !/DC-3/i.test(a.actividad || ''))
+        .filter(a => a.estado !== 'Realizada');
     if(actividadesParaAgencia.length){
-        // Agrupa las actividades por norma, numerando cada grupo de forma
-        // consecutiva (1, 2, 3...) y listando debajo cada actividad tal cual
-        // viene capturada (ya trae su propio "N.- descripción").
-        const gruposPorNorma = [];
-        const indiceGrupo = new Map();
+        // Formato acordado con Talento Humano (según el calendario anual):
+        //   1. NOM 002
+        //   9.- Registro de revisión mensual de extintores.
+        //   11.- Registro de revisión de las instalaciones eléctricas...
+        // Normas en orden numérico (002, 005, 009...), actividades en el
+        // orden de su número dentro de la norma, sin duplicados.
+        const gruposPorNorma = new Map();
         actividadesParaAgencia.forEach(a => {
-            const clave = a.norma_code || a.norma_titulo_original || 'Norma no identificada';
-            if(!indiceGrupo.has(clave)){
-                indiceGrupo.set(clave, gruposPorNorma.length);
-                gruposPorNorma.push({ norma: clave, actividades: [] });
-            }
-            gruposPorNorma[indiceGrupo.get(clave)].actividades.push(a.actividad);
+            const etiqueta = etiquetaNormaCorreo(a.norma_code, a.norma_titulo_original);
+            if(!gruposPorNorma.has(etiqueta.clave)) gruposPorNorma.set(etiqueta.clave, { ...etiqueta, actividades: new Map() });
+            const txt = formatearActividadCorreo(a.actividad);
+            const g = gruposPorNorma.get(etiqueta.clave);
+            if(txt && !g.actividades.has(normalizarClave(txt))) g.actividades.set(normalizarClave(txt), txt);
         });
-        gruposPorNorma.forEach((grupo, i) => {
-            cuerpo += `${i + 1}. [${grupo.norma}]\n`;
-            grupo.actividades.forEach(act => { cuerpo += `${act}\n`; });
-            cuerpo += '\n';
-        });
+        [...gruposPorNorma.values()]
+            .sort((x, y) => x.orden - y.orden || x.texto.localeCompare(y.texto))
+            .forEach((grupo, i) => {
+                cuerpo += `${i + 1}. ${grupo.texto}\n`;
+                [...grupo.actividades.values()]
+                    .sort((x, y) => (parseInt(extraerNumeroActividad(x), 10) || 999) - (parseInt(extraerNumeroActividad(y), 10) || 999))
+                    .forEach(act => { cuerpo += `${act}\n`; });
+                cuerpo += '\n';
+            });
     } else {
         cuerpo += '(No hay actividades registradas en el calendario para este mes. Verifica que ya se importó el calendario del año.)\n\n';
     }
