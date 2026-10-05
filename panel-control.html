@@ -2269,6 +2269,11 @@ function extraerNumeroActividad(actividadTxt){
     const m = (actividadTxt || '').match(/^\s*(\d+)/);
     return m ? m[1] : null;
 }
+function esControlInterno(actividad){
+    // Celda marcada "N" en el calendario anual. También reconoce las que se
+    // importaron antes de existir esta regla (se guardaban con notas "N").
+    return normalizarClave(actividad && actividad.notas) === 'N';
+}
 function etiquetaNormaCorreo(normaCode, tituloOriginal){
     // "NOM-002-STPS-2010" -> "NOM 002" ; "NOM-036-1-STPS-2018" -> "NOM 036-1".
     // Si la actividad no se pudo ligar al catálogo (norma_code vacío), se usa
@@ -2338,6 +2343,13 @@ function clasificarValorCelda(valorCelda){
 
     if(norm === 'R' || norm === 'P') {
         return { estado: norm === 'R' ? 'Realizada' : 'Planeada', notas: null };
+    }
+    if(norm === 'N') {
+        // "N" = actividad de CONTROL INTERNO: le corresponde a administración
+        // (Talento Humano / Auditoría STPS), no a la agencia. Se importa para
+        // darle seguimiento en el calendario, pero nunca se pide en el correo
+        // mensual. La marca "N" se conserva en notas (ver esControlInterno()).
+        return { estado: 'Planeada', notas: 'N' };
     }
     if(norm.startsWith('REALIZ') || norm.startsWith('VIGEN') || norm.startsWith('ENTREGA')) {
         // "Vigente 2026/2027/2028", "Vigente hasta/por/agosto 2026", "Entrega en el transcurso del año"
@@ -3319,7 +3331,7 @@ async function cargarDetalleCentroCalendario(centroId){
         const accionTxt = esRealizada ? 'Marcar pendiente' : 'Marcar realizada';
         return `<tr class="hover:bg-white transition-colors border-b border-outline-variant last:border-0">
 <td class="px-md py-sm font-data-mono text-data-mono text-xs align-top">${normaTxt}</td>
-<td class="px-md py-sm text-sm align-top">${f.actividad}${f.notas ? `<div class="text-xs text-on-surface-variant italic mt-0.5">Excel original: "${f.notas}"</div>` : ''}</td>
+<td class="px-md py-sm text-sm align-top">${f.actividad}${esControlInterno(f) ? `<div class="mt-0.5"><span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Control interno · Administración</span> <span class="text-xs text-on-surface-variant">No se envía a la agencia</span></div>` : (f.notas ? `<div class="text-xs text-on-surface-variant italic mt-0.5">Excel original: "${f.notas}"</div>` : '')}</td>
 <td class="px-md py-sm align-top"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f.estado}</span></td>
 <td class="px-md py-sm text-right align-top"><button class="text-primary hover:underline font-bold text-xs" onclick="cambiarEstadoActividad('${f.id}','${siguienteEstado}')" type="button">${accionTxt}</button></td>
 </tr>`;
@@ -4408,10 +4420,14 @@ async function generarBorradorCorreo(){
     mostrarToast('Armando el borrador...');
 
     const { data: actividades, error: errAct } = await supabaseClient.from('calendario_normativo')
-        .select('norma_code, norma_titulo_original, actividad, estado')
+        .select('norma_code, norma_titulo_original, actividad, estado, notas')
         .eq('centro_id', centroId).eq('mes', mes).eq('anio', anio)
         .order('norma_code', { ascending: true, nullsFirst: false });
     if(errAct){ mostrarToast('Error: ' + errAct.message); return; }
+    // Las actividades "N" (control interno de administración) no viajan a la
+    // agencia: ni en la lista del correo ni como plantillas adjuntas.
+    const actividadesControlInterno = (actividades || []).filter(esControlInterno);
+    const actividadesAgencia = (actividades || []).filter(a => !esControlInterno(a));
 
     const { data: plantillas } = await supabaseClient.from('plantillas_documentos').select('norma_code, nombre_archivo, storage_path');
 
@@ -4421,11 +4437,15 @@ async function generarBorradorCorreo(){
     await cargarVacacionesMes();
     const colaboradoresMes = COLABORADORES_CENTRO_CACHE.centroId === centroId ? COLABORADORES_CENTRO_CACHE.data : [];
 
-    const normasEnCorreo = [...new Set((actividades || []).map(a => a.norma_code).filter(Boolean))];
-    // Clave "normaNum_actividadNum" de cada actividad realmente programada este mes
-    // (ej. "2_9" para "9.- Registro de revisión mensual de extintores.")
+    // Adjuntos: SOLO las plantillas que corresponden a una actividad que se
+    // le pide a la agencia este mes (de la agencia, no "N", no ya realizada).
+    // El nombre del archivo debe empezar con "norma_actividad" (ej. "2_9_…"
+    // = NOM 002, actividad 9.-). Antes, las plantillas sin esa numeración
+    // (ej. POLITICA_PSICOSOCIAL_CHESA) se anexaban con solo que su norma
+    // tuviera cualquier actividad en el mes, aunque esa actividad no
+    // estuviera en el calendario — por eso aparecían documentos de más.
     const clavesActividadesMes = new Set(
-        (actividades || []).map(a => {
+        actividadesAgencia.filter(a => a.estado !== 'Realizada').map(a => {
             const n = extraerNumeroSimpleNorma(a.norma_code);
             const act = extraerNumeroActividad(a.actividad);
             return (n && act) ? `${n}_${act}` : null;
@@ -4433,13 +4453,11 @@ async function generarBorradorCorreo(){
     );
     const plantillasAplicables = (plantillas || []).filter(p => {
         const clave = extraerClaveArchivoPlantilla(p.nombre_archivo);
-        if(clave) return clavesActividadesMes.has(`${clave.norma}_${clave.actividad}`);
-        // Documentos sin número de actividad en el nombre (ej. políticas
-        // generales): se anexan si la norma completa aplica este mes.
-        return normasEnCorreo.includes(p.norma_code);
+        return !!clave && clavesActividadesMes.has(`${parseInt(clave.norma, 10)}_${parseInt(clave.actividad, 10)}`);
     });
+    const plantillasSinNumeracion = (plantillas || []).filter(p => !extraerClaveArchivoPlantilla(p.nombre_archivo));
 
-    CORREO_CONTEXTO = { centro, mes, anio, actividades: actividades || [], plantillas: plantillasAplicables, colaboradores: colaboradoresMes };
+    CORREO_CONTEXTO = { centro, mes, anio, actividades: actividadesAgencia, plantillas: plantillasAplicables, colaboradores: colaboradoresMes };
     ZIP_ADJUNTOS_DESCARGADO = false;
 
     const nombreMesTxt = NOMBRES_MES[mes - 1];
@@ -4473,7 +4491,7 @@ async function generarBorradorCorreo(){
     // Solo se piden las actividades pendientes: lo que en el calendario ya
     // está como "Realizada" (R, "Vigente 2026", "Entrega en el transcurso del
     // año"...) no se le vuelve a solicitar a la agencia.
-    const actividadesParaAgencia = (actividades || [])
+    const actividadesParaAgencia = actividadesAgencia
         .filter(a => !/capacitac/i.test(a.actividad || '') && !/DC-3/i.test(a.actividad || ''))
         .filter(a => a.estado !== 'Realizada');
     if(actividadesParaAgencia.length){
@@ -4520,7 +4538,7 @@ async function generarBorradorCorreo(){
     // arma su propia tarjeta (liga + puestos + colaboradores citados), porque
     // un mismo mes puede traer más de un curso y no siempre son para el mismo
     // personal (ej. NOM-009 vs NOM-020 convocan puestos distintos).
-    const actsCapacitacion = (actividades || []).filter(a => /capacitac/i.test(a.actividad || ''));
+    const actsCapacitacion = actividadesAgencia.filter(a => /capacitac/i.test(a.actividad || ''));
     const wrapCap = document.getElementById('correo-cap-wrap');
     CORREO_CAP_ACTIVIDADES = actsCapacitacion;
     if(actsCapacitacion.length){
@@ -4533,6 +4551,13 @@ async function generarBorradorCorreo(){
     CORREO_CAP_BLOQUE = '';
 
     reconstruirCuerpoCorreo();
+
+    if(plantillasSinNumeracion.length){
+        mostrarToast(`No se anexaron ${plantillasSinNumeracion.length} plantilla(s) sin numeración "norma_actividad" en el nombre (ej. ${plantillasSinNumeracion[0].nombre_archivo}). Si alguna corresponde a una actividad del calendario, renómbrala empezando con su número (ej. "35_10_…") para que se anexe en el mes que toca.`);
+    }
+    if(actividadesControlInterno.length){
+        mostrarToast(`${actividadesControlInterno.length} actividad(es) de control interno ("N") este mes no se incluyeron en el correo: le corresponden a administración. Las ves en "Calendario del Mes".`);
+    }
 
     let htmlAdj = '<label class="block font-label-caps text-label-caps text-on-surface-variant mb-xs">Adjuntos que incluirá el ZIP</label><ul class="text-sm list-disc pl-lg">';
     plantillasAplicables.forEach(p => htmlAdj += `<li>${p.nombre_archivo}</li>`);
