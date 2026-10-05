@@ -3345,10 +3345,15 @@ async function importarColaboradoresExcel(event){
     const filas = [];
     const sinMapear = new Set();
     const sinFechaValida = [];
+    // Todas las claves que aparecen en la hoja, aunque su fila se omita por
+    // fecha inválida: sirve para detectar las BAJAS (quien ya no está en el
+    // Cuadro) sin dar de baja por error a quien solo tiene un dato mal capturado.
+    const clavesEnCuadro = new Set();
 
     for(let r = idxEncabezado + 1; r < filasHoja.length; r++){
         const fila = filasHoja[r];
         if(!fila || !fila[iClave]) continue;
+        clavesEnCuadro.add(String(fila[iClave]).trim());
 
         const fechaIngresoRaw = fila[iIngreso];
         let fechaISO = null;
@@ -3443,7 +3448,43 @@ async function importarColaboradoresExcel(event){
         insertados += bloque.length;
     }
 
+    // ---- BAJAS ----
+    // Antes el import solo agregaba/actualizaba (upsert) a quien venía en el
+    // Cuadro, pero NUNCA desactivaba a quien ya no venía: las bajas se
+    // quedaban "activas" para siempre y seguían apareciendo en constancias de
+    // vacaciones, carnets IMSS pendientes y el correo mensual (caso ENCINO
+    // GOMEZ DIANA ANTONIA, GUERRA CIGARROA HELIA MALABIL, GUSMAN ROMERO
+    // FERNANDO, GUTIERREZ PEREZ ISRAEL). El Cuadro General (hoja CONCENTRADO)
+    // es la plantilla completa vigente: todo colaborador activo cuya clave no
+    // aparece en él se marca activo = false. No se borra nada (se conserva su
+    // historial); si alguien regresa en un Cuadro posterior, el upsert lo
+    // reactiva solo (activo: true).
+    let bajas = [];
+    const { data: activosBD, error: errActivos } = await supabaseClient.from('colaboradores')
+        .select('clave, nombre').eq('activo', true).range(0, 9999);
+    if(errActivos){
+        mostrarToast('Se importó el Cuadro, pero no se pudieron revisar las bajas: ' + errActivos.message, 'error');
+    } else {
+        bajas = (activosBD || []).filter(c => !clavesEnCuadro.has(String(c.clave).trim()));
+        // Candado de seguridad: si el archivo trae menos de la mitad del
+        // personal activo, probablemente es un Cuadro parcial o la hoja
+        // equivocada — se pide confirmación antes de dar de baja a tantos.
+        const masivo = activosBD.length > 20 && bajas.length > activosBD.length / 2;
+        if(bajas.length && masivo && !confirm(`El archivo dejaría como BAJA a ${bajas.length} de ${activosBD.length} colaboradores activos. ¿Seguro que es el Cuadro General completo y vigente? (Cancelar = solo se importan altas y cambios, sin bajas)`)){
+            bajas = [];
+        }
+        for(let i = 0; i < bajas.length; i += 200){
+            const claves = bajas.slice(i, i + 200).map(c => c.clave);
+            const { error } = await supabaseClient.from('colaboradores').update({ activo: false }).in('clave', claves);
+            if(error){ mostrarToast('Error al registrar bajas: ' + error.message, 'error'); bajas = bajas.slice(0, i); break; }
+        }
+    }
+
     let msg = `Colaboradores importados: ${insertados}.`;
+    if(bajas.length){
+        const ejemplos = bajas.slice(0, 5).map(c => c.nombre).join(', ');
+        msg += ` Bajas registradas (ya no están en el Cuadro): ${bajas.length} — ${ejemplos}${bajas.length > 5 ? '…' : ''}.`;
+    }
     if(iImss > -1){
         const enviados = filas.filter(f => f.carnet_imss_estatus === 'Enviado').length;
         msg += ` Carnet IMSS tomado de la columna "IMSS" del Excel: ${enviados} entregado(s), ${insertados - enviados} pendiente(s).`;
