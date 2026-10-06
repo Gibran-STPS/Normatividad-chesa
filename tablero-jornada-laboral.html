@@ -3226,23 +3226,25 @@ function renderConsultaInner(){
       options:{ ...baseOpts, plugins:{legend:{position:'bottom'}},
         scales:{ x:{stacked:true, grid:{display:false}}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}, grid:{color:'#EEEAE0'}, title:{display:true, text:'días con retardo'}} } }
     });
-    // Horas por día con tope de 12 h
+    // Horas por día con límite diario de jornada ordinaria (8 h)
+    const LIMITE_DIA = 8;
     const dias = daily.filter(r=>r.fecha).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const sobreLim = dias.filter(r=>(r.horas_trabajadas||0) > LIMITE_DIA).length;
     jorTitle.textContent = 'Horas trabajadas por día';
     const semExcTxt = weekly.filter(w=>!w.cumple_semana).sort((a,b)=>a.semana_iso.localeCompare(b.semana_iso))
       .map(w=>`${niceWeek(w.semana_iso)}: ${fmt(w.horas_semana,1)} h (+${fmt(w.exceso_semanal,1)})`).join(' · ');
-    jorNote.textContent = (exc ? `${fmt(exc)} día(s) arriba de 12 h. ` : 'Ningún día arriba de 12 h. ') +
+    jorNote.textContent = (sobreLim ? `${fmt(sobreLim)} día(s) arriba de ${LIMITE_DIA} h. ` : `Ningún día arriba de ${LIMITE_DIA} h. `) +
       (semExcTxt ? `Semanas sobre ${limite} h — ${semExcTxt}` : `Ninguna semana sobre ${limite} h.`);
     charts.cqJor = new Chart(document.getElementById('cqChartJor'), {
       type:'bar',
       data:{ labels: dias.map(r=>cqFechaCorta(r.fecha)), datasets:[
-        {type:'line', label:'Tope diario 12 h', data:dias.map(()=>12), borderColor:CQ_COLORS.linea, borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false},
-        {label:'Horas del día', data:dias.map(r=>r.horas_trabajadas), backgroundColor:dias.map(r=>r.jornada_excesiva_dia?CQ_COLORS.exceso:CQ_COLORS.normal), borderRadius:3},
+        {type:'line', label:`Límite diario ${LIMITE_DIA} h`, data:dias.map(()=>LIMITE_DIA), borderColor:CQ_COLORS.linea, borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false},
+        {label:'Horas del día', data:dias.map(r=>r.horas_trabajadas), backgroundColor:dias.map(r=>(r.horas_trabajadas||0) > LIMITE_DIA?CQ_COLORS.exceso:CQ_COLORS.normal), borderRadius:3},
       ]},
       options:{ ...baseOpts, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{
           title:(it)=>{ const r = dias[it[0].dataIndex]; return `${r.fecha} · ${r.dia_semana||''}`; },
           afterLabel:(c)=>{ const r = dias[c.dataIndex]; return c.dataset.type==='line' ? '' : `Entrada ${r.entrada||'—'} · Salida ${r.salida||'—'}`; } }}},
-        scales:{ x:{grid:{display:false}, ticks:{autoSkip:true, maxRotation:0}}, y:{beginAtZero:true, suggestedMax:13, grid:{color:'#EEEAE0'}, title:{display:true, text:'horas'}} } }
+        scales:{ x:{grid:{display:false}, ticks:{autoSkip:true, maxRotation:0}}, y:{beginAtZero:true, suggestedMax:12, grid:{color:'#EEEAE0'}, title:{display:true, text:'horas'}} } }
     });
   } else {
     const TOP = 12;
