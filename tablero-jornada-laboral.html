@@ -694,6 +694,11 @@ footer .foot-title{color:var(--ink-onDark); font-weight:600; margin-bottom:4px; 
 }
 .fm-chip b{font-family:'IBM Plex Mono',monospace; color:var(--blue); font-weight:600;}
 .fm-warn{color:var(--amber);}
+.fm-ok{color:#2E7D4F; font-weight:700;}
+.fm-valid{flex-basis:100%; width:100%; margin-top:8px; display:flex; flex-direction:column; gap:6px; font-size:12.5px; line-height:1.45;}
+.fm-valid-item{padding:8px 10px; border-radius:6px; border:1px solid #D9E7DC; background:#F3F8F4;}
+.fm-valid-item.bad{border-color:#EBD9B4; background:#FBF6EA;}
+.fm-valid-item ul{margin:4px 0 0 18px; padding:0;}
 .fm-x{
   background:var(--paper); border:1px solid var(--divider); border-radius:50%; width:20px; height:20px; line-height:1;
   cursor:pointer; font-size:11px; color:var(--ink-soft); display:flex; align-items:center; justify-content:center;
@@ -825,6 +830,7 @@ const DB = {
   registros_diarios: RAW.registros_diarios.slice(),
   retardos_resumen: RAW.retardos_resumen.slice(),
   faltas_resumen: RAW.faltas_resumen.slice(),
+  vacaciones_resumen: (RAW.vacaciones_resumen||[]).slice(),
 };
 let KPI = null; // se calcula con recompute()
 let BITACORA = []; // bitácora de firmas de esta sesión (se reinicia al recargar la página)
@@ -869,7 +875,7 @@ const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO'
 // Palabras de relleno que pueden aparecer al inicio del nombre del archivo en cualquier
 // combinación/orden ("Reporte de Reloj Checador", "Reportes_Reloj_Checador", etc.) — se
 // quitan una por una en vez de exigir una frase exacta, para tolerar variaciones mes a mes.
-const FILLER_PREFIX_WORDS = new Set(['REPORTE','REPORTES','DE','RELOJ','CHECADOR','CHECADORES','DEL','LOS','LAS']);
+const FILLER_PREFIX_WORDS = new Set(['REPORTE','REPORTES','DE','RELOJ','CHECADOR','CHECADORES','DEL','LOS','LAS','ASISTENCIA','ASISTENCIAS']);
 // Marcas que opera el grupo — sirven de ancla si, después de quitar el relleno, el primer
 // token todavía no es una marca válida (por ejemplo si el nombre trae alguna palabra extra
 // que no está en FILLER_PREFIX_WORDS).
@@ -887,6 +893,15 @@ function normalizeEmpId(v){
 function parseFilename(fname){
   let name = fname.replace(/\.xlsx$/i,'');
   let parts = name.split(/[\s_]+/).filter(p=>p!=='');
+  // Formato nuevo del reloj checador: "<folio>_asistencia_MARCA_SUCURSAL_AAAA-MM-DD_a_AAAA-MM-DD".
+  // Las fechas del rango no son parte de la sucursal: se quitan y de la primera se toman mes y año.
+  const iFecha = parts.findIndex(t=>/^\d{4}-\d{2}-\d{2}$/.test(t));
+  if(iFecha > 0){
+    const [yy, mm] = parts[iFecha].split('-');
+    parts = parts.slice(0, iFecha);
+    const mesTok = MESES[parseInt(mm,10)-1];
+    if(mesTok) parts.push(mesTok, yy); else parts.push(yy);
+  }
   while(parts.length && FILLER_PREFIX_WORDS.has(parts[0].toUpperCase())) parts.shift();
   let anio=null, mes=null, marcaSucursal=parts;
   for(let i=parts.length-1;i>=0;i--){
@@ -1002,7 +1017,7 @@ function loadAreaSheet(rows, areaName, meta){
   const header = rows[headerIdx].map(v=>v===null||v===undefined?null:String(v).trim());
   const col = (name) => header.indexOf(name);
   const idx = {};
-  ['ID','NOMBRE','FECHA','DIA','HORARIO','ENTRADA','S. COMER','R. COMER','SALIDA','R 6-12','R 13-24','R +25'].forEach(h=>idx[h]=col(h));
+  ['ID','NOMBRE','FECHA','DIA','HORARIO','ENTRADA','S. COMER','R. COMER','SALIDA','R 6-12','R 13-24','R +25','OBSERVACIONES','DEPARTAMENTO','AREA','PUESTO'].forEach(h=>idx[h]=col(h));
   const sabCfg = (DB.normativa && DB.normativa.jornada_sabado) || {};
   const sabActivo = !!sabCfg.activo;
   const sabEntrada = sabCfg.hora_entrada || '09:00';
@@ -1059,30 +1074,48 @@ function loadAreaSheet(rows, areaName, meta){
       r6 = !!Number(get('R 6-12')); r13 = !!Number(get('R 13-24')); r25 = !!Number(get('R +25'));
     }
 
+    // Salida anterior a la entrada en un turno que NO es nocturno: el reloj "topa" la salida a la
+    // hora fin del horario, así que si el colaborador solo checó una vez después de esa hora,
+    // la salida queda antes que la entrada. Eso no son 24 h trabajadas: es una sola checada real.
+    // No se calculan horas y el día cuenta como checada incompleta.
+    let salidaInvertida = false;
+    if(entradaOk && salidaOk && !esHorarioNocturno(get('HORARIO'))){
+      const eM = toMinutes(entrada), sM = toMinutes(salida);
+      if(eM!==null && sM!==null && sM < eM){ salidaInvertida = true; hrs = null; }
+    }
     // Marcaje del día completo: entre semana requiere las 4 marcaciones (entrada, salida y
     // comida); en sábado (sin comida oficial) basta con entrada y salida. Se usa para el KPI
     // de cumplimiento de horario/jornada, que respeta que sábado no tiene comida programada.
-    const registroDiarioCompleto = esSab ? (entradaOk && salidaOk) : (entradaOk && salidaOk && sComerOk && rComerOk);
+    const registroDiarioCompleto = !salidaInvertida && (esSab ? (entradaOk && salidaOk) : (entradaOk && salidaOk && sComerOk && rComerOk));
     // Falta real: el día no tiene ninguna checada (ni entrada ni salida) — se detecta aquí
     // directamente de las checadas diarias, sin depender de que la hoja "Días sin checadas"
     // lo haya reportado (algunos colaboradores no aparecen ahí aunque sí falten muchos días).
-    const faltaDia = !entradaOk && !salidaOk;
+    // Vacaciones: el reloj marca el día con "VACACIONES" en OBSERVACIONES. No es una falta real,
+    // así que no cuenta como falta ni como checada incompleta. (La hoja "Vacaciones" del mismo
+    // archivo se aplica después en processWorkbook y sirve de validación.)
+    const obs = get('OBSERVACIONES');
+    const vacaciones = esVacacion(obs);
+    const faltaDia = !vacaciones && !entradaOk && !salidaOk;
     // Checada incompleta: el colaborador sí se presentó ese día pero le faltó alguna marca
     // esperada. Entre semana, cualquiera de las 4 marcas ausente cuenta. En sábado no se exige
     // comida en un día normal, PERO si además ese sábado se trabajó fuera del horario oficial
     // (más de las 14:00), sí se espera que haya comida checada — si no, también es incompleta.
     const checadaIncompleta = esSab
-      ? (!faltaDia && ((!(entradaOk && salidaOk)) || (fueraHorario && !(sComerOk && rComerOk))))
-      : (!faltaDia && !registroDiarioCompleto);
+      ? (!vacaciones && !faltaDia && (salidaInvertida || (!(entradaOk && salidaOk)) || (fueraHorario && !(sComerOk && rComerOk))))
+      : (!vacaciones && !faltaDia && !registroDiarioCompleto);
 
     out.push({
-      unidad_negocio: meta.unidad_negocio, marca: meta.marca, sucursal: meta.sucursal, area: areaName,
+      unidad_negocio: meta.unidad_negocio, marca: meta.marca, sucursal: meta.sucursal,
+      area: (idx['AREA']>=0 && get('AREA')) ? String(get('AREA')).trim() : (idx['DEPARTAMENTO']>=0 && get('DEPARTAMENTO')) ? String(get('DEPARTAMENTO')).trim() : areaName,
+      area_desde_hoja: !(idx['AREA']>=0 && get('AREA')) && !(idx['DEPARTAMENTO']>=0 && get('DEPARTAMENTO')),
+      puesto: idx['PUESTO']>=0 && get('PUESTO') ? String(get('PUESTO')).trim() : null,
       id_empleado: normalizeEmpId(id), nombre: String(nombre).trim(),
       fecha: fechaStr,
       dia_semana: diaSemana, horario_teorico: horarioMostrado,
       entrada: entradaOk ? String(entrada) : null, salida: salidaOk ? String(salida) : null,
       checada_completa: entradaOk && salidaOk, checada_incompleta: checadaIncompleta,
       falta_dia: faltaDia,
+      salida_invertida: salidaInvertida, vacaciones: vacaciones, vacaciones_obs: vacaciones, observaciones: obs ? String(obs).trim() : null,
       registro_diario_completo: registroDiarioCompleto,
       horas_trabajadas: hrs, jornada_excesiva_dia: !!(hrs && hrs > 12),
       jornada_sabado: esSab, sabado_fuera_horario: fueraHorario,
@@ -1091,6 +1124,40 @@ function loadAreaSheet(rows, areaName, meta){
     });
   }
   out.forEach(r=> r.retardo = r.retardo_6_12 || r.retardo_13_24 || r.retardo_mas_25);
+  return out;
+}
+function esHorarioNocturno(h){
+  // Turno que cruza la medianoche (p. ej. "18:00 - 08:00"): la hora de fin es menor que la de inicio.
+  const m = String(h||'').match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+  if(!m) return false;
+  const a = toMinutes(m[1]), b = toMinutes(m[2]);
+  return a!==null && b!==null && b < a;
+}
+function esVacacion(v){
+  if(v===null||v===undefined) return false;
+  return /VACACION/.test(stripAccents(String(v)).toUpperCase());
+}
+function esHojaVacaciones(sheetName){ return /VACACION/.test(stripAccents(String(sheetName)).toUpperCase()); }
+function loadVacaciones(rows, meta){
+  const headerIdx = findHeaderRow(rows, ['ID','NOMBRE']);
+  const header = rows[headerIdx].map(v=>v===null||v===undefined?null:stripAccents(String(v)).trim().toUpperCase());
+  const col = (n)=>header.indexOf(n);
+  const idx = {ID:col('ID'),NOMBRE:col('NOMBRE'),DEPTO:col('DEPARTAMENTO'),TOTAL:col('TOTAL DIAS'),FECHAS:col('FECHAS')};
+  if(idx.FECHAS<0) throw new Error('la hoja de vacaciones no tiene columna FECHAS');
+  const out = [];
+  for(let r=headerIdx+1;r<rows.length;r++){
+    const row = rows[r]||[];
+    if(row[idx.ID]===null||row[idx.ID]===undefined||String(row[idx.ID]).trim()==='') continue;
+    if(String(row[idx.ID]).trim().toUpperCase()==='ID') continue;
+    if(esNombrePlaceholder(row[idx.NOMBRE])) continue;
+    const fechasRaw = row[idx.FECHAS];
+    const fechas = fechasRaw ? String(fechasRaw).split(',').map(x=>x.trim()).filter(Boolean) : [];
+    out.push({
+      unidad_negocio: meta.unidad_negocio, id_empleado: normalizeEmpId(row[idx.ID]), nombre: row[idx.NOMBRE],
+      departamento: idx.DEPTO>=0 ? row[idx.DEPTO] : null,
+      total_dias_hoja: idx.TOTAL>=0 ? (Number(row[idx.TOTAL])||0) : null, fechas: [...new Set(fechas)].sort(),
+    });
+  }
   return out;
 }
 function loadResumenRetardos(rows, meta){
@@ -1133,7 +1200,8 @@ function loadDiasSinChecadas(rows, meta){
   }
   return out;
 }
-function reconcileFaltas(daily, faltasSheet, meta){
+function reconcileFaltas(daily, faltasSheet, meta, vacSet){
+  vacSet = vacSet || new Set();
   // Cruza las faltas que trae la hoja "Días sin checadas" con las faltas derivadas
   // directamente de las checadas diarias (día sin entrada ni salida). Si un colaborador tiene
   // días de falta real que esa hoja no reporta -o de plano no aparece ahí- quedan contabilizados
@@ -1150,7 +1218,8 @@ function reconcileFaltas(daily, faltasSheet, meta){
     const e = info.get(f.id_empleado);
     if(!e.nombre) e.nombre = f.nombre;
     if(!e.departamento) e.departamento = f.departamento;
-    (f.fechas||[]).forEach(fecha=>{ if(fecha) e.fechas.add(fecha); });
+    // Un día de vacaciones nunca es falta, aunque la hoja "Dias Sin Checadas" lo incluya.
+    (f.fechas||[]).forEach(fecha=>{ if(fecha && !vacSet.has(f.id_empleado+'|'+fecha)) e.fechas.add(fecha); });
   });
   const out = [];
   info.forEach((e, empId)=>{
@@ -1166,19 +1235,104 @@ function processWorkbook(workbook, filename){
   const meta = parseFilename(filename);
   meta.tiene_hoja_resumen_retardos = false;
   meta.tiene_hoja_dias_sin_checadas = false;
-  const daily = [], retardos = [];
+  meta.tiene_hoja_vacaciones = false;
+  const daily = [], retardos = [], vacaciones = [];
   let faltas = [];
+  const hojasOmitidas = [];
   workbook.SheetNames.forEach(sheetName=>{
-    const upper = sheetName.trim().toUpperCase();
+    const upper = stripAccents(sheetName).trim().toUpperCase();
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header:1, raw:false, defval:null});
     try{
       if(upper === 'RESUMEN RETARDOS'){ meta.tiene_hoja_resumen_retardos = true; retardos.push(...loadResumenRetardos(rows, meta)); }
       else if(upper === 'DIAS SIN CHECADAS'){ meta.tiene_hoja_dias_sin_checadas = true; faltas.push(...loadDiasSinChecadas(rows, meta)); }
+      else if(esHojaVacaciones(sheetName)){ meta.tiene_hoja_vacaciones = true; vacaciones.push(...loadVacaciones(rows, meta)); }
       else { daily.push(...loadAreaSheet(rows, sheetName.trim(), meta)); }
-    } catch(e){ console.warn(`Hoja "${sheetName}" de ${filename} omitida:`, e.message); }
+    } catch(e){ hojasOmitidas.push(sheetName); console.warn(`Hoja "${sheetName}" de ${filename} omitida:`, e.message); }
   });
-  faltas = reconcileFaltas(daily, faltas, meta);
-  return { meta, daily, retardos, faltas };
+  // El formato nuevo trae una sola hoja "Asistencia" sin columna de área: el área se toma del
+  // DEPARTAMENTO que traen las hojas de resumen del mismo archivo.
+  const deptoPorId = new Map();
+  [...retardos, ...faltas, ...vacaciones].forEach(x=>{ if(x.departamento && !deptoPorId.has(x.id_empleado)) deptoPorId.set(x.id_empleado, String(x.departamento).trim()); });
+  daily.forEach(r=>{ if(r.area_desde_hoja && deptoPorId.has(r.id_empleado)) r.area = deptoPorId.get(r.id_empleado); delete r.area_desde_hoja; });
+
+  // Vacaciones: unión de lo marcado en OBSERVACIONES y lo que trae la hoja "Vacaciones".
+  const vacSet = new Set();
+  daily.forEach(r=>{ if(r.vacaciones) vacSet.add(r.id_empleado+'|'+r.fecha); });
+  vacaciones.forEach(v=>v.fechas.forEach(f=>vacSet.add(v.id_empleado+'|'+f)));
+  daily.forEach(r=>{
+    if(vacSet.has(r.id_empleado+'|'+r.fecha)){
+      r.vacaciones = true; r.falta_dia = false; r.checada_incompleta = false;
+    }
+  });
+  const faltasHoja = faltas;
+  faltas = reconcileFaltas(daily, faltas, meta, vacSet);
+  meta.validacion = validarContraUltimaHoja(workbook, meta, daily, faltas, vacaciones, hojasOmitidas);
+  // Cruce de faltas contra la hoja "Dias Sin Checadas" (descontando vacaciones).
+  if(meta.tiene_hoja_dias_sin_checadas){
+    const hojaPorId = new Map(faltasHoja.map(f=>[f.id_empleado, new Set(f.fechas.filter(x=>!vacSet.has(f.id_empleado+'|'+x)))]));
+    faltas.forEach(f=>{
+      const h = hojaPorId.get(f.id_empleado) || new Set();
+      const extra = f.fechas.filter(x=>!h.has(x));
+      if(extra.length) meta.validacion.avisos.push(`${f.nombre}: ${extra.length} falta(s) detectada(s) en el detalle que la hoja "Dias Sin Checadas" no reporta (${extra.join(', ')}).`);
+    });
+    meta.validacion.ok = meta.validacion.avisos.length===0;
+  }
+  const vacResumen = buildVacacionesResumen(daily, vacaciones, meta);
+  return { meta, daily, retardos, faltas, vacaciones: vacResumen };
+}
+function buildVacacionesResumen(daily, vacHoja, meta){
+  const m = new Map();
+  const add = (id, nombre, depto, fecha)=>{
+    if(!m.has(id)) m.set(id, {unidad_negocio:meta.unidad_negocio, id_empleado:id, nombre, departamento:depto, fechas:new Set()});
+    const e = m.get(id); if(!e.nombre) e.nombre = nombre; if(!e.departamento) e.departamento = depto; e.fechas.add(fecha);
+  };
+  daily.forEach(r=>{ if(r.vacaciones) add(r.id_empleado, r.nombre, r.area, r.fecha); });
+  vacHoja.forEach(v=>v.fechas.forEach(f=>add(v.id_empleado, v.nombre, v.departamento, f)));
+  return [...m.values()].map(e=>({...e, total_dias:e.fechas.size, fechas:[...e.fechas].sort()}));
+}
+// Validación obligatoria contra la ÚLTIMA hoja del archivo (hoy: "Vacaciones"). Cruza ese dato
+// con el detalle diario y con las faltas calculadas; cualquier diferencia queda como aviso visible
+// para no entregar a los gerentes información incompleta o equivocada.
+function validarContraUltimaHoja(workbook, meta, daily, faltas, vacHoja, hojasOmitidas){
+  const ultima = workbook.SheetNames[workbook.SheetNames.length-1];
+  const avisos = [];
+  const res = { ultima_hoja: ultima, reconocida: false, avisos, vac_dias_hoja: 0, vac_dias_detalle: 0, faltas_evitadas: 0, colaboradores_vac: 0 };
+  hojasOmitidas.forEach(h=>avisos.push(`La hoja "${h}" no se pudo leer y se omitió.`));
+  if(!esHojaVacaciones(ultima)){
+    avisos.push(`La última hoja ("${ultima}") no es la hoja de Vacaciones; no se pudo validar contra ella. Revisa que el archivo venga completo.`);
+    res.ok = false; return res;
+  }
+  res.reconocida = true;
+  const porClave = new Map(daily.map(r=>[r.id_empleado+'|'+r.fecha, r]));
+  const nombreDe = new Map(daily.map(r=>[r.id_empleado, r.nombre]));
+  const hojaSet = new Set();
+  vacHoja.forEach(v=>{
+    if(v.total_dias_hoja!==null && v.total_dias_hoja!==v.fechas.length)
+      avisos.push(`${v.nombre}: la hoja Vacaciones dice ${v.total_dias_hoja} día(s) pero lista ${v.fechas.length} fecha(s).`);
+    if(!nombreDe.has(v.id_empleado))
+      avisos.push(`${v.nombre} (ID ${v.id_empleado}) tiene vacaciones en la hoja pero no aparece en el detalle de asistencia.`);
+    v.fechas.forEach(f=>{
+      hojaSet.add(v.id_empleado+'|'+f);
+      const r = porClave.get(v.id_empleado+'|'+f);
+      if(!r){ if(nombreDe.has(v.id_empleado)) avisos.push(`${v.nombre}: vacaciones el ${f}, pero ese día no aparece en el detalle de asistencia.`); return; }
+      if(!r.vacaciones_obs) avisos.push(`${v.nombre}: el ${f} está en la hoja Vacaciones pero el detalle no lo marca como VACACIONES (se tomó como vacaciones).`);
+      if(r.entrada || r.salida) avisos.push(`${v.nombre}: el ${f} está como vacaciones pero tiene checadas (${r.entrada||'—'} / ${r.salida||'—'}).`);
+    });
+  });
+  daily.forEach(r=>{
+    if(r.vacaciones_obs && !hojaSet.has(r.id_empleado+'|'+r.fecha))
+      avisos.push(`${r.nombre}: el ${r.fecha} dice VACACIONES en el detalle pero no está en la hoja Vacaciones (se tomó como vacaciones).`);
+  });
+  // Comprobación final: ninguna falta puede caer en un día de vacaciones.
+  const vacTodas = new Set([...hojaSet, ...daily.filter(r=>r.vacaciones).map(r=>r.id_empleado+'|'+r.fecha)]);
+  faltas.forEach(f=>f.fechas.forEach(fe=>{ if(vacTodas.has(f.id_empleado+'|'+fe)) avisos.push(`${f.nombre}: el ${fe} quedó como falta y vacaciones a la vez.`); }));
+  res.vac_dias_hoja = hojaSet.size;
+  res.vac_dias_detalle = daily.filter(r=>r.vacaciones).length;
+  res.faltas_evitadas = daily.filter(r=>r.vacaciones && !r.entrada && !r.salida).length;
+  res.salidas_invertidas = daily.filter(r=>r.salida_invertida).length;
+  res.colaboradores_vac = new Set([...vacTodas].map(k=>k.split('|')[0])).size;
+  res.ok = avisos.length===0;
+  return res;
 }
 
 // ============================================================
@@ -1304,6 +1458,7 @@ function buildKPIs(){
   const empMarcajeOk = new Map();
   daily.forEach(r=>{
     const key = r.unidad_negocio+'|||'+r.id_empleado;
+    if(r.vacaciones){ if(!empMarcajeOk.has(key)) empMarcajeOk.set(key, true); return; } // vacaciones: no se exige checada
     const prev = empMarcajeOk.has(key) ? empMarcajeOk.get(key) : true;
     empMarcajeOk.set(key, prev && !!r.registro_diario_completo);
   });
@@ -1379,6 +1534,7 @@ function removeUnidad(unidadKey){
   DB.registros_diarios = DB.registros_diarios.filter(r=>r.unidad_negocio!==unidadKey);
   DB.retardos_resumen = DB.retardos_resumen.filter(r=>r.unidad_negocio!==unidadKey);
   DB.faltas_resumen = DB.faltas_resumen.filter(r=>r.unidad_negocio!==unidadKey);
+  DB.vacaciones_resumen = DB.vacaciones_resumen.filter(r=>r.unidad_negocio!==unidadKey);
 }
 async function handleFiles(fileList){
   const files = [...fileList].filter(f=>/\.xlsx$/i.test(f.name));
@@ -1388,15 +1544,19 @@ async function handleFiles(fileList){
     try{
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, {type:'array'});
-      const { meta, daily, retardos, faltas } = processWorkbook(wb, file.name);
+      const { meta, daily, retardos, faltas, vacaciones } = processWorkbook(wb, file.name);
       if(daily.length===0) throw new Error('no se encontraron registros diarios reconocibles');
       removeUnidad(meta.unidad_negocio);
       DB.unidades_negocio.push(meta);
       DB.registros_diarios.push(...daily);
       DB.retardos_resumen.push(...retardos);
       DB.faltas_resumen.push(...faltas);
+      DB.vacaciones_resumen.push(...vacaciones);
       ok++;
-      toast(`Cargado: ${meta.unidad_negocio.replace(/_/g,' ')} (${daily.length} registros)`);
+      const v = meta.validacion;
+      const nom = meta.unidad_negocio.replace(/_/g,' ');
+      if(v && v.ok) toast(`Cargado: ${nom} (${daily.length} registros) · validado contra la hoja "${v.ultima_hoja}": ${v.vac_dias_hoja} día(s) de vacaciones, ninguno contado como falta`);
+      else toast(`Cargado: ${nom} con ${v?v.avisos.length:0} aviso(s) de validación — revísalos en "Unidades cargadas"`, true);
     } catch(e){
       toast(`Error en "${file.name}": ${e.message}`, true);
       console.error(e);
@@ -1410,10 +1570,24 @@ function clearAllUnidades(){
   DB.registros_diarios = [];
   DB.retardos_resumen = [];
   DB.faltas_resumen = [];
+  DB.vacaciones_resumen = [];
   state.unidad = null; state.area = null;
   BITACORA = [];
   recompute();
   toast('Se quitaron todas las unidades — el tablero quedó vacío, listo para cargar los archivos del nuevo mes');
+}
+function renderValidacionPanel(){
+  const us = DB.unidades_negocio.filter(u=>u.validacion);
+  if(!us.length) return '';
+  return `<div class="fm-valid">${us.map(u=>{
+    const v = u.validacion, nom = esc(u.unidad_negocio.replace(/_/g,' '));
+    const head = v.reconocida
+      ? `${v.ok?'✓':'⚠'} <b>${nom}</b> — validado contra la hoja "${esc(v.ultima_hoja)}": ${fmt(v.vac_dias_hoja)} día(s) de vacaciones de ${fmt(v.colaboradores_vac)} colaborador(es); ${fmt(v.faltas_evitadas)} día(s) sin checada no se cuentan como falta.`
+      : `⚠ <b>${nom}</b> — no se pudo validar contra la última hoja.`;
+    const inv = v.salidas_invertidas ? `<div>${fmt(v.salidas_invertidas)} día(s) con salida topada antes de la entrada (una sola checada real): no se les calculan horas y cuentan como checada incompleta.</div>` : '';
+    const lista = v.avisos.length ? `<ul>${v.avisos.slice(0,30).map(a=>`<li>${esc(a)}</li>`).join('')}${v.avisos.length>30?`<li>… y ${v.avisos.length-30} más (ver Excel de auditoría, hoja "Validacion")</li>`:''}</ul>` : '';
+    return `<div class="fm-valid-item ${v.ok?'ok':'bad'}">${head}${inv}${lista}</div>`;
+  }).join('')}</div>`;
 }
 function updateFileManagerList(){
   const host = document.getElementById('fileManagerList');
@@ -1423,9 +1597,12 @@ function updateFileManagerList(){
   if(DB.unidades_negocio.length===0){ host.innerHTML = '<span class="fm-empty">Sin unidades cargadas.</span>'; return; }
   host.innerHTML = DB.unidades_negocio.map(u=>{
     const n = DB.registros_diarios.filter(r=>r.unidad_negocio===u.unidad_negocio).length;
-    const warn = u.tiene_hoja_dias_sin_checadas===false ? '<span class="fm-warn" title="Sin hoja Dias Sin Checadas">⚠</span>' : '';
+    const v = u.validacion;
+    const warn = (v && !v.ok) ? `<span class="fm-warn" title="${esc(v.avisos.length+' aviso(s) de validación')}">⚠</span>`
+      : (v && v.ok) ? `<span class="fm-ok" title="${esc('Validado contra la hoja '+v.ultima_hoja)}">✓</span>`
+      : u.tiene_hoja_dias_sin_checadas===false ? '<span class="fm-warn" title="Sin hoja Dias Sin Checadas">⚠</span>' : '';
     return `<span class="fm-chip">${warn}${esc(u.unidad_negocio.replace(/_/g,' '))} <b>${n}</b><button data-u="${esc(u.unidad_negocio)}" class="fm-x" title="Quitar esta unidad">✕</button></span>`;
-  }).join('');
+  }).join('') + renderValidacionPanel();
   host.querySelectorAll('.fm-x').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       removeUnidad(btn.getAttribute('data-u'));
@@ -1470,7 +1647,14 @@ function exportExcelAuditoria(){
     nombre:'Colaborador', fecha:'Fecha', entrada:'Entrada', salida:'Salida', horas_trabajadas:'Horas'});
   addSheet('Detalle Diario', DB.registros_diarios, {unidad_negocio:'Unidad', area:'Área', id_empleado:'ID', nombre:'Colaborador',
     fecha:'Fecha', dia_semana:'Día', entrada:'Entrada', salida:'Salida', horas_trabajadas:'Horas', jornada_excesiva_dia:'Excede 12h',
-    checada_incompleta:'Checada Incompleta', retardo:'Retardo'});
+    checada_incompleta:'Checada Incompleta', retardo:'Retardo', falta_dia:'Falta', vacaciones:'Vacaciones'});
+  addSheet('Vacaciones', DB.vacaciones_resumen, {unidad_negocio:'Unidad', departamento:'Área', id_empleado:'ID',
+    nombre:'Colaborador', total_dias:'Días de vacaciones', fechas:'Fechas'});
+  const valRows = [];
+  DB.unidades_negocio.forEach(u=>{ const v=u.validacion; if(!v) return;
+    if(!v.avisos.length) valRows.push({unidad:u.unidad_negocio, hoja:v.ultima_hoja, resultado:'OK', detalle:`${v.vac_dias_hoja} día(s) de vacaciones; ninguno contado como falta`});
+    v.avisos.forEach(a=>valRows.push({unidad:u.unidad_negocio, hoja:v.ultima_hoja, resultado:'Revisar', detalle:a})); });
+  addSheet('Validacion', valRows, {unidad:'Unidad', hoja:'Última hoja', resultado:'Resultado', detalle:'Detalle'});
   addSheet('Simulador Transicion', KPI.simulador_transicion.detalle_por_unidad, {unidad_negocio:'Unidad',
     horas_promedio_semana_actual:'Prom. Horas/Semana Actual', pct_cumplimiento_meta:`% Cumpliría con límite ${KPI.simulador_transicion.anio_meta}`,
     brecha_horas_meta:`Brecha (h/semana) vs ${KPI.simulador_transicion.anio_meta}`});
@@ -1512,7 +1696,7 @@ function exportarHTMLCorreo(){
   }
   const payload = { generado: new Date().toISOString(), anio_referencia: DB.anio_referencia, normativa: DB.normativa,
     unidades_negocio: DB.unidades_negocio, registros_diarios: DB.registros_diarios,
-    retardos_resumen: DB.retardos_resumen, faltas_resumen: DB.faltas_resumen };
+    retardos_resumen: DB.retardos_resumen, faltas_resumen: DB.faltas_resumen, vacaciones_resumen: DB.vacaciones_resumen };
   const payloadJson = JSON.stringify(payload).replace(/<\/script>/g, '<\\/script>');
 
   let html = document.documentElement.outerHTML;
@@ -1532,7 +1716,7 @@ function exportarHTMLCorreo(){
 function exportDatasetJSON(){
   const payload = { generado: new Date().toISOString(), anio_referencia: DB.anio_referencia, normativa: DB.normativa,
     unidades_negocio: DB.unidades_negocio, registros_diarios: DB.registros_diarios,
-    retardos_resumen: DB.retardos_resumen, faltas_resumen: DB.faltas_resumen };
+    retardos_resumen: DB.retardos_resumen, faltas_resumen: DB.faltas_resumen, vacaciones_resumen: DB.vacaciones_resumen };
   downloadBlob(`dataset_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(payload)], {type:'application/json'}));
   toast('dataset.json exportado (compatible con el pipeline de Python)');
 }
@@ -2252,7 +2436,7 @@ function exportColaboradorExcel(){
     daily.forEach(r=>{
       const alerta = [r.retardo?'RETARDO':null, r.jornada_excesiva_dia?'EXCEDE 12H':null, r.checada_incompleta?'CHECADA INCOMPLETA':null].filter(Boolean).join(' / ');
       rows.push({ Unidad:r.unidad_negocio, Area:r.area, ID:r.id_empleado, Colaborador:r.nombre||'(sin nombre)', Fecha:r.fecha||'', Dia:r.dia_semana||'',
-        Entrada:r.entrada||'', Salida:r.salida||'', Horas: r.horas_trabajadas!=null?r.horas_trabajadas:'', Alerta: alerta || 'Normal' });
+        Entrada:r.entrada||'', Salida:r.salida||'', Horas: r.horas_trabajadas!=null?r.horas_trabajadas:'', Alerta: alerta || (r.vacaciones?'VACACIONES':'Normal') });
     });
     faltasBase.forEach(f=>{
       (f.fechas||[]).forEach(fecha=>{
@@ -3310,7 +3494,8 @@ function renderConsultaInner(){
     const rows = [
       ...daily.map(r=>({ fecha:r.fecha, dia:r.dia_semana, entrada:r.entrada, salida:r.salida, horas:r.horas_trabajadas,
         alerta:[r.retardo_6_12?'Retardo 6–12 min':null, r.retardo_13_24?'Retardo 13–24 min':null, r.retardo_mas_25?'Retardo +25 min':null,
-          r.falta_dia?'Falta (sin checada)':null, r.jornada_excesiva_dia?'Más de 12 h':null, r.checada_incompleta?'Checada incompleta':null].filter(Boolean).join(' · ') })),
+          r.falta_dia?'Falta (sin checada)':null, r.jornada_excesiva_dia?'Más de 12 h':null, r.checada_incompleta?'Checada incompleta':null].filter(Boolean).join(' · '),
+        nota: r.vacaciones ? 'Vacaciones (no es falta)' : '' })),
       ...faltaDates.filter(f=>!fechasDaily.has(f)).map(f=>({ fecha:f, dia:'', entrada:null, salida:null, horas:null, alerta:'Falta (sin checada)' })),
     ].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
     tabla.innerHTML = `
@@ -3322,7 +3507,7 @@ function renderConsultaInner(){
           <tbody>${rows.length===0?`<tr class="empty-row"><td colspan="6">Sin registros.</td></tr>`:
             rows.map(r=>`<tr class="${r.alerta?'row-alert':''}"><td class="mono">${esc(r.fecha||'')}</td><td>${esc(r.dia||'')}</td>
               <td class="mono">${esc(r.entrada||'—')}</td><td class="mono">${esc(r.salida||'—')}</td>
-              <td class="num mono">${r.horas!=null?fmt(r.horas,1):'—'}</td><td>${r.alerta?('⚠ '+esc(r.alerta)):''}</td></tr>`).join('')}
+              <td class="num mono">${r.horas!=null?fmt(r.horas,1):'—'}</td><td>${r.alerta?('⚠ '+esc(r.alerta)):(r.nota?esc(r.nota):'')}</td></tr>`).join('')}
           </tbody></table></div>
       </div>`;
   } else {
