@@ -890,7 +890,29 @@ const fmt = (n, d=0) => (n === null || n === undefined || Number.isNaN(n)) ? '�
 const pct = (n) => (n === null || n === undefined) ? '—' : fmt(n,1) + '%';
 function statusOfPct(p){ if(p===null||p===undefined) return 'warn'; if(p>=85) return 'ok'; if(p>=59) return 'warn'; return 'bad'; }
 function badgeLabel(s){ return {ok:'Cumple', warn:'En riesgo', bad:'Incumple'}[s]; }
-function niceWeek(w){ if(!w) return '—'; const [y,wk] = w.split('-W'); return `Sem ${parseInt(wk,10)} · ${y}`; }
+// Semana ISO (lunes a domingo) mostrada como periodo de días: "21 – 27 sep 2026",
+// "28 sep – 4 oct 2026" o "29 dic 2025 – 4 ene 2026" cuando cruza de mes o de año.
+function weekRange(w){
+  const m = String(w||'').match(/^(\d{4})-W(\d{1,2})$/);
+  if(!m) return null;
+  const y = +m[1], wk = +m[2];
+  const jan4 = new Date(Date.UTC(y,0,4));
+  const lunes = new Date(jan4); lunes.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay()+6)%7) + (wk-1)*7);
+  const domingo = new Date(lunes); domingo.setUTCDate(lunes.getUTCDate()+6);
+  return { lunes, domingo };
+}
+function niceWeek(w){
+  if(!w) return '—';
+  const r = weekRange(w);
+  if(!r) return String(w);
+  const M = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const a = r.lunes, b = r.domingo;
+  const d1 = a.getUTCDate(), m1 = a.getUTCMonth(), y1 = a.getUTCFullYear();
+  const d2 = b.getUTCDate(), m2 = b.getUTCMonth(), y2 = b.getUTCFullYear();
+  if(y1 !== y2) return `${d1} ${M[m1]} ${y1} – ${d2} ${M[m2]} ${y2}`;
+  if(m1 !== m2) return `${d1} ${M[m1]} – ${d2} ${M[m2]} ${y2}`;
+  return `${d1} – ${d2} ${M[m2]} ${y2}`;
+}
 function downloadBlob(filename, blob){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
@@ -1681,8 +1703,8 @@ function exportExcelAuditoria(){
     horas_totales:'Horas Totales', exceso_diario:'Jornadas >12h/día', checadas_incompletas:'Checadas Incompletas', retardo_dias:'Días con Retardo'});
   addSheet('Exceso Diario +12h', KPI.incidencias.exceso_diario, {unidad_negocio:'Unidad', area:'Área', id_empleado:'ID',
     nombre:'Colaborador', fecha:'Fecha', entrada:'Entrada', salida:'Salida', horas_trabajadas:'Horas'});
-  addSheet('Exceso Semanal', KPI.incidencias.exceso_semanal, {unidad_negocio:'Unidad', area:'Área', id_empleado:'ID',
-    nombre:'Colaborador', semana_iso:'Semana', horas_semana:'Horas', limite_aplicable:'Límite', exceso:'Exceso'});
+  addSheet('Exceso Semanal', KPI.incidencias.exceso_semanal.map(r=>({...r, periodo:niceWeek(r.semana_iso)})), {unidad_negocio:'Unidad', area:'Área', id_empleado:'ID',
+    nombre:'Colaborador', periodo:'Periodo (lun–dom)', horas_semana:'Horas', limite_aplicable:'Límite', exceso:'Exceso'});
   addSheet('Checadas Incompletas', KPI.incidencias.checadas_incompletas, {unidad_negocio:'Unidad', area:'Área', id_empleado:'ID',
     nombre:'Colaborador', total:'Días con Omisión', fechas:'Fechas'});
   addSheet('Faltas', KPI.incidencias.faltas, {unidad_negocio:'Unidad', departamento:'Área', id_empleado:'ID',
@@ -3418,7 +3440,7 @@ function cqKpiDefinicion(id, ctx){
   const keyOf = (r)=> r.unidad_negocio+'|||'+r.id_empleado;
   const grpDe = (r)=> multiCentro ? r.unidad_negocio : (areaDe.get(keyOf(r)) || r.area || r.departamento || '—');
   const grpTipo = emp ? null : (multiCentro ? 'unidad' : (state.area ? null : 'area'));
-  const grpTitulo = emp ? 'Por semana' : multiCentro ? 'Por centro de trabajo' : 'Por área';
+  const grpTitulo = emp ? 'Por semana (lun–dom)' : multiCentro ? 'Por centro de trabajo' : 'Por área';
   const centroCol = multiCentro ? [{k:'centro', l:'Centro'}] : [];
   const base = (r)=>({ key:keyOf(r), nombre:r.nombre, id:r.id_empleado, area:areaDe.get(keyOf(r))||r.area||r.departamento||'—', centro:String(r.unidad_negocio||'').replace(/_/g,' ') });
   const vacScope = (DB.vacaciones_resumen||[]).filter(v=> v && inScope(v) && (!emp || keyOf(v)===emp.key));
@@ -3476,7 +3498,7 @@ function cqKpiDefinicion(id, ctx){
         chips: id==='semexc' ? [`Semanas excedidas: <b>${fmt(rows.length)}</b>`, `Colaboradores: <b>${fmt(new Set(rows.map(r=>r.key)).size)}</b>`, `Exceso total: <b>${fmt(rows.reduce((s,r)=>s+r.exceso,0),1)} h</b>`]
           : [`Dentro: <b>${fmt(ok)}</b>`, `Excedidas: <b>${fmt(tot-ok)}</b>`, `Total: <b>${fmt(tot)}</b>`],
         grupos, grpTitulo, grpTipo, fmtG: id==='semexc' ? (v)=>fmt(v)+' sem.' : (v)=>fmt(v,1)+'%', pct: id!=='semexc',
-        cols:[...(emp?[]:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol]),{k:'semana',l:'Semana',sortKey:'semana_iso'},{k:'dias',l:'Días',num:1},{k:'horas',l:'Horas',num:1,d:1},{k:'exceso',l:'Exceso (h)',num:1,d:1,alert:1},{k:'estado',l:'Estado',tag:1}],
+        cols:[...(emp?[]:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol]),{k:'semana',l:'Periodo (lun–dom)',sortKey:'semana_iso'},{k:'dias',l:'Días',num:1},{k:'horas',l:'Horas',num:1,d:1},{k:'exceso',l:'Exceso (h)',num:1,d:1,alert:1},{k:'estado',l:'Estado',tag:1}],
         rows, sort: emp ? 'semana_iso' : 'horas', dir: emp ? 1 : -1, click:!emp };
     }
     case 'prom': {
@@ -3485,7 +3507,7 @@ function cqKpiDefinicion(id, ctx){
         return { titulo:'Horas por semana', explica:`Horas trabajadas por ${emp.nombre} en cada semana del periodo. El indicador es el promedio de estas semanas; el límite es ${limite} h.`,
           chips:[`Semana más alta: <b>${fmt(Math.max(0,...rows.map(r=>r.horas)),1)} h</b>`, `Semana más baja: <b>${fmt(rows.length?Math.min(...rows.map(r=>r.horas)):0,1)} h</b>`],
           grupos:agrupar(weekly, (w)=>w.horas_semana), grpTitulo, grpTipo, fmtG:(v)=>fmt(v,1)+' h',
-          cols:[{k:'semana',l:'Semana',sortKey:'semana_iso'},{k:'dias',l:'Días',num:1},{k:'horas',l:'Horas',num:1,d:1},{k:'exceso',l:'Exceso (h)',num:1,d:1,alert:1},{k:'estado',l:'Estado',tag:1}],
+          cols:[{k:'semana',l:'Periodo (lun–dom)',sortKey:'semana_iso'},{k:'dias',l:'Días',num:1},{k:'horas',l:'Horas',num:1,d:1},{k:'exceso',l:'Exceso (h)',num:1,d:1,alert:1},{k:'estado',l:'Estado',tag:1}],
           rows, sort:'semana_iso', dir:1 };
       }
       const m = new Map();
