@@ -775,6 +775,51 @@ footer .foot-title{color:var(--ink-onDark); font-weight:600; margin-bottom:4px; 
 .cq-kpi.bad .cq-kpi-num{color:var(--red);} .cq-kpi.warn .cq-kpi-num{color:#B97A16;} .cq-kpi.ok .cq-kpi-num{color:var(--green);}
 .cq-kpi-lbl{font-size:12.5px; font-weight:600; margin-top:2px;}
 .cq-kpi-sub{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); margin-top:3px;}
+button.cq-kpi{font:inherit; color:inherit; text-align:left; width:100%; cursor:pointer; position:relative; transition:transform .12s, box-shadow .12s, background .12s;}
+button.cq-kpi:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(30,30,25,.10);}
+button.cq-kpi:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
+button.cq-kpi.active{background:var(--paper); box-shadow:inset 0 0 0 2px var(--panel-dark);}
+.cq-kpi-more{position:absolute; top:10px; right:12px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); opacity:.75;}
+button.cq-kpi:hover .cq-kpi-more, button.cq-kpi.active .cq-kpi-more{opacity:1; color:var(--ink);}
+.cq-kpi-tip{font-size:12px; color:var(--ink-soft); margin:-8px 2px 14px;}
+.cq-det{background:var(--paper-2); border:1px solid var(--divider); border-radius:var(--radius); box-shadow:var(--shadow); margin:0 0 20px; overflow:hidden; animation:cqDetIn .18s ease-out;}
+@keyframes cqDetIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+.cq-det-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:16px 18px 12px; border-bottom:1px solid var(--divider);}
+.cq-det-head h3{font-size:16px; margin:0 0 4px;}
+.cq-det-exp{font-size:12.5px; color:var(--ink-soft); line-height:1.5; max-width:820px;}
+.cq-det-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+.cq-det-chip{font-family:'IBM Plex Mono',monospace; font-size:11px; background:var(--paper); border:1px solid var(--divider); border-radius:20px; padding:3px 9px;}
+.cq-det-chip b{color:var(--ink);}
+.cq-det-x{flex:none; background:var(--paper); border:1px solid var(--divider); border-radius:6px; padding:6px 10px; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:11.5px;}
+.cq-det-x:hover{background:var(--panel-dark); color:var(--ink-onDark);}
+.cq-det-body{display:grid; grid-template-columns:minmax(220px, 300px) 1fr; gap:0;}
+.cq-det-grp{padding:14px 16px; border-right:1px solid var(--divider); max-height:470px; overflow:auto;}
+.cq-det-grp h4{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin:0 0 10px; font-weight:500;}
+.cq-gbar{display:block; width:100%; text-align:left; background:none; border:none; padding:5px 6px; margin:0 0 4px; border-radius:6px; font:inherit; color:inherit;}
+.cq-gbar.click{cursor:pointer;} .cq-gbar.click:hover{background:var(--paper);}
+.cq-gbar-top{display:flex; justify-content:space-between; gap:8px; font-size:12.5px;}
+.cq-gbar-top span:last-child{font-family:'IBM Plex Mono',monospace; font-weight:600; white-space:nowrap;}
+.cq-gbar-track{height:6px; background:var(--divider); border-radius:4px; margin-top:4px; overflow:hidden;}
+.cq-gbar-fill{height:100%; border-radius:4px; background:var(--blue);}
+.cq-det.warn .cq-gbar-fill{background:var(--amber);} .cq-det.bad .cq-gbar-fill{background:var(--red);} .cq-det.ok .cq-gbar-fill{background:var(--green);}
+.cq-det-tbl{min-width:0;}
+.cq-det-tools{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--divider); flex-wrap:wrap;}
+.cq-det-tools input{font-size:12.5px; padding:6px 9px; border-radius:6px; border:1px solid var(--divider); min-width:220px; font-family:'IBM Plex Sans',sans-serif;}
+.cq-det-tools .count{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft); flex:1;}
+.cq-det-tools button{font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:var(--paper); border:1px solid var(--divider); border-radius:6px; padding:6px 11px; cursor:pointer;}
+.cq-det-tools button:hover{background:var(--panel-dark); color:var(--ink-onDark);}
+.cq-det .table-scroll{max-height:410px;}
+.cq-det th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+.cq-det th.sortable:hover{color:var(--ink);}
+.cq-det th .arr{opacity:.35;} .cq-det th.sorted .arr{opacity:1;}
+.cq-det td.wrap{max-width:360px; white-space:normal; font-size:12px; padding-top:11px;}
+.cq-det td.mono{white-space:nowrap;}
+.cq-tag{font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:2px 7px; border-radius:20px; white-space:nowrap;}
+.cq-tag.bad{background:#FBE5E2; color:#A3352B;} .cq-tag.warn{background:var(--amber-bg); color:#8A5C0E;} .cq-tag.ok{background:#E3F2E8; color:#2E7D4F;} .cq-tag.info{background:var(--blue-bg); color:#2F5F9C;}
+.cq-det-more{text-align:center; padding:10px;}
+.cq-det-more button{font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:var(--paper); border:1px solid var(--divider); border-radius:6px; padding:6px 12px; cursor:pointer;}
+@media (max-width:900px){ .cq-det-body{grid-template-columns:1fr;} .cq-det-grp{border-right:none; border-bottom:1px solid var(--divider); max-height:none;} .cq-det-tools input{min-width:0; flex:1;} .cq-det-tools .count{flex-basis:100%; order:3;} }
+@media print{ .cq-det-x, .cq-det-tools button, .cq-det-tools input, .cq-kpi-more, .cq-kpi-tip{display:none !important;} }
 .cq-charts{grid-template-columns:1fr 1fr; margin-bottom:18px;}
 .cq-charts .chart-card h3{margin-bottom:4px;}
 .cq-note{font-size:12.5px; color:var(--ink-soft); margin:0 0 12px; min-height:18px;}
@@ -1113,6 +1158,7 @@ function loadAreaSheet(rows, areaName, meta){
       fecha: fechaStr,
       dia_semana: diaSemana, horario_teorico: horarioMostrado,
       entrada: entradaOk ? String(entrada) : null, salida: salidaOk ? String(salida) : null,
+      s_comer: sComerOk ? String(sComer) : null, r_comer: rComerOk ? String(rComer) : null,
       checada_completa: entradaOk && salidaOk, checada_incompleta: checadaIncompleta,
       falta_dia: faltaDia,
       salida_invertida: salidaInvertida, vacaciones: vacaciones, vacaciones_obs: vacaciones, observaciones: obs ? String(obs).trim() : null,
@@ -1899,7 +1945,8 @@ function renderShell(){
           </div>
         </div>
         <div class="cq-scope" id="cqScope"></div>
-        <div class="cq-kpis" id="cqKpis"></div>
+        <div class="cq-kpis" id="cqKpis" role="group" aria-label="Indicadores — haz clic en uno para ver su detalle"></div>
+        <div id="cqKpiDetalle"></div>
         <div class="chart-grid cq-charts">
           <div class="chart-card"><h3 id="cqRetTitle">Retardos</h3><p class="cq-note" id="cqRetNote"></p><div class="chart-wrap" style="height:260px;"><canvas id="cqChartRet"></canvas></div></div>
           <div class="chart-card"><h3 id="cqJorTitle">Jornadas excesivas</h3><p class="cq-note" id="cqJorNote"></p><div class="chart-wrap" style="height:260px;"><canvas id="cqChartJor"></canvas></div></div>
@@ -3315,9 +3362,308 @@ function cqRenderSugerencias(){
     it.addEventListener('mousedown', (ev)=>{ ev.preventDefault(); box.hidden = true; cqSeleccionarColaborador(it.getAttribute('data-key')); });
   });
 }
-function cqKpi(valor, etiqueta, clase, sub){
-  return `<div class="cq-kpi ${clase||''}"><div class="cq-kpi-num">${valor}</div><div class="cq-kpi-lbl">${etiqueta}</div>${sub?`<div class="cq-kpi-sub">${sub}</div>`:''}</div>`;
+function cqKpi(valor, etiqueta, clase, sub, id){
+  if(!id) return `<div class="cq-kpi ${clase||''}"><div class="cq-kpi-num">${valor}</div><div class="cq-kpi-lbl">${etiqueta}</div>${sub?`<div class="cq-kpi-sub">${sub}</div>`:''}</div>`;
+  const act = cqKpiActivo===id;
+  return `<button type="button" class="cq-kpi ${clase||''}${act?' active':''}" data-kpi="${id}" aria-expanded="${act}" aria-controls="cqKpiDetalle" title="Ver el detalle de este indicador">
+    <span class="cq-kpi-more">${act?'Cerrar ▴':'Detalle ▾'}</span>
+    <div class="cq-kpi-num">${valor}</div><div class="cq-kpi-lbl">${etiqueta}</div>${sub?`<div class="cq-kpi-sub">${sub}</div>`:''}</button>`;
 }
+// ---- Detalle interactivo de cada indicador (clic en un recuadro) ----
+let cqKpiActivo = null;      // id del indicador abierto ('base','semok','prom','ret','faltas','exc','semexc','incompl')
+let CQ_CTX = null;           // datos del alcance actual (los llena renderConsultaInner)
+let cqDet = { q:'', sort:null, dir:-1, todo:false };
+const CQ_DET_LIMITE = 300;
+
+function cqToggleKpi(id){
+  cqKpiActivo = (cqKpiActivo === id) ? null : id;
+  cqDet = { q:'', sort:null, dir:-1, todo:false };
+  document.querySelectorAll('#cqKpis button.cq-kpi').forEach(b=>{
+    const act = b.getAttribute('data-kpi') === cqKpiActivo;
+    b.classList.toggle('active', act);
+    b.setAttribute('aria-expanded', act);
+    const m = b.querySelector('.cq-kpi-more'); if(m) m.textContent = act ? 'Cerrar ▴' : 'Detalle ▾';
+  });
+  cqRenderKpiDetalle();
+  if(cqKpiActivo){
+    const host = document.getElementById('cqKpiDetalle');
+    if(host && host.getBoundingClientRect().top > window.innerHeight - 120) host.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+function cqMotivoIncompleta(r){
+  if(r.salida_invertida) return 'Una sola checada (salida topada antes de la entrada)';
+  if(!r.entrada && r.salida) return 'Sin entrada';
+  if(r.entrada && !r.salida) return 'Sin salida';
+  if(r.jornada_sabado && r.sabado_fuera_horario) return 'Sábado fuera de horario sin comida';
+  if(!r.s_comer && !r.r_comer) return 'Sin checadas de comida';
+  if(!r.s_comer) return 'Sin salida a comer';
+  if(!r.r_comer) return 'Sin regreso de comer';
+  return 'Falta alguna marca';
+}
+function cqEstadoDia(r){
+  if(r.vacaciones) return ['Vacaciones','info'];
+  if(r.falta_dia) return ['Falta','bad'];
+  if(r.jornada_excesiva_dia) return ['Más de 12 h','bad'];
+  if(r.checada_incompleta) return ['Checada incompleta','warn'];
+  if(r.retardo) return ['Retardo','warn'];
+  return ['Normal','ok'];
+}
+function cqRetCat(r){ return r.retardo_mas_25 ? '+25 min' : r.retardo_13_24 ? '13–24 min' : r.retardo_6_12 ? '6–12 min' : ''; }
+
+// Arma {titulo, explica, chips, grupos, cols, rows} para el indicador activo.
+function cqKpiDefinicion(id, ctx){
+  const { daily, faltas, weekly, limite, emp, rosterAlcance } = ctx;
+  const multiCentro = !state.unidad && new Set(rosterAlcance.map(e=>e.unidad_negocio)).size > 1;
+  const areaDe = new Map(rosterAlcance.map(e=>[e.key, e.area||'—']));
+  const keyOf = (r)=> r.unidad_negocio+'|||'+r.id_empleado;
+  const grpDe = (r)=> multiCentro ? r.unidad_negocio : (areaDe.get(keyOf(r)) || r.area || r.departamento || '—');
+  const grpTipo = emp ? null : (multiCentro ? 'unidad' : (state.area ? null : 'area'));
+  const grpTitulo = emp ? 'Por semana' : multiCentro ? 'Por centro de trabajo' : 'Por área';
+  const centroCol = multiCentro ? [{k:'centro', l:'Centro'}] : [];
+  const base = (r)=>({ key:keyOf(r), nombre:r.nombre, id:r.id_empleado, area:areaDe.get(keyOf(r))||r.area||r.departamento||'—', centro:String(r.unidad_negocio||'').replace(/_/g,' ') });
+  const vacScope = (DB.vacaciones_resumen||[]).filter(v=> v && inScope(v) && (!emp || keyOf(v)===emp.key));
+  const vacPorKey = new Map(vacScope.map(v=>[keyOf(v), v]));
+  // agrupa: suma por grupo (o por semana si hay colaborador)
+  const agrupar = (items, valFn, grpFn)=>{
+    const m = new Map();
+    items.forEach(it=>{ const g = grpFn ? grpFn(it) : (emp ? (it.semana_iso||'—') : grpDe(it)); m.set(g, (m.get(g)||0) + valFn(it)); });
+    return [...m.entries()].map(([g,v])=>({ g, v, label: emp ? niceWeek(g) : (multiCentro ? String(g).replace(/_/g,' ') : g) }))
+      .sort((a,b)=> emp ? String(a.g).localeCompare(String(b.g)) : b.v-a.v);
+  };
+  const semanaRow = (w)=>({ ...base(w), semana:niceWeek(w.semana_iso), semana_iso:w.semana_iso, dias:w.dias_trabajados, horas:w.horas_semana,
+    exceso: w.cumple_semana ? 0 : (w.exceso_semanal != null ? w.exceso_semanal : Math.max(0, w.horas_semana - limite)),
+    estado: w.cumple_semana ? ['Dentro','ok'] : ['Excede','bad'] });
+  const diaRow = (r)=>({ ...base(r), fecha:r.fecha, dia:r.dia_semana||'', horario:r.horario_teorico||'', entrada:r.entrada||'—', salida:r.salida||'—',
+    s_comer:r.s_comer||'—', r_comer:r.r_comer||'—', horas:r.horas_trabajadas });
+
+  switch(id){
+    case 'base': {
+      if(emp){
+        const extra = (faltas[0] && faltas[0].fechas || []).filter(f=>!daily.some(r=>r.fecha===f))
+          .map(f=>({ fecha:f, dia:'', horario:'', entrada:'—', salida:'—', horas:null, estado:['Falta','bad'] }));
+        const rows = [...daily.map(r=>({ ...diaRow(r), estado:cqEstadoDia(r) })), ...extra].sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+        const cuenta = {}; rows.forEach(r=>cuenta[r.estado[0]] = (cuenta[r.estado[0]]||0)+1);
+        return { titulo:'Días con registro', explica:`Todos los días del periodo de ${emp.nombre} que aparecen en el reloj checador, con su estado. Un día puede tener varias alertas; se muestra la más grave.`,
+          chips:Object.entries(cuenta).map(([k,v])=>`${k}: <b>${fmt(v)}</b>`),
+          grupos:agrupar(daily, ()=>1), grpTitulo, grpTipo, fmtG:(v)=>fmt(v)+' días',
+          cols:[{k:'fecha',l:'Fecha',mono:1},{k:'dia',l:'Día'},{k:'horario',l:'Horario'},{k:'entrada',l:'Entrada',mono:1},{k:'salida',l:'Salida',mono:1},{k:'horas',l:'Horas',num:1,d:1},{k:'estado',l:'Estado',tag:1}],
+          rows, sort:'fecha', dir:1 };
+      }
+      const rows = rosterAlcance.map(e=>{
+        const v = vacPorKey.get(e.key);
+        return { key:e.key, nombre:e.nombre, id:e.id_empleado, area:e.area||'—', centro:String(e.unidad_negocio).replace(/_/g,' '),
+          dias:e.dias, vac:v ? v.total_dias : 0, faltas:e.faltas, retardos:e.retardos, incompletas:e.incompletas, excesos:e.excesos };
+      });
+      return { titulo:'Colaboradores', explica:'Colaboradores con al menos un día en el reloj checador o con faltas en el periodo. Haz clic en un nombre para ver su detalle completo.',
+        chips:[`Con vacaciones: <b>${fmt(rows.filter(r=>r.vac>0).length)}</b>`, `Con faltas: <b>${fmt(rows.filter(r=>r.faltas>0).length)}</b>`, `Con retardos: <b>${fmt(rows.filter(r=>r.retardos>0).length)}</b>`, `Sin incidencias: <b>${fmt(rows.filter(r=>!r.faltas && !r.retardos && !r.incompletas && !r.excesos).length)}</b>`],
+        grupos:agrupar(rosterAlcance, ()=>1, (e)=> multiCentro ? e.unidad_negocio : (e.area||'—')), grpTitulo, grpTipo, fmtG:(v)=>fmt(v),
+        cols:[{k:'nombre',l:'Colaborador'},{k:'id',l:'No.',mono:1},{k:'area',l:'Área'},...centroCol,{k:'dias',l:'Días',num:1},{k:'vac',l:'Vacaciones',num:1},{k:'faltas',l:'Faltas',num:1,alert:1},{k:'retardos',l:'Retardos',num:1,alert:1},{k:'incompletas',l:'Incompletas',num:1,alert:1},{k:'excesos',l:'Días >12 h',num:1,alert:1}],
+        rows, sort:'nombre', dir:1, click:true };
+    }
+    case 'semok': case 'semexc': {
+      const sem = id==='semexc' ? weekly.filter(w=>!w.cumple_semana) : weekly;
+      const rows = sem.map(semanaRow);
+      const tot = weekly.length, ok = weekly.filter(w=>w.cumple_semana).length;
+      const gm = new Map();
+      weekly.forEach(w=>{ const g = emp ? w.semana_iso : grpDe(w); if(!gm.has(g)) gm.set(g,{ok:0,t:0}); const x=gm.get(g); x.t++; if(w.cumple_semana) x.ok++; });
+      const grupos = id==='semexc' ? agrupar(sem, ()=>1)
+        : [...gm.entries()].map(([g,x])=>({ g, v: x.t ? 100*x.ok/x.t : 0, label: emp ? niceWeek(g) : (multiCentro ? String(g).replace(/_/g,' ') : g), sub:`${x.ok}/${x.t}` }))
+            .sort((a,b)=> emp ? String(a.g).localeCompare(String(b.g)) : a.v-b.v);
+      return { titulo: id==='semexc' ? `Semanas sobre ${limite} h` : `Semanas dentro de ${limite} h`,
+        explica: id==='semexc'
+          ? `Semanas (de lunes a domingo) en las que el colaborador sumó más de ${limite} h de jornada ordinaria (Art. 59 LFT). Las horas se calculan de entrada a salida, descontando la comida.`
+          : `Porcentaje de semanas-colaborador que se quedaron dentro de ${limite} h. Cada colaborador aporta una semana por cada semana del periodo en que checó. Las barras muestran qué ${multiCentro?'centros':'áreas'} cumplen menos.`,
+        chips: id==='semexc' ? [`Semanas excedidas: <b>${fmt(rows.length)}</b>`, `Colaboradores: <b>${fmt(new Set(rows.map(r=>r.key)).size)}</b>`, `Exceso total: <b>${fmt(rows.reduce((s,r)=>s+r.exceso,0),1)} h</b>`]
+          : [`Dentro: <b>${fmt(ok)}</b>`, `Excedidas: <b>${fmt(tot-ok)}</b>`, `Total: <b>${fmt(tot)}</b>`],
+        grupos, grpTitulo, grpTipo, fmtG: id==='semexc' ? (v)=>fmt(v)+' sem.' : (v)=>fmt(v,1)+'%', pct: id!=='semexc',
+        cols:[...(emp?[]:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol]),{k:'semana',l:'Semana',sortKey:'semana_iso'},{k:'dias',l:'Días',num:1},{k:'horas',l:'Horas',num:1,d:1},{k:'exceso',l:'Exceso (h)',num:1,d:1,alert:1},{k:'estado',l:'Estado',tag:1}],
+        rows, sort: emp ? 'semana_iso' : 'horas', dir: emp ? 1 : -1, click:!emp };
+    }
+    case 'prom': {
+      if(emp){
+        const rows = weekly.map(semanaRow);
+        return { titulo:'Horas por semana', explica:`Horas trabajadas por ${emp.nombre} en cada semana del periodo. El indicador es el promedio de estas semanas; el límite es ${limite} h.`,
+          chips:[`Semana más alta: <b>${fmt(Math.max(0,...rows.map(r=>r.horas)),1)} h</b>`, `Semana más baja: <b>${fmt(rows.length?Math.min(...rows.map(r=>r.horas)):0,1)} h</b>`],
+          grupos:agrupar(weekly, (w)=>w.horas_semana), grpTitulo, grpTipo, fmtG:(v)=>fmt(v,1)+' h',
+          cols:[{k:'semana',l:'Semana',sortKey:'semana_iso'},{k:'dias',l:'Días',num:1},{k:'horas',l:'Horas',num:1,d:1},{k:'exceso',l:'Exceso (h)',num:1,d:1,alert:1},{k:'estado',l:'Estado',tag:1}],
+          rows, sort:'semana_iso', dir:1 };
+      }
+      const m = new Map();
+      weekly.forEach(w=>{ const k = keyOf(w); if(!m.has(k)) m.set(k, { ...base(w), semanas:0, total:0, max:0 }); const x = m.get(k); x.semanas++; x.total += w.horas_semana; x.max = Math.max(x.max, w.horas_semana); });
+      const rows = [...m.values()].map(x=>({ ...x, prom: x.semanas ? x.total/x.semanas : 0, sobre: x.max > limite ? ['Alguna semana excede','bad'] : ['Dentro','ok'] }));
+      const gs = new Map(); weekly.forEach(w=>{ const g = grpDe(w); if(!gs.has(g)) gs.set(g,{h:0,n:0}); const x=gs.get(g); x.h+=w.horas_semana; x.n++; });
+      return { titulo:'Promedio de horas por semana', explica:`Promedio de horas trabajadas por semana de cada colaborador (solo semanas con checadas). El límite es ${limite} h. Ordena por "Semana máx." para ver quién tuvo la semana más pesada.`,
+        chips:[`Promedio más alto: <b>${fmt(Math.max(0,...rows.map(r=>r.prom)),1)} h</b>`, `Con alguna semana sobre ${limite} h: <b>${fmt(rows.filter(r=>r.max>limite).length)}</b>`],
+        grupos:[...gs.entries()].map(([g,x])=>({ g, v:x.n?x.h/x.n:0, label: multiCentro ? String(g).replace(/_/g,' ') : g })).sort((a,b)=>b.v-a.v),
+        grpTitulo, grpTipo, fmtG:(v)=>fmt(v,1)+' h',
+        cols:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol,{k:'semanas',l:'Semanas',num:1},{k:'prom',l:'Prom. h/sem',num:1,d:1},{k:'max',l:'Semana máx.',num:1,d:1},{k:'total',l:'Horas totales',num:1,d:1},{k:'sobre',l:'Estado',tag:1}],
+        rows, sort:'prom', dir:-1, click:true };
+    }
+    case 'ret': {
+      const dias = daily.filter(r=>r.retardo);
+      const chips = [`6–12 min: <b>${fmt(dias.filter(r=>r.retardo_6_12).length)}</b>`, `13–24 min: <b>${fmt(dias.filter(r=>r.retardo_13_24).length)}</b>`, `+25 min: <b>${fmt(dias.filter(r=>r.retardo_mas_25).length)}</b>`];
+      if(emp){
+        const rows = dias.map(r=>({ ...diaRow(r), cat:[cqRetCat(r), r.retardo_mas_25?'bad':'warn'] }));
+        return { titulo:'Retardos', explica:'Días en que la entrada fue después de la tolerancia (5 min). Se clasifican por minutos de retraso contra el horario programado.',
+          chips, grupos:agrupar(dias, ()=>1), grpTitulo, grpTipo, fmtG:(v)=>fmt(v),
+          cols:[{k:'fecha',l:'Fecha',mono:1},{k:'dia',l:'Día'},{k:'horario',l:'Horario'},{k:'entrada',l:'Entrada',mono:1},{k:'cat',l:'Retraso',tag:1}],
+          rows, sort:'fecha', dir:1 };
+      }
+      const m = new Map();
+      dias.forEach(r=>{ const k = keyOf(r); if(!m.has(k)) m.set(k, { ...base(r), r6:0, r13:0, r25:0, total:0, fechas:[] }); const x = m.get(k);
+        if(r.retardo_6_12) x.r6++; if(r.retardo_13_24) x.r13++; if(r.retardo_mas_25) x.r25++; x.total++; x.fechas.push(cqFechaCorta(r.fecha)); });
+      const rows = [...m.values()].map(x=>({ ...x, fechas:x.fechas.join(', ') }));
+      return { titulo:'Retardos', explica:'Colaboradores con entradas después de la tolerancia (5 min), separados por minutos de retraso. "Fechas" lista los días con retardo.',
+        chips:[...chips, `Colaboradores: <b>${fmt(rows.length)}</b>`],
+        grupos:agrupar(dias, ()=>1), grpTitulo, grpTipo, fmtG:(v)=>fmt(v),
+        cols:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol,{k:'r6',l:'6–12',num:1},{k:'r13',l:'13–24',num:1},{k:'r25',l:'+25',num:1,alert:1},{k:'total',l:'Total',num:1},{k:'fechas',l:'Fechas',wrap:1}],
+        rows, sort:'total', dir:-1, click:true };
+    }
+    case 'faltas': {
+      const vacTot = vacScope.reduce((s,v)=>s+(v.total_dias||0),0);
+      if(emp){
+        const fechas = (faltas[0] && faltas[0].fechas) || [];
+        const diaDe = new Map(daily.map(r=>[r.fecha, r.dia_semana||'']));
+        const rows = [...fechas.map(f=>({ fecha:f, dia:diaDe.get(f)||'', tipo:['Falta','bad'] })),
+          ...((vacPorKey.get(emp.key)||{}).fechas||[]).map(f=>({ fecha:f, dia:diaDe.get(f)||'', tipo:['Vacaciones (no cuenta)','info'] }))]
+          .sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+        return { titulo:'Faltas', explica:'Días sin ninguna checada. Los días de vacaciones aparecen para referencia, pero no cuentan como falta.',
+          chips:[`Faltas: <b>${fmt(fechas.length)}</b>`, `Vacaciones: <b>${fmt(vacTot)}</b>`],
+          grupos:agrupar(fechas.map(f=>({semana_iso:isoWeek(f)})), ()=>1), grpTitulo, grpTipo, fmtG:(v)=>fmt(v),
+          cols:[{k:'fecha',l:'Fecha',mono:1},{k:'dia',l:'Día'},{k:'tipo',l:'Tipo',tag:1}],
+          rows, sort:'fecha', dir:1 };
+      }
+      const rows = faltas.filter(f=>f.total_faltas>0).map(f=>{ const v = vacPorKey.get(keyOf(f));
+        return { ...base(f), faltas:f.total_faltas, vac: v ? v.total_dias : 0, fechas:(f.fechas||[]).map(cqFechaCorta).join(', ') }; });
+      return { titulo:'Faltas', explica:'Días sin ninguna checada (ni entrada ni salida). Los días de vacaciones ya están descontados: se muestran solo como referencia.',
+        chips:[`Faltas: <b>${fmt(rows.reduce((s,r)=>s+r.faltas,0))}</b>`, `Colaboradores con faltas: <b>${fmt(rows.length)}</b>`, `Días de vacaciones (no cuentan): <b>${fmt(vacTot)}</b>`],
+        grupos:agrupar(faltas, (f)=>f.total_faltas||0), grpTitulo, grpTipo, fmtG:(v)=>fmt(v),
+        cols:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol,{k:'faltas',l:'Faltas',num:1,alert:1},{k:'vac',l:'Vacaciones',num:1},{k:'fechas',l:'Fechas de falta',wrap:1}],
+        rows, sort:'faltas', dir:-1, click:true };
+    }
+    case 'exc': {
+      const dias = daily.filter(r=>r.jornada_excesiva_dia);
+      const rows = dias.map(r=>({ ...diaRow(r), extra: r.horas_trabajadas - 12 }));
+      return { titulo:'Jornadas de más de 12 h en un día', explica:'Días en que la jornada (entrada a salida, menos comida) pasó de 12 h, el límite absoluto del Art. 68 LFT, que no se puede rebasar ni pagando tiempo extra. En turnos nocturnos se cuenta el cruce de medianoche.',
+        chips:[`Días: <b>${fmt(rows.length)}</b>`, `Colaboradores: <b>${fmt(new Set(rows.map(r=>r.key)).size)}</b>`, `Jornada más larga: <b>${fmt(Math.max(0,...rows.map(r=>r.horas||0)),1)} h</b>`],
+        grupos:agrupar(dias, ()=>1), grpTitulo, grpTipo, fmtG:(v)=>fmt(v)+' días',
+        cols:[...(emp?[]:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol]),{k:'fecha',l:'Fecha',mono:1},{k:'dia',l:'Día'},{k:'horario',l:'Horario'},{k:'entrada',l:'Entrada',mono:1},{k:'salida',l:'Salida',mono:1},{k:'horas',l:'Horas',num:1,d:1},{k:'extra',l:'Sobre 12 h',num:1,d:1,alert:1}],
+        rows, sort: emp ? 'fecha' : 'horas', dir: emp ? 1 : -1, click:!emp };
+    }
+    case 'incompl': {
+      const dias = daily.filter(r=>r.checada_incompleta);
+      const rows = dias.map(r=>({ ...diaRow(r), motivo:cqMotivoIncompleta(r) }));
+      const mot = {}; rows.forEach(r=>mot[r.motivo]=(mot[r.motivo]||0)+1);
+      return { titulo:'Checadas incompletas', explica:'Días en que el colaborador sí se presentó pero le faltó alguna marca. Entre semana se esperan 4 (entrada, salida a comer, regreso y salida); en sábado basta con entrada y salida, salvo que se trabaje fuera de horario.',
+        chips:Object.entries(mot).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${esc(k)}: <b>${fmt(v)}</b>`),
+        grupos:agrupar(dias, ()=>1), grpTitulo, grpTipo, fmtG:(v)=>fmt(v),
+        cols:[...(emp?[]:[{k:'nombre',l:'Colaborador'},{k:'area',l:'Área'},...centroCol]),{k:'fecha',l:'Fecha',mono:1},{k:'dia',l:'Día'},{k:'entrada',l:'Entrada',mono:1},{k:'s_comer',l:'S. comer',mono:1},{k:'r_comer',l:'R. comer',mono:1},{k:'salida',l:'Salida',mono:1},{k:'motivo',l:'Qué faltó',wrap:1}],
+        rows, sort: emp ? 'fecha' : 'nombre', dir:1, click:!emp };
+    }
+  }
+  return null;
+}
+
+function cqRenderKpiDetalle(){
+  const host = document.getElementById('cqKpiDetalle');
+  if(!host) return;
+  if(!cqKpiActivo || !CQ_CTX){ host.innerHTML = `<p class="cq-kpi-tip">Haz clic en cualquier indicador para ver su detalle.</p>`; return; }
+  let def;
+  try{ def = cqKpiDefinicion(cqKpiActivo, CQ_CTX); }
+  catch(e){ console.error('detalle KPI:', e); host.innerHTML = `<div class="empty-state">No se pudo generar el detalle (${esc(e.message||'error')}).</div>`; return; }
+  if(!def){ host.innerHTML = ''; return; }
+  const clase = (CQ_CTX.clases||{})[cqKpiActivo] || 'neutral';
+  const defKey = cqKpiActivo + '|' + (CQ_CTX.emp ? 'emp' : 'scope');
+  if(cqDet.defKey !== defKey || !def.cols.some(c=>(c.sortKey||c.k)===cqDet.sort)){ cqDet.sort = def.sort; cqDet.dir = def.dir; cqDet.defKey = defKey; }
+  const q = cqNorm(cqDet.q).trim();
+  const textoFila = (r)=> def.cols.map(c=>{ const v = r[c.k]; return Array.isArray(v) ? v[0] : v; }).join(' ');
+  let rows = q ? def.rows.filter(r=> q.split(/\s+/).every(t=>cqNorm(textoFila(r)).includes(t))) : def.rows.slice();
+  const col = def.cols.find(c=>c.k===cqDet.sort || c.sortKey===cqDet.sort);
+  const sk = cqDet.sort;
+  rows.sort((a,b)=>{
+    let x = a[sk], y = b[sk];
+    if(Array.isArray(x)) x = x[0]; if(Array.isArray(y)) y = y[0];
+    if(x==null) x = ''; if(y==null) y = '';
+    const r = (typeof x === 'number' && typeof y === 'number') ? x-y : String(x).localeCompare(String(y), 'es', {numeric:true});
+    return r * cqDet.dir;
+  });
+  const total = rows.length;
+  const vis = cqDet.todo ? rows : rows.slice(0, CQ_DET_LIMITE);
+  const maxG = Math.max(0, ...def.grupos.map(g=>g.v)) || 1;
+  const celda = (c, r)=>{
+    const v = r[c.k];
+    if(c.tag){ const [t, k] = Array.isArray(v) ? v : [v,'']; return `<td>${t?`<span class="cq-tag ${k}">${esc(t)}</span>`:''}</td>`; }
+    if(c.num){ const n = (v==null||v==='') ? null : Number(v); return `<td class="num mono${c.alert && n>0 ? ' cq-alert':''}">${n==null?'—':fmt(n, c.d||0)}</td>`; }
+    return `<td class="${c.mono?'mono':''}${c.wrap?' wrap':''}">${esc(v==null||v===''?'—':v)}</td>`;
+  };
+  host.innerHTML = `
+  <div class="cq-det ${clase}" role="region" aria-label="Detalle: ${esc(def.titulo)}">
+    <div class="cq-det-head">
+      <div>
+        <h3>${esc(def.titulo)}${CQ_CTX.emp ? ` — ${esc(CQ_CTX.emp.nombre)}` : ''}</h3>
+        <div class="cq-det-exp">${esc(def.explica)}</div>
+        ${def.chips && def.chips.length ? `<div class="cq-det-chips">${def.chips.map(c=>`<span class="cq-det-chip">${c}</span>`).join('')}</div>` : ''}
+      </div>
+      <button type="button" class="cq-det-x" id="cqDetCerrar" title="Cerrar detalle (Esc)">✕ Cerrar</button>
+    </div>
+    <div class="cq-det-body">
+      <div class="cq-det-grp">
+        <h4>${esc(def.grpTitulo)}${def.grpTipo ? ' · clic para filtrar' : ''}</h4>
+        ${def.grupos.length === 0 ? `<div class="cq-hint">Sin datos.</div>` : def.grupos.map(g=>`
+          <button type="button" class="cq-gbar${def.grpTipo?' click':''}" ${def.grpTipo?`data-g="${esc(g.g)}"`:'tabindex="-1"'} title="${def.grpTipo?'Filtrar el tablero a '+esc(g.label):''}">
+            <div class="cq-gbar-top"><span>${esc(g.label)}</span><span>${def.fmtG(g.v)}${g.sub?` <small style="font-weight:400;color:var(--ink-soft)">(${esc(g.sub)})</small>`:''}</span></div>
+            <div class="cq-gbar-track"><div class="cq-gbar-fill" style="width:${Math.max(2, 100*(def.pct ? g.v/100 : g.v/maxG))}%"></div></div>
+          </button>`).join('')}
+      </div>
+      <div class="cq-det-tbl">
+        <div class="cq-det-tools">
+          <input type="text" id="cqDetBuscar" placeholder="Buscar en este detalle…" value="${esc(cqDet.q)}" autocomplete="off" spellcheck="false">
+          <span class="count">${fmt(total)} registro(s)${q?` de ${fmt(def.rows.length)}`:''}${def.click?' · clic en una fila para ver al colaborador':''}</span>
+          <button type="button" id="cqDetExcel" title="Descargar este detalle en Excel">⬇ Excel</button>
+        </div>
+        <div class="table-scroll"><table>
+          <thead><tr>${def.cols.map(c=>{ const key = c.sortKey||c.k; const on = key===cqDet.sort;
+            return `<th class="sortable${c.num?' num':''}${on?' sorted':''}" data-sort="${key}" aria-sort="${on?(cqDet.dir>0?'ascending':'descending'):'none'}">${esc(c.l)} <span class="arr">${on?(cqDet.dir>0?'▲':'▼'):'↕'}</span></th>`; }).join('')}</tr></thead>
+          <tbody>${vis.length===0 ? `<tr class="empty-row"><td colspan="${def.cols.length}">${def.rows.length ? 'Sin coincidencias con la búsqueda.' : 'Nada que reportar en este alcance. ✓'}</td></tr>`
+            : vis.map(r=>`<tr${def.click && r.key ? ` data-id="${esc(r.key)}" class="${r.key===state.colaborador?'row-selected':''}"`:''}>${def.cols.map(c=>celda(c,r)).join('')}</tr>`).join('')}</tbody>
+        </table></div>
+        ${total > vis.length ? `<div class="cq-det-more"><button type="button" id="cqDetTodo">Mostrar los ${fmt(total)} registros</button></div>` : ''}
+      </div>
+    </div>
+  </div>`;
+
+  // ---- eventos ----
+  document.getElementById('cqDetCerrar').addEventListener('click', ()=>cqToggleKpi(cqKpiActivo));
+  const bus = document.getElementById('cqDetBuscar');
+  bus.addEventListener('input', ()=>{ cqDet.q = bus.value; const pos = bus.selectionStart; cqRenderKpiDetalle(); const b2 = document.getElementById('cqDetBuscar'); if(b2){ b2.focus(); try{ b2.setSelectionRange(pos,pos); }catch(e){} } });
+  host.querySelectorAll('th.sortable').forEach(th=>th.addEventListener('click', ()=>{
+    const k = th.getAttribute('data-sort');
+    if(cqDet.sort === k) cqDet.dir *= -1; else { cqDet.sort = k; const c = def.cols.find(x=>(x.sortKey||x.k)===k); cqDet.dir = (c && c.num) ? -1 : 1; }
+    cqRenderKpiDetalle();
+  }));
+  const todo = document.getElementById('cqDetTodo'); if(todo) todo.addEventListener('click', ()=>{ cqDet.todo = true; cqRenderKpiDetalle(); });
+  host.querySelectorAll('tbody tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>cqSeleccionarColaborador(tr.getAttribute('data-id'))));
+  host.querySelectorAll('.cq-gbar.click').forEach(b=>b.addEventListener('click', ()=>{
+    const g = b.getAttribute('data-g');
+    if(def.grpTipo === 'unidad'){ state.unidad = g; state.area = null; }
+    else if(def.grpTipo === 'area'){ state.area = g; }
+    state.colaborador = null;
+    refreshScope();
+  }));
+  document.getElementById('cqDetExcel').addEventListener('click', ()=>{
+    try{
+      const data = rows.map(r=>{ const o = {}; def.cols.forEach(c=>{ let v = r[c.k]; if(Array.isArray(v)) v = v[0]; if(c.num && v!=null && v!=='') v = Math.round(Number(v)*100)/100; o[c.l] = v==null ? '' : v; }); return o; });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.length ? data : [{Resultado:'Sin registros'}]), def.titulo.replace(/[\\\/\?\*\[\]:]/g,'').slice(0,31));
+      const alcance = CQ_CTX.emp ? CQ_CTX.emp.nombre : ((state.unidad ? state.unidad.replace(/_/g,' ') : 'Grupo') + (state.area ? ' ' + state.area : ''));
+      const nombre = `Detalle_${def.titulo}_${alcance}`.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/_+$/,'');
+      downloadBlob(nombre + '.xlsx', new Blob([XLSX.write(wb, {type:'array', bookType:'xlsx'})], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+      toast(`Excel descargado: ${def.titulo} (${fmt(data.length)} registros)`);
+    } catch(e){ console.error(e); toast('No se pudo generar el Excel del detalle', true); }
+  });
+}
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && cqKpiActivo && !(document.activeElement && document.activeElement.id === 'cqBuscar')) cqToggleKpi(cqKpiActivo); });
+
 function renderConsulta(){
   const host = document.getElementById('secConsulta');
   if(!host) return;
@@ -3379,15 +3725,20 @@ function renderConsultaInner(){
   const promSem = semTot ? weekly.reduce((s,w)=>s+w.horas_semana,0)/semTot : null;
   const st = statusOfPct(pctSem);
   document.getElementById('cqKpis').innerHTML = [
-    emp ? cqKpi(fmt(daily.length), 'Días con registro', 'neutral') : cqKpi(fmt(rosterAlcance.length), 'Colaboradores', 'neutral'),
-    cqKpi(pctSem===null?'—':fmt(pctSem,1)+'%', `Semanas dentro de ${limite} h`, st, `${fmt(semOk)} de ${fmt(semTot)} semanas`),
-    cqKpi(promSem===null?'—':fmt(promSem,1)+' h', 'Promedio por semana', promSem!==null && promSem>limite ? 'bad' : 'neutral', `límite ${limite} h`),
-    cqKpi(fmt(r6+r13+r25), 'Retardos', (r6+r13+r25)>0?'warn':'ok', `6–12: ${fmt(r6)} · 13–24: ${fmt(r13)} · +25: ${fmt(r25)}`),
-    cqKpi(fmt(totFaltas), 'Faltas', totFaltas>0?'warn':'ok', 'días sin ninguna checada'),
-    cqKpi(fmt(exc), 'Jornadas >12 h en un día', exc>0?'bad':'ok', 'Art. 68 LFT'),
-    cqKpi(fmt(semExc), `Semanas sobre ${limite} h`, semExc>0?'bad':'ok', 'Art. 59 LFT'),
-    cqKpi(fmt(incompl), 'Checadas incompletas', incompl>0?'warn':'ok', 'falta alguna marca'),
+    emp ? cqKpi(fmt(daily.length), 'Días con registro', 'neutral', null, 'base') : cqKpi(fmt(rosterAlcance.length), 'Colaboradores', 'neutral', null, 'base'),
+    cqKpi(pctSem===null?'—':fmt(pctSem,1)+'%', `Semanas dentro de ${limite} h`, st, `${fmt(semOk)} de ${fmt(semTot)} semanas`, 'semok'),
+    cqKpi(promSem===null?'—':fmt(promSem,1)+' h', 'Promedio por semana', promSem!==null && promSem>limite ? 'bad' : 'neutral', `límite ${limite} h`, 'prom'),
+    cqKpi(fmt(r6+r13+r25), 'Retardos', (r6+r13+r25)>0?'warn':'ok', `6–12: ${fmt(r6)} · 13–24: ${fmt(r13)} · +25: ${fmt(r25)}`, 'ret'),
+    cqKpi(fmt(totFaltas), 'Faltas', totFaltas>0?'warn':'ok', 'días sin ninguna checada', 'faltas'),
+    cqKpi(fmt(exc), 'Jornadas >12 h en un día', exc>0?'bad':'ok', 'Art. 68 LFT', 'exc'),
+    cqKpi(fmt(semExc), `Semanas sobre ${limite} h`, semExc>0?'bad':'ok', 'Art. 59 LFT', 'semexc'),
+    cqKpi(fmt(incompl), 'Checadas incompletas', incompl>0?'warn':'ok', 'falta alguna marca', 'incompl'),
   ].join('');
+  CQ_CTX = { daily, faltas, weekly, limite, emp, rosterAlcance,
+    clases:{ base:'neutral', semok:st, prom:(promSem!==null && promSem>limite ? 'bad' : 'neutral'), ret:(r6+r13+r25)>0?'warn':'ok',
+      faltas:totFaltas>0?'warn':'ok', exc:exc>0?'bad':'ok', semexc:semExc>0?'bad':'ok', incompl:incompl>0?'warn':'ok' } };
+  document.querySelectorAll('#cqKpis button.cq-kpi').forEach(b=>b.addEventListener('click', ()=>cqToggleKpi(b.getAttribute('data-kpi'))));
+  cqRenderKpiDetalle();
 
   // ---- gráficas ----
   if(typeof Chart === 'undefined') return;
