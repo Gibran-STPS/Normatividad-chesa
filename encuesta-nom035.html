@@ -250,7 +250,7 @@ function renderDatosBasicos(){
       <div>
         <p class="mb-1 font-semibold">Tipo de puesto</p>
         <select id="d-puesto" class="w-full border rounded p-2"><option value="">Selecciona…</option>
-          <option>Mantenimiento</option><option>Posventa</option><option>Ventas</option><option>Corporativo</option><option>Gerencia</option><option>Dirección</option>
+          <option>Administrativo</option><option>Mantenimiento</option><option>Posventa</option><option>Ventas</option><option>Corporativo</option><option>Gerencia</option><option>Dirección</option>
         </select>
       </div>
       <div>
@@ -395,6 +395,18 @@ async function guardarYFinalizar(){
     nivelRiesgo = clasificar(cfinal, cfinalUmbrales);
   }
 
+  // Resultado propio de la Guía I (acontecimientos traumáticos severos),
+  // que se aplica a todos los centros junto con la Guía II o III.
+  const contarSi = obj => Object.values(obj || {}).filter(v => v === 'si').length;
+  const guiaI = {
+    seccion_i: GUIA_I_ITEMS.map((_, i) => respGuiaI[i] || 'no'),
+    evento: Object.values(respGuiaI).some(v => v === 'si'),
+    seccion_ii_si: contarSi(seguimientoRespuestas.II),
+    seccion_iii_si: contarSi(seguimientoRespuestas.III),
+    seccion_iv_si: contarSi(seguimientoRespuestas.IV),
+    requiere_atencion: requiereAtencionClinica
+  };
+
   const payload = {
     centro_id: centro.centro_id,
     token: TOKEN,
@@ -404,10 +416,17 @@ async function guardarYFinalizar(){
     calificacion_final: calificacionFinal,
     nivel_riesgo: nivelRiesgo,
     detalle_dominios: detalleDominios,
-    requiere_atencion_clinica: requiereAtencionClinica
+    requiere_atencion_clinica: requiereAtencionClinica,
+    guia_i: guiaI
   };
 
-  const { error } = await sb.from('nom035_respuestas').insert(payload);
+  let { error } = await sb.from('nom035_respuestas').insert(payload);
+  // Si la columna guia_i aún no existe en la base, guardamos igual sin ella
+  // para no perder la respuesta del colaborador.
+  if(error && /guia_i/i.test(error.message || '')){
+    delete payload.guia_i;
+    ({ error } = await sb.from('nom035_respuestas').insert(payload));
+  }
   setProgreso(100);
   if(error){
     app.innerHTML = `<p class="text-sm text-red-600">No se pudo guardar tu respuesta (${error.message}). Por favor inténtalo de nuevo o avisa a tu responsable de RH.</p>

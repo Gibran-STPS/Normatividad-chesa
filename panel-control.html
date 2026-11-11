@@ -5109,6 +5109,21 @@ async function verResultadosNom035(centroId){
         </div>`;
     }).join('') || '<p class="text-xs text-on-surface-variant">Sin desglose por dominio disponible (centros ≤15 trabajadores solo aplican la Guía I).</p>';
 
+    // Resultado propio de la Guía I (se aplica en todos los centros)
+    const conGuiaI = resp.filter(r => r.guia_i);
+    const eventoSecI = conGuiaI.filter(r => r.guia_i.evento).length;
+    const requierenVal = resp.filter(r => r.requiere_atencion_clinica).length;
+    const preguntasGuiaI = ['Accidente grave en el trabajo','Asaltos','Actos violentos con lesiones graves','Secuestro','Amenazas','Otro suceso que ponga en riesgo la vida o salud'];
+    const siPorPregunta = preguntasGuiaI.map((_, i) => conGuiaI.filter(r => (r.guia_i.seccion_i || [])[i] === 'si').length);
+    const guiaIHTML = `
+        <div class="mb-md">
+            <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">GUÍA I · ACONTECIMIENTOS TRAUMÁTICOS SEVEROS</p>
+            <div class="border border-outline-variant rounded p-sm text-xs">
+                <p class="mb-1"><strong>${eventoSecI}</strong> de ${conGuiaI.length || resp.length} respondieron "Sí" a al menos una pregunta de la Sección I · <strong class="${requierenVal ? 'text-error' : ''}">${requierenVal}</strong> requieren valoración clínica.</p>
+                ${conGuiaI.length ? `<div class="grid grid-cols-1 gap-0.5 mt-1">${preguntasGuiaI.map((t, i) => `<div class="flex justify-between"><span>${t}</span><span class="font-bold">${siPorPregunta[i]}</span></div>`).join('')}</div>` : '<p class="text-on-surface-variant">Las respuestas anteriores a este cambio no tienen el desglose de la Guía I; las nuevas sí lo traen.</p>'}
+            </div>
+        </div>`;
+
     contenido.innerHTML = `
         <div class="flex items-center gap-sm mb-md flex-wrap">
             <span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold uppercase">Riesgo ${peorNivel}</span>
@@ -5120,6 +5135,7 @@ async function verResultadosNom035(centroId){
             <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">PLAN DE ACCIÓN SUGERIDO (NOM-035, numeral 8)</p>
             <p class="text-sm">${NOM035_PLAN_TEXTOS[peorNivel] || NOM035_PLAN_TEXTOS['Nulo']}</p>
         </div>
+        ${guiaIHTML}
         <div class="mb-md">
             <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">ANÁLISIS POR DOMINIO (haz clic en cada uno para ver la recomendación)</p>
             ${dominiosHTML}
@@ -5610,6 +5626,24 @@ async function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
     const wsRespuestas = XLSX.utils.json_to_sheet(filasRespuestas);
     wsRespuestas['!cols'] = [{wch:28},{wch:20},{wch:12},{wch:16},{wch:12},{wch:22},{wch:14},{wch:14},{wch:18}];
     XLSX.utils.book_append_sheet(wb, wsRespuestas, 'Respuestas');
+
+    const filasGuiaI = resp.map(r => {
+        const g = r.guia_i || {};
+        return {
+            'Centro': nombreCentro(r),
+            'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
+            'Guía aplicada junto con la Guía I': r.guia === 'I' ? 'Ninguna (solo Guía I)' : r.guia,
+            'Evento traumático (Sección I)': r.guia_i ? (g.evento ? 'Sí' : 'No') : '',
+            'Sí en Sección I (de 6)': r.guia_i ? (g.seccion_i || []).filter(v => v === 'si').length : '',
+            'Sí en Sección II (de 2)': r.guia_i ? g.seccion_ii_si : '',
+            'Sí en Sección III (de 7)': r.guia_i ? g.seccion_iii_si : '',
+            'Sí en Sección IV (de 5)': r.guia_i ? g.seccion_iv_si : '',
+            'Requiere valoración clínica': r.requiere_atencion_clinica ? 'Sí' : 'No'
+        };
+    });
+    const wsGuiaI = XLSX.utils.json_to_sheet(filasGuiaI);
+    wsGuiaI['!cols'] = [{wch:28},{wch:20},{wch:30},{wch:26},{wch:20},{wch:22},{wch:22},{wch:22},{wch:26}];
+    XLSX.utils.book_append_sheet(wb, wsGuiaI, 'Guía I');
 
     const wsDominios = XLSX.utils.json_to_sheet(filasDominios.length ? filasDominios : [{ 'Sin datos': 'Sin desglose por dominio' }]);
     wsDominios['!cols'] = [{wch:28},{wch:20},{wch:34},{wch:14},{wch:12}];
