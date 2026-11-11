@@ -5115,12 +5115,26 @@ async function verResultadosNom035(centroId){
     const requierenVal = resp.filter(r => r.requiere_atencion_clinica).length;
     const preguntasGuiaI = ['Accidente grave en el trabajo','Asaltos','Actos violentos con lesiones graves','Secuestro','Amenazas','Otro suceso que ponga en riesgo la vida o salud'];
     const siPorPregunta = preguntasGuiaI.map((_, i) => conGuiaI.filter(r => (r.guia_i.seccion_i || [])[i] === 'si').length);
+    const porPuesto = {};
+    resp.forEach(r => {
+        const pu = (r.datos_trabajador || {}).puesto || 'Sin especificar';
+        if(!porPuesto[pu]) porPuesto[pu] = { total: 0, evento: 0, valoracion: 0 };
+        porPuesto[pu].total++;
+        if(r.guia_i && r.guia_i.evento) porPuesto[pu].evento++;
+        if(r.requiere_atencion_clinica) porPuesto[pu].valoracion++;
+    });
+    const filasPuesto = Object.keys(porPuesto).sort((a, b) => porPuesto[b].valoracion - porPuesto[a].valoracion || porPuesto[b].evento - porPuesto[a].evento);
     const guiaIHTML = `
         <div class="mb-md">
             <p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">GUÍA I · ACONTECIMIENTOS TRAUMÁTICOS SEVEROS</p>
             <div class="border border-outline-variant rounded p-sm text-xs">
                 <p class="mb-1"><strong>${eventoSecI}</strong> de ${conGuiaI.length || resp.length} respondieron "Sí" a al menos una pregunta de la Sección I · <strong class="${requierenVal ? 'text-error' : ''}">${requierenVal}</strong> requieren valoración clínica.</p>
-                ${conGuiaI.length ? `<div class="grid grid-cols-1 gap-0.5 mt-1">${preguntasGuiaI.map((t, i) => `<div class="flex justify-between"><span>${t}</span><span class="font-bold">${siPorPregunta[i]}</span></div>`).join('')}</div>` : '<p class="text-on-surface-variant">Las respuestas anteriores a este cambio no tienen el desglose de la Guía I; las nuevas sí lo traen.</p>'}
+                <p class="font-bold mt-2 mb-1">Por tipo de puesto</p>
+                <div class="grid grid-cols-4 gap-x-2 gap-y-0.5 text-[11px]">
+                    <span class="text-on-surface-variant">Puesto</span><span class="text-on-surface-variant text-right">Respuestas</span><span class="text-on-surface-variant text-right">Sí Secc. I</span><span class="text-on-surface-variant text-right">Valoración</span>
+                    ${filasPuesto.map(pu => `<span>${pu}</span><span class="text-right">${porPuesto[pu].total}</span><span class="text-right">${porPuesto[pu].evento}</span><span class="text-right font-bold ${porPuesto[pu].valoracion ? 'text-error' : ''}">${porPuesto[pu].valoracion}</span>`).join('')}
+                </div>
+                ${conGuiaI.length ? `<p class="font-bold mt-2 mb-1">Por pregunta</p><div class="grid grid-cols-1 gap-0.5 mt-1">${preguntasGuiaI.map((t, i) => `<div class="flex justify-between"><span>${t}</span><span class="font-bold">${siPorPregunta[i]}</span></div>`).join('')}</div>` : '<p class="text-on-surface-variant">Las respuestas anteriores a este cambio no tienen el desglose de la Guía I; las nuevas sí lo traen.</p>'}
             </div>
         </div>`;
 
@@ -5632,6 +5646,7 @@ async function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
         return {
             'Centro': nombreCentro(r),
             'Fecha': new Date(r.created_at).toLocaleString('es-MX'),
+            'Tipo de puesto': (r.datos_trabajador || {}).puesto || 'Sin especificar',
             'Guía aplicada junto con la Guía I': r.guia === 'I' ? 'Ninguna (solo Guía I)' : r.guia,
             'Evento traumático (Sección I)': r.guia_i ? (g.evento ? 'Sí' : 'No') : '',
             'Sí en Sección I (de 6)': r.guia_i ? (g.seccion_i || []).filter(v => v === 'si').length : '',
@@ -5642,7 +5657,7 @@ async function exportarNom035AExcel(resp, nombreCentroFiltro, nombreArchivo){
         };
     });
     const wsGuiaI = XLSX.utils.json_to_sheet(filasGuiaI);
-    wsGuiaI['!cols'] = [{wch:28},{wch:20},{wch:30},{wch:26},{wch:20},{wch:22},{wch:22},{wch:22},{wch:26}];
+    wsGuiaI['!cols'] = [{wch:28},{wch:20},{wch:20},{wch:30},{wch:26},{wch:20},{wch:22},{wch:22},{wch:22},{wch:26}];
     XLSX.utils.book_append_sheet(wb, wsGuiaI, 'Guía I');
 
     const wsDominios = XLSX.utils.json_to_sheet(filasDominios.length ? filasDominios : [{ 'Sin datos': 'Sin desglose por dominio' }]);
